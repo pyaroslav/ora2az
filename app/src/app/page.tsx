@@ -7,14 +7,15 @@ import type {Fidelity} from '@/sanity/types'
 export const dynamic = 'force-dynamic'
 
 const RANK: Record<Fidelity, number> = {exact: 0, partial: 1, workaround: 2, none: 3}
-const worst = (ms: Array<{fidelity: Fidelity}>) =>
-  ms.length ? ms.reduce((w, m) => (RANK[m.fidelity] > RANK[w] ? m.fidelity : w), 'exact' as Fidelity) : undefined
+// The epitaph speaks for the best survivor: an obituary is about who carries on.
+const best = (ms: Array<{fidelity: Fidelity}>) =>
+  ms.length ? ms.reduce((b, m) => (RANK[m.fidelity] < RANK[b] ? m.fidelity : b), 'none' as Fidelity) : undefined
 
 function life(f: {introducedIn?: string; deprecatedIn?: string; desupportedIn?: string}) {
   const born = f.introducedIn ?? '—'
   if (f.desupportedIn) return `${born} – ${f.desupportedIn}, desupported`
   if (f.deprecatedIn) return `${born} – deprecated ${f.deprecatedIn}`
-  return `${born} – still with us, but not in Azure`
+  return `${born} – still supported, but hard to move`
 }
 
 export default async function Page() {
@@ -36,7 +37,7 @@ export default async function Page() {
 
       <section className="notices" aria-label="Notices">
         {roster.map((f) => {
-          const w = worst(f.mappings)
+          const w = best(f.mappings)
           return (
             <article className="notice" key={f._id}>
               <h3><Link href={`/obituary/${f.slug}`}>{f.name}</Link></h3>

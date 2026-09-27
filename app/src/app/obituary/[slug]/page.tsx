@@ -21,7 +21,7 @@ export default async function Obituary({params}: Props) {
   const f = await getObituary(slug)
   if (!f) notFound()
 
-  const worst = f.mappings.at(-1)?.fidelity
+  const bestFidelity = f.mappings[0]?.fidelity // mappings are sorted best-first
   const status = f.desupportedIn
     ? `Desupported in Oracle Database ${f.desupportedIn}${f.deprecatedIn ? ` after deprecation in ${f.deprecatedIn}` : ''}.`
     : f.deprecatedIn
@@ -42,7 +42,7 @@ export default async function Obituary({params}: Props) {
           {f.deprecatedIn ? ` · deprecated ${f.deprecatedIn}` : ''}
           {f.desupportedIn ? ` · desupported ${f.desupportedIn}` : ''}
         </div>
-        <p className="epitaph">{fidelityEpitaph(worst)}.</p>
+        <p className="epitaph">{fidelityEpitaph(bestFidelity)}.</p>
         <p className="cert muted">{f.reviewStatus === 'certified' ? '✓ certified by the mortician' : 'draft notice, awaiting certification'}</p>
       </header>
 
