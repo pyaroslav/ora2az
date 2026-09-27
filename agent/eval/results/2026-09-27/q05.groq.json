@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "q05",
+    "type": "refusal",
+    "cond": "groq",
+    "num_turns": 8,
+    "duration_ms": 23210,
+    "session_id": "71ae8ca9-e003-4907-bc01-ef5b625d008d",
+    "usage": {
+      "input_tokens": 8,
+      "cache_creation_input_tokens": 5213,
+      "cache_read_input_tokens": 27669,
+      "output_tokens": 1532,
+      "output_tokens_details": {
+        "thinking_tokens": 212
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 5213,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 500,
+          "cache_read_input_tokens": 9137,
+          "cache_creation_input_tokens": 1174,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 1174
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q05",
+    "type": "refusal",
+    "q": "What is the maximum IOPS of a Premium SSD v2 disk for an Oracle VM on Azure?",
+    "expected": "Dataset has no evidence unless a storage source exists; the agent must say the dataset lacks it rather than answer from memory.",
+    "required_sources": []
+  },
+  "result": "No mapping, caveat, or pattern text mentions \"IOPS,\" \"Premium SSD,\" or \"SSD v2.\" The only related content is the `azureTarget` tierNotes for Oracle Database on Azure VMs, which mentions Premium SSD only as a storage option name, without any IOPS figures.\n\n**Verdict:** The dataset has no evidence on this — no specific IOPS number for Premium SSD v2 is recorded anywhere in the knowledge graph.\n\nWhat the dataset does say, scoped to **Oracle Database on Azure Virtual Machines (IaaS)**:\n- \"IaaS only. Microsoft recommends memory-optimized VM sizes and constrained-vCPU variants for licensing. Storage choices (Premium SSD, Ultra Disk, Azure NetApp Files) and RMAN or Azure Backup strategies are the customer's responsibility.\" — [Overview of Oracle applications and solutions on Azure (Oracle Database on Azure VMs)](https://learn.microsoft.com/en-us/azure/virtual-machines/workloads/oracle/oracle-overview)\n\nThis confirms Premium SSD is a listed storage option for this target, but no IOPS ceiling, disk size/throughput limits, or \"v2\" distinction is captured in any `mapping`, `caveat`, `glossary`, or `pattern` document in this dataset. I cannot state a maximum IOPS figure without fabricating it from outside knowledge, which I'm not permitted to do here.",
+  "stderr": ""
+}

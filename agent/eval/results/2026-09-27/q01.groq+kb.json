@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q01",
+    "type": "version-scope",
+    "cond": "groq+kb",
+    "num_turns": 7,
+    "duration_ms": 38957,
+    "session_id": "83805f24-a5fe-4d49-b43c-927fce506be8",
+    "usage": {
+      "input_tokens": 10,
+      "cache_creation_input_tokens": 14989,
+      "cache_read_input_tokens": 58509,
+      "output_tokens": 3292,
+      "output_tokens_details": {
+        "thinking_tokens": 311
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 14989,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2016,
+          "cache_read_input_tokens": 19117,
+          "cache_creation_input_tokens": 1686,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 1686
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q01",
+    "type": "version-scope",
+    "q": "We are on Oracle 19c and use DBMS_JOB for nightly batches. Moving to Azure SQL Managed Instance — what happens to those jobs?",
+    "expected": "DBMS_JOB is deprecated (Oracle recommends DBMS_SCHEDULER); on SQL MI the equivalent is SQL Server Agent jobs; schedules and PL/SQL bodies must be rewritten in T-SQL; answer must state the deprecation release.",
+    "required_sources": [
+      "oracle",
+      "microsoft"
+    ]
+  },
+  "result": "## Verdict\nYour DBMS_JOB nightly batches will keep running through the upgrade path, but they don't move to Azure SQL Managed Instance as-is — the job bodies get re-homed to **SQL Server Agent**, and you should treat this as a scheduled, moderate-effort (M) rewrite, not a lift-and-shift. Fidelity is rated **partial**, not exact.\n\n## Scoped facts\n\n**Status on Oracle 19c:** DBMS_JOB is deprecated (since 12.2) but still functional in 19c — Oracle wraps it: each `DBMS_JOB.SUBMIT` creates a paired `DBMS_SCHEDULER` job (`DBMS_JOB$_n`), and existing jobs are auto-converted during upgrade with the mapping recorded in `scheduler$_dbmsjob_map`. It is not desupported; Oracle's replacement is `DBMS_SCHEDULER`. — [ORACLE-BASE: DBMS_JOB jobs converted to DBMS_SCHEDULER jobs in Oracle Database 19c](https://oracle-base.com/articles/19c/dbms_job-jobs-converted-to-dbms_scheduler-jobs-19c), [Mike Dietrich: DBMS_JOB behavior change in Oracle 19c during upgrade](https://mikedietrichde.com/2019/05/24/dbms_job-behavior-change-in-oracle-19c-during-upgrade/)\n\n**Caveat (major) — CREATE JOB privilege:** From 19c, schemas calling `DBMS_JOB.SUBMIT` must hold the `CREATE JOB` privilege or submissions fail with `ORA-27486`. Applies to 19c/21c/23ai. — [ORACLE-BASE](https://oracle-base.com/articles/19c/dbms_job-jobs-converted-to-dbms_scheduler-jobs-19c)\n\n**Azure SQL Managed Instance mapping (DBMS_JOB → SQL Server Agent):** Fidelity **partial**, effort **M**, applies to Oracle 11.2 through 23ai. Agent runs T-SQL job steps on schedules, which covers the same ground once PL/SQL is converted, but two things don't carry over: (1) DBMS_JOB's transactional submit semantics (a job submitted inside a rolled-back transaction disappears — Agent has no equivalent), and (2) the interval expression syntax, which must become an Agent schedule. Agent on Managed Instance also lacks CmdExec steps, proxies, and alerts. — [T-SQL differences between SQL Server and Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/transact-sql-tsql-differences-sql-server), [Automation in Azure SQL overview](https://learn.microsoft.com/en-us/azure/azure-sql/database/job-automation-overview)\n\n**Additional Agent limitations on Managed Instance (major caveat):** No CmdExec, PowerShell, Analysis Services, merge replication, or Queue Reader job steps; no proxies, alerts, pager/NetSend notifications, idle-CPU schedules, or multi-server (MSX/TSX) administration. Email requires a single Database Mail profile named `AzureManagedInstance_dbmail_profile`. Agent is always running and cannot be disabled. — [T-SQL differences between SQL Server and Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/transact-sql-tsql-differences-sql-server)\n\n**How-to guidance:** Inventory both `DBA_JOBS` and `DBA_SCHEDULER_JOBS` (since 19c auto-converts). Classify by type (PL/SQL block, procedure, external script, chain), schedule complexity, and dependencies. A converted PL/SQL procedure job becomes a T-SQL step calling the converted procedure; a chain becomes a multi-step job with on-success/on-failure branching; an OS/external job either accepts Agent's OS-step restrictions or moves to Azure Functions/Automation. Record time zones explicitly — Oracle jobs can carry a session time zone, while SQL Agent on MI runs in UTC. If a job's sole purpose is moving/refreshing data, use Azure Data Factory instead of the database scheduler. — [Move DBMS_SCHEDULER and DBMS_JOB jobs to SQL Agent, Elastic Jobs or pg_cron](knowledge base entry `feature_migration/scheduler_jobs`, source: Dataset)\n\n## Dispute on the record\n\n**\"Did DBMS_JOB stop working in 19c?\"** — an Ask TOM thread (publisher: community) claims DBMS_JOB submission \"stopped working\" after a 12.1→19.8 upgrade — [Ask TOM thread](https://asktom.oracle.com/ords/f?p=100:11::::RP:P11_QUESTION_ID:9543716900346819825). Countered by community documentation (ORACLE-BASE) stating DBMS_JOB remains deprecated-but-functional, with such failures actually caused by the new CREATE JOB privilege requirement, not removal.\n**Resolution** (per [DBMS_JOB — PL/SQL Packages and Types Reference 19c](https://docs.oracle.com/en/database/oracle/oracle-database/19/arpls/DBMS_JOB.html)): Both are compatible — the privilege change, not removal, explains most \"not working\" reports; the package remains deprecated and functional through 26ai. For an Azure move the practical consequence is unchanged either way: job bodies must be re-homed to SQL Server Agent (MI), Elastic Jobs (Azure SQL DB), or pg_cron (PostgreSQL) — the timeline just isn't forced by removal.",
+  "stderr": ""
+}

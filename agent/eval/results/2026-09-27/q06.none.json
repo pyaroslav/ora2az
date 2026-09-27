@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "id": "q06",
+    "type": "version-scope",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 25565,
+    "session_id": "366bfe6f-c319-4580-a599-b5a99e81a706",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 9978,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 2514,
+      "output_tokens_details": {
+        "thinking_tokens": 1333
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 9978,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2514,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 9978,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 9978
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q06",
+    "type": "version-scope",
+    "q": "We still run a non-CDB 19c database. Does that matter for the Azure move?",
+    "expected": "Non-CDB architecture is desupported in 21c (deprecated 12.1); any lift to 21c/23ai on Azure VMs or Oracle Database@Azure requires converting to a PDB first; irrelevant for SQL MI/PostgreSQL targets except as an upgrade prerequisite.",
+    "required_sources": [
+      "oracle"
+    ]
+  },
+  "result": "**Yes, it matters, though it won't block the move.** Non-CDB 19c runs fine on Azure VMs and can be migrated to Oracle Database@Azure. The catch is that 19c is the last release that supports non-CDB. You will have to convert to a pluggable database (PDB) at some point, so decide now whether to do it before, during or after the migration.\n\n**Key facts**\n\n- **Oracle is ending non-CDB.** It was deprecated in 12.1.0.2 and removed in 21c. 23ai, now renamed 26ai, only supports the multitenant architecture (a container database holding PDBs). Any upgrade past 19c means converting to a PDB. Check your 19c support end dates in Oracle's Lifetime Support Policy or My Oracle Support Doc ID 742060.1, because Oracle has extended them more than once.\n  - https://docs.oracle.com/en/database/oracle/oracle-database/19/upgrd/deprecated-features-oracle-database-12c-r1.html\n- **By Azure target:**\n  - **Oracle on Azure VMs:** You can keep non-CDB as-is. A Data Guard or RMAN lift-and-shift preserves the architecture and gives the lowest risk and downtime.\n  - **Oracle Database@Azure (Exadata Database Service):** Tooling assumes a container database. Zero Downtime Migration (ZDM) can convert to a PDB during a physical migration with `NONCDBTOPDB_CONVERSION=TRUE`. You can also convert on-premises first.\n    - https://docs.oracle.com/en/database/oracle/zero-downtime-migration/\n  - **Autonomous Database:** This is a logical migration (Data Pump or GoldenGate) into a PDB, so non-CDB mostly stops mattering.\n- **How to convert:** Run `DBMS_PDB.DESCRIBE`, then `CREATE PLUGGABLE DATABASE ... USING xml`, then `noncdb_to_pdb.sql`. AutoUpgrade can also do it with the `target_cdb` parameter, and can upgrade to 26ai in the same run.\n- **Conversion is one-way.** Once you convert, you can't fall back to the old non-CDB primary with Data Guard. Take a full backup or keep the source intact until you're past go-live.\n- **Licensing:** 19c+ allows up to 3 user PDBs per container database without the Multitenant option, so converting to a single PDB costs nothing extra. On Azure VMs under BYOL, 2 vCPUs count as 1 processor license when hyperthreading is on.\n  - https://www.oracle.com/assets/cloud-licensing-070579.pdf\n- **App impact is usually small, but check:**\n  - Connections must use a service name, not a SID.\n  - Scripts that use `CONNECT / AS SYSDBA` land in the root container (CDB$ROOT), not your PDB.\n  - Common users need the `C##` prefix.\n  - Monitoring and backup tools need to be aware of containers.\n\n**My recommendation:** Don't stack changes. Pick one of these:\n\n1. Lift-and-shift the non-CDB to an Azure VM with Data Guard, which keeps a clean fallback, and convert or upgrade later.\n2. If you're going to Database@Azure, convert on-premises first, test it, then migrate.\n\nOnly combine conversion with the move (ZDM conversion or AutoUpgrade) if you've rehearsed it and can live without a Data Guard fallback.",
+  "stderr": ""
+}

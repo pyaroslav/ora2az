@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "id": "q13",
+    "type": "dispute",
+    "cond": "bm25",
+    "num_turns": 1,
+    "duration_ms": 10390,
+    "session_id": "0050f312-2f19-47bb-b77c-96c37310928a",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 12513,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 1074,
+      "output_tokens_details": {
+        "thinking_tokens": 11
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12513,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1074,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 12513,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 12513
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q13",
+    "type": "dispute",
+    "q": "Some posts say DBMS_JOB was removed in 19c. True?",
+    "expected": "No: deprecated, still functional (Oracle doc) vs community 'removed' claims — present both and the resolution (jobs are converted to scheduler jobs under the hood; package still works).",
+    "required_sources": [
+      "oracle",
+      "community"
+    ]
+  },
+  "passages": [
+    {
+      "id": "dispute_dbms-job-deprecated-vs-removed",
+      "type": "dispute",
+      "text": "Both observations are true and compatible. From 19c a schema calling DBMS_JOB.SUBMIT needs the CREATE JOB privilege, otherwise it fails with ORA-27486; that privilege change, not removal, is behind most 'not working anymore' reports. The package is deprecated and functional through 26ai. For an Azure move the consequence is unchanged: job bodies are PL/SQL and must be re-homed to SQL Server Agent (Managed Instance), Elastic Jobs (Azure SQL Database) or pg_cron (PostgreSQL), but the timeline is not forced by removal. | Did DBMS_JOB stop working in 19c? | Oracle documents DBMS_JOB as deprecated since 12.2 with existing jobs converted to Scheduler jobs and the legacy interface still functional. An Ask TOM thread reports that DBMS_JOB.SUBMIT 'stopped working' after a 12.1 to 19.8 upgrade, and that framing circulates as 'DBMS_JOB was removed in 19c'.",
+      "score": 14.984
+    },
+    {
+      "id": "source_oracle-upgrd-19-changes",
+      "type": "source",
+      "text": "Upgrade Guide 19c, E96252-82, Aug 2026 | Sections used: Behavior Changes for 19c (Support for DBMS_JOB), Desupported Features in Oracle Database 19c, Deprecated Features in Oracle Database 19c. Several 19c deprecation notices were added retroactively in July 2023. | oracle | 2026-09-26 | Oracle Database Changes, Desupports, and Deprecations (Upgrade Guide 19c) | https://docs.oracle.com/en/database/oracle/oracle-database/19/upgrd/oracle-database-changes-deprecations-desupports.html",
+      "score": 11.535
+    },
+    {
+      "id": "source_oracle-plsql-ref-19-dbms-job",
+      "type": "source",
+      "text": "PL/SQL Packages and Types Reference 19c | Package is described as superseded by DBMS_SCHEDULER; support may be removed in a future release. | oracle | 2026-09-26 | DBMS_JOB (PL/SQL Packages and Types Reference 19c) | https://docs.oracle.com/en/database/oracle/oracle-database/19/arpls/DBMS_JOB.html",
+      "score": 10.268
+    },
+    {
+      "id": "feature_dbms-job",
+      "type": "oracleFeature",
+      "text": "scheduler | 12.2 | pre-11.2 | DBMS_JOB | DBMS_SCHEDULER | DBMS_JOB is the original PL/SQL job queue. A session submits an anonymous block together with a first run time and an interval expression, commits, and background job-queue processes execute it on that cadence. It predates Oracle Scheduler by many years and is still found in installation scripts and packaged applications, frequently created by code paths that nobody remembers. Migrations care because each job is hidden scheduling state that does not appear in the schema DDL most tools extract. The interval is a free-form date expression rather than a calendar string, submission only takes effect on COMMIT, and jobs run with the submitting schema's privileges. All of that has to be rediscovered before it can be mapped onto Azure scheduling options. Oracle's 12.2 Upgrade Guide lists the package as deprecated with DBMS_SCHEDULER as the replacement, and the 19c package reference says the package has been superseded and that support may be removed in a future release. It has not been desupported as of 26ai. Starting with 19c, an upgrade re-creates existing jobs as Scheduler jobs and DBMS_JOB survives only as a compatibility inter",
+      "score": 7.579
+    },
+    {
+      "id": "mapping_dbms-job--sql-agent-mi",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai | M | partial | DBMS_JOB jobs are anonymous PL/SQL blocks or procedure calls on an interval; SQL Server Agent on Managed Instance runs T-SQL job steps on schedules, which covers the same ground once the PL/SQL is converted. What does not carry over is the transactional submit semantics of DBMS_JOB (a job submitted inside a rolled-back transaction disappears) and the interval expression syntax, which becomes an Agent schedule. Agent on Managed Instance also lacks CmdExec steps, proxies and alerts. | Inventory jobs in DBA_JOBS and note that from 19c each one is also visible as a DBMS_JOB$_n row in DBA_SCHEDULER_JOBS. Convert the WHAT block with SSMA into a stored procedure. Create an Agent job with a T-SQL step calling the procedure and a schedule equivalent to the INTERVAL expression. Replace failure handling that relied on BROKEN flags with Agent job step retry and notification settings. Re-test any job that assumed the submit was rolled back with the caller's transaction.",
+      "score": 7.548
+    },
+    {
+      "id": "feature_oracle-multimedia",
+      "type": "oracleFeature",
+      "text": "datatype | 18c | 19c | pre-11.2 | Oracle Multimedia | SecureFiles LOBs plus external media processing | Oracle Multimedia, earlier called interMedia, supplied object types such as ORDImage, ORDAudio, ORDVideo and ORDDoc together with PL/SQL and Java APIs for storing, describing and processing media inside the database. It was installed as the ORDIM component under the ORDSYS schema and included medical imaging (DICOM) support. Migrations care because tables with these object-typed columns cannot be moved as they are. The payloads are LOBs wrapped in object types, and the processing methods (thumbnails, format conversion, metadata extraction) must be rebuilt outside the database. Oracle's own guidance, even before any Azure move, is to store media in plain SecureFiles LOBs and process it with external tools. The 12.1 and 12.2 Upgrade Guides deprecate parts of the feature (DICOM support, the Java APIs). The 18c Upgrade Guide deprecates Oracle Multimedia as a whole and the 19c guide desupports it (notice dated April 2019): the implementation is removed, the objects and packages remain but raise errors when used, and Oracle Locator is not affected. The 26ai guide adds that the ORDIM co",
+      "score": 7.309
+    },
+    {
+      "id": "source_mikedietrich-dbms-job-19c",
+      "type": "source",
+      "text": "blog post 2019-05-24 | Upgrade converts DBMS_JOB jobs into scheduler jobs, DBMS_JOB remains a wrapper over DBMS_SCHEDULER, CREATE JOB must be granted, deprecated since 12.2.0.1 with no desupport announced. | community | 2026-09-26 | Mike Dietrich: DBMS_JOB behavior change in Oracle 19c during upgrade | https://mikedietrichde.com/2019/05/24/dbms_job-behavior-change-in-oracle-19c-during-upgrade/",
+      "score": 7.079
+    },
+    {
+      "id": "source_oracle-base-dbms-job-19c",
+      "type": "source",
+      "text": "article created 2019-08-27, updated 2020-11-14 | DBMS_JOB submissions create DBMS_JOB$_n scheduler jobs, the legacy interface keeps working, CREATE JOB privilege is now required, job submission stays transactional. | community | 2026-09-26 | ORACLE-BASE: DBMS_JOB jobs converted to DBMS_SCHEDULER jobs in Oracle Database 19c | https://oracle-base.com/articles/19c/dbms_job-jobs-converted-to-dbms_scheduler-jobs-19c",
+      "score": 6.776
+    }
+  ],
+  "result": "**Verdict: False.** DBMS_JOB was not removed in 19c. It has been deprecated since 12.2 and still works, including in 26ai. What changed in 19c is how it runs underneath and which privilege it needs.\n\n**What changed in 19c**\n- **It now runs on the Scheduler.** An upgrade to 19c re-creates existing DBMS_JOB jobs as Scheduler jobs. DBMS_JOB is kept as a compatibility wrapper over DBMS_SCHEDULER. New submissions show up as `DBMS_JOB$_n` rows in `DBA_SCHEDULER_JOBS` [1][4][7][8].\n- **It needs the CREATE JOB privilege.** A schema without it gets ORA-27486 when it calls `DBMS_JOB.SUBMIT`. This is behind most \"stopped working after upgrade\" reports, such as the Ask TOM thread about a 12.1 → 19.8 upgrade. People passed that on as \"removed in 19c\" [1][7][8].\n- **Submission is still transactional.** A submitted job only takes effect on COMMIT [8].\n\n**Oracle's official status**\n- The 19c PL/SQL Packages reference says DBMS_JOB has been superseded by DBMS_SCHEDULER and that \"support may be removed in a future release.\" That means it is deprecated, not desupported [3].\n- No desupport has been announced through 26ai [1][4][7].\n- The 19c Upgrade Guide covers this under Behavior Changes (\"Support for DBMS_JOB\"). It is not in the Desupported Features list [2].\n\n**What this means for an Azure migration**\nThe fact that DBMS_JOB still works doesn't change the migration plan, but nothing forces you to move off it by a deadline. The job bodies are PL/SQL, so you still have to move them to one of these [1][5]:\n- **SQL Server Agent** on Azure SQL Managed Instance\n- **Elastic Jobs** on Azure SQL Database\n- **pg_cron** on PostgreSQL\n\nFor Managed Instance, take your job list from `DBA_JOBS`, convert each job's WHAT block to a stored procedure with SSMA, and turn the INTERVAL expression into an Agent schedule. Two things won't carry over and need re-testing: jobs that disappear when the submitting transaction rolls back, and failure handling that uses the BROKEN flag [5].\n\n**Sources**\n- Oracle 19c Upgrade Guide: https://docs.oracle.com/en/database/oracle/oracle-database/19/upgrd/oracle-database-changes-deprecations-desupports.html\n- Oracle 19c DBMS_JOB reference: https://docs.oracle.com/en/database/oracle/oracle-database/19/arpls/DBMS_JOB.html\n- Mike Dietrich: https://mikedietrichde.com/2019/05/24/dbms_job-behavior-change-in-oracle-19c-during-upgrade/\n- ORACLE-BASE: https://oracle-base.com/articles/19c/dbms_job-jobs-converted-to-dbms_scheduler-jobs-19c",
+  "stderr": ""
+}

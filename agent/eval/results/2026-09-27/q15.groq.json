@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q15",
+    "type": "howto",
+    "cond": "groq",
+    "num_turns": 7,
+    "duration_ms": 37766,
+    "session_id": "251c5591-07da-4a0c-8dc7-6307d715c183",
+    "usage": {
+      "input_tokens": 10,
+      "cache_creation_input_tokens": 11137,
+      "cache_read_input_tokens": 42440,
+      "output_tokens": 3299,
+      "output_tokens_details": {
+        "thinking_tokens": 314
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 11137,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1993,
+          "cache_read_input_tokens": 12889,
+          "cache_creation_input_tokens": 3346,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 3346
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q15",
+    "type": "howto",
+    "q": "What is the recommended path for moving Oracle Advanced Queuing workloads to Azure?",
+    "expected": "No native equivalent in Azure SQL DB; Service Broker on SQL MI (not DB) or Azure Service Bus for messaging; PostgreSQL LISTEN/NOTIFY or a queue table; cite recorded pattern.",
+    "required_sources": [
+      "microsoft",
+      "community"
+    ]
+  },
+  "result": "## Verdict\nFor Oracle Advanced Queuing (AQ), the dataset's recommended path is: **rehost on Oracle Database@Azure to keep AQ unchanged**, or if moving off Oracle engine entirely, **redesign onto Azure Service Bus** (partial fidelity, effort L) — not Azure SQL Database (no equivalent) and only partially onto Azure SQL Managed Instance (Service Broker).\n\n## Scoped facts\n\n**Applies to:** Oracle AQ, introduced pre‑11.2, no deprecation/desupport recorded, across all versions 11.2–26ai. [Oracle Advanced Queuing (AQ)](oracleFeature dataset entry — no source URL recorded on the feature doc itself)\n\n**If staying on Oracle Database@Azure:** AQ \"stays as it is\" — no redesign needed. — [Replace Oracle Advanced Queuing with Azure Service Bus](pattern doc, no URL field populated for this pattern's own note; see mapping sources below)\n\n**Target: Azure Service Bus — fidelity: partial, effort: L**\n- Rationale: Service Bus provides the same broker vocabulary as AQ — point-to-point queues, pub/sub via topics+subscriptions, rule-based routing via subscription filters, peek-lock/receive-and-delete for dequeue modes, scheduled delivery for delay, TTL + dead-letter subqueue for expiration/exceptions, sessions for FIFO/correlation. [Introduction to Azure Service Bus messaging](https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview), [Azure Functions overview](https://learn.microsoft.com/en-us/azure/azure-functions/functions-overview)\n- **Major caveat:** Service Bus transactions only group operations against a single messaging entity and cannot include database DML — the Oracle pattern of enqueueing inside the same transaction as table DML must move to a transactional outbox table + relay (Azure Function, SQL Agent job, pg_cron, or change-feed reader), with idempotent consumers. [Introduction to Azure Service Bus messaging](https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview)\n- Migration steps recorded: inventory queues/subscribers/transformations via `DBA_QUEUES`/`DBA_QUEUE_SUBSCRIBERS` → create Service Bus queues (single-consumer) or topics+subscriptions (multi-consumer) → replace PL/SQL enqueue with outbox-table+relay → replace dequeue loops/notifications with triggered Functions or SDK receivers → map priority/expiration/retry to scheduled enqueue/TTL/max delivery count.\n- Tier note: Premium tier is fully JMS 2.0 compliant and zone-redundant; Standard supports only the JMS 1.1 queue subset. [Introduction to Azure Service Bus messaging](https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview)\n\n**Target: Azure SQL Managed Instance — fidelity: partial, effort: L**\n- Service Broker is the nearest in-engine equivalent for PL/SQL code that enqueues/dequeues inside a transaction, and is available on Managed Instance. [T-SQL differences between SQL Server and Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/transact-sql-tsql-differences-sql-server)\n- **Major caveat:** routing is restricted to LOCAL or another managed instance by DNS name on port 4022; `CREATE REMOTE SERVICE BINDING` (dialog security) is not supported; broker is on by default and cannot be toggled with `ENABLE_BROKER`/`DISABLE_BROKER`. Applies to General Purpose, Next-gen General Purpose, and Business Critical tiers. [T-SQL differences between SQL Server and Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/transact-sql-tsql-differences-sql-server)\n\n**Target: Azure SQL Database — fidelity: none, effort: L**\n- **Blocker caveat:** Service Broker is not available in Azure SQL Database at all (only in Managed Instance, and even there routing is limited to other managed instances). Messaging must move to Service Bus/Storage queues + outbox table instead. [Compare SQL Database Engine features: Azure SQL Database vs Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/database/features-comparison)\n\n**When not to use Service Bus:** if the queue is purely an intra-database worklist consumed by code in the same database, a table-as-queue pattern (SQL Server `READPAST`/`UPDLOCK`, PostgreSQL `SKIP LOCKED`) is simpler and preserves single-transaction semantics; on Managed Instance, Service Broker is also an in-engine option. High-volume telemetry/event streaming belongs in Azure Event Hubs, not Service Bus. — Replace Oracle Advanced Queuing with Azure Service Bus pattern.\n\n## Gaps / disputes\n- No `dispute` documents were found touching AQ mappings or caveats.\n- The dataset lists no explicit mapping for AQ onto \"Oracle on Azure VM\" or \"Oracle Database@Azure\" as a `mapping` record with its own fidelity/sources — the \"stays as it is\" claim comes only from the pattern's `whenNotTo` note, not from a dedicated mapping/caveat/source citation. Treat that specific claim as lower-confidence pending a sourced mapping entry.",
+  "stderr": ""
+}

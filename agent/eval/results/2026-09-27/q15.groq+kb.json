@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q15",
+    "type": "howto",
+    "cond": "groq+kb",
+    "num_turns": 6,
+    "duration_ms": 34308,
+    "session_id": "5c74cecd-f2c6-4b29-8fbe-27ea7cd0f86f",
+    "usage": {
+      "input_tokens": 8,
+      "cache_creation_input_tokens": 11466,
+      "cache_read_input_tokens": 38036,
+      "output_tokens": 3181,
+      "output_tokens_details": {
+        "thinking_tokens": 337
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 11466,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2345,
+          "cache_read_input_tokens": 14177,
+          "cache_creation_input_tokens": 3103,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 3103
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q15",
+    "type": "howto",
+    "q": "What is the recommended path for moving Oracle Advanced Queuing workloads to Azure?",
+    "expected": "No native equivalent in Azure SQL DB; Service Broker on SQL MI (not DB) or Azure Service Bus for messaging; PostgreSQL LISTEN/NOTIFY or a queue table; cite recorded pattern.",
+    "required_sources": [
+      "microsoft",
+      "community"
+    ]
+  },
+  "result": "## Verdict\nFor Oracle Advanced Queuing (AQ), the recommended path is: **stay on AQ if you're on Oracle Database@Azure**, or **redesign to Azure Service Bus** (queues/topics) with a **transactional outbox pattern** if you're moving to Azure SQL Database or PostgreSQL. On **Azure SQL Managed Instance**, Service Broker is a partial in-engine alternative but requires a rewrite, not a lift-and-shift.\n\n## Scoped facts\n\n**Feature scope**: Oracle Advanced Queuing (AQ), introduced pre-11.2, applies across 11.2–26ai (no deprecation/desupport recorded) — [Introduction to Oracle Database Advanced Queuing (AQ User's Guide 19c)](https://docs.oracle.com/en/database/oracle/oracle-database/19/adque/aq-introduction.html).\n\n**1. Oracle Database@Azure** — AQ stays as-is; no migration needed, since it's the same Oracle engine — [Replace Oracle Advanced Queuing with Azure Service Bus (KB pattern)](Dataset).\n\n**2. Azure SQL Database** — Fidelity: **none**, Effort: **L** (applies to Oracle 11.2 through 26ai). Azure SQL Database has no Service Broker or other in-database queue, so AQ has no direct target; messaging must move to Service Bus (or Storage queues) with an outbox table for transactional consistency — [Compare SQL Database Engine features: Azure SQL Database vs Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/database/features-comparison), [Introduction to Azure Service Bus messaging](https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview).\n- **Blocker caveat**: Service Broker is not available in Azure SQL Database at all — [Compare SQL Database Engine features](https://learn.microsoft.com/en-us/azure/azure-sql/database/features-comparison).\n\n**3. Azure SQL Managed Instance** — Fidelity: **partial**, Effort: **L** (11.2–26ai). Service Broker is the nearest in-engine, transactional queuing equivalent, but code is rewritten rather than translated because Service Broker's conversation model differs from AQ's queue tables — [T-SQL differences between SQL Server and Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/transact-sql-tsql-differences-sql-server).\n- **Major caveat** (General Purpose, Next-gen General Purpose, Business Critical tiers): Service Broker routes may target only LOCAL or another managed instance's DNS name on port 4022; dialog security (`CREATE REMOTE SERVICE BINDING`) is unsupported; the broker cannot be toggled per-database — [T-SQL differences](https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/transact-sql-tsql-differences-sql-server).\n\n**4. Azure Service Bus** — Fidelity: **partial**, Effort: **L** (11.2–26ai). Service Bus supports the patterns AQ apps use — point-to-point queues, pub-sub topics with filtered subscriptions, FIFO via sessions, dead-lettering, delayed delivery, expiration (TTL) — [Introduction to Azure Service Bus messaging](https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview), [Azure Functions overview](https://learn.microsoft.com/en-us/azure/azure-functions/functions-overview).\n- **Major caveat**: Service Bus transactions only span a single messaging entity and cannot include database DML — the Oracle pattern of enqueueing inside the same transaction as table DML requires an outbox table or idempotent consumers — [Introduction to Azure Service Bus messaging](https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview).\n\n## How-to detail (pattern guidance)\nPer [Replace Oracle Advanced Queuing with Azure Service Bus (Dataset)](Dataset):\n- **Concept mapping**: point-to-point queue → Queue; multi-consumer/pub-sub → Topic + filtered subscriptions; browse/lock/remove dequeue modes → Peek / Peek-lock / Receive-and-delete; delivery delay → Scheduled delivery; expiration → TTL; exception queue → dead-letter subqueue; correlation ID/dequeue conditions → Sessions; PL/SQL callback → Azure Function with a Service Bus trigger.\n- **Transaction redesign**: use the transactional outbox pattern — write business row + outbox row in one DB transaction, a relay (Azure Function timer, SQL Agent job on MI, pg_cron, or change-feed reader) publishes to Service Bus and marks rows sent; consumers must be idempotent since the relay may publish twice.\n- **Retention**: AQ messages persist indefinitely in queue tables; Service Bus messages are bound by TTL, so long-lived queue contents belong in a target database table, not the broker.\n- **Inventory before migration**: catalogue queue tables/payload types, subscribers and rules, retention settings, and every dequeue condition — each becomes a filter, session key, or app code on the target.\n- **When Service Bus is NOT the right target**: an intra-database work list consumed only by code in the same database — use table-as-queue (`READPAST`/`UPDLOCK` on SQL, `SKIP LOCKED` on PostgreSQL), or Service Broker on Managed Instance; for high-volume telemetry/event streaming, use Azure Event Hubs instead.\n\n## Gaps / disputes\nNo disputes in the dataset touch Oracle Advanced Queuing migration. No mapping exists for AQ against Oracle on Azure VMs or Oracle Database@Azure as a target row — the only stated guidance for Oracle Database@Azure is that AQ requires no migration at all (same engine).",
+  "stderr": ""
+}

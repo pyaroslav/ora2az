@@ -1,0 +1,58 @@
+{
+  "meta": {
+    "id": "q04",
+    "type": "fact",
+    "cond": "groq+kb",
+    "num_turns": 7,
+    "duration_ms": 62530,
+    "session_id": "123269b3-f3f0-47b4-84eb-89cbc329879e",
+    "usage": {
+      "input_tokens": 10,
+      "cache_creation_input_tokens": 11827,
+      "cache_read_input_tokens": 52966,
+      "output_tokens": 2620,
+      "output_tokens_details": {
+        "thinking_tokens": 629
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 11827,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1141,
+          "cache_read_input_tokens": 15991,
+          "cache_creation_input_tokens": 1650,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 1650
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q04",
+    "type": "fact",
+    "q": "Our app relies on empty string being NULL in VARCHAR2 columns. Which Azure targets keep that behaviour?",
+    "expected": "None of Azure SQL DB/MI or PostgreSQL treat '' as NULL; flags this as a semantic difference requiring code review; Oracle Database@Azure keeps Oracle semantics.",
+    "required_sources": [
+      "oracle",
+      "microsoft",
+      "community"
+    ]
+  },
+  "result": "**Verdict: None of the mapped Azure targets preserve Oracle's \"empty string = NULL\" behaviour natively.** The dataset records this as a \"workaround\" (i.e., no native equivalent — must be rebuilt via extra logic) for both targets it covers, and has no mapping entry at all for the other Azure targets (Azure SQL Managed Instance, Oracle Database@Azure, Oracle on Azure VMs).\n\n**Scoped facts** — Oracle feature: *Empty string equals NULL* ([Nulls (SQL Language Reference 19c)](https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Nulls.html)), applies to Oracle 11.2 through 26ai (long-standing, undeprecated, but Oracle itself warns not to rely on it).\n\n- **Azure SQL Database** — fidelity **workaround**, effort M. \"Oracle stores a zero-length VARCHAR2 as NULL... SQL Server keeps '' as a real value distinct from NULL... After migration the same INSERT of '' produces a non-null row, IS NULL predicates stop matching it, and NOT NULL constraints that used to reject '' now accept it.\" — [NULL and UNKNOWN (Transact-SQL)](https://learn.microsoft.com/en-us/sql/t-sql/language-elements/null-and-unknown-transact-sql), [SSMA for Oracle: Project Settings (Conversion)](https://learn.microsoft.com/en-us/sql/ssma/oracle/project-settings-conversion-oracletosql). Caveat (major): \"In SQL Server and Azure SQL an empty string '' is a stored zero-length value that is distinct from NULL\" — Microsoft's NULL documentation states a null value is different from an empty or zero value.\n\n- **Azure Database for PostgreSQL Flexible Server** — fidelity **workaround**, effort M. \"PostgreSQL distinguishes '' from NULL exactly as SQL Server does.\" Ora2Pg's `NULL_EQUAL_EMPTY` directive can rewrite `IS NULL`/`IS NOT NULL` tests into `coalesce()`-based checks to reproduce Oracle's behaviour, though Ora2Pg's own docs recommend instead converting empty strings to NULL if the application can be changed; `orafce` offers a trigger to replace empty strings with NULL on write. — [Ora2Pg documentation](https://ora2pg.darold.net/documentation.html), [orafce README](https://github.com/orafce/orafce/blob/master/README.asciidoc). Caveat (major): \"PostgreSQL treats '' as a non-NULL value\" — same sources.\n\n**Gap:** The dataset has no mapping or caveat entry for this feature against Azure SQL Managed Instance, Oracle Database@Azure, or Oracle on Azure VMs. I can't say whether those preserve the behaviour — no evidence either way in this dataset. (Note: no `dispute` record touches this feature either.)\n\n**Practical implication:** since fidelity is \"workaround\" rather than \"exact\" or \"partial\" on both covered targets, keeping the empty-string-is-NULL behaviour is not automatic on either — it requires explicit rewriting of `IS NULL` checks, coalesce-style logic, or trigger-based normalization, per the citations above.",
+  "stderr": ""
+}

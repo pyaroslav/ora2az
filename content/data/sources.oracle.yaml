@@ -1,0 +1,274 @@
+# Oracle documentation sources used by features.yaml.
+# All retrieved 2026-09-26. Note: every docs.oracle.com path under /23/ now redirects to the
+# equivalent /26/ page, so 23ai facts are cited from the 26ai reference pages.
+
+# ---- Upgrade Guide: deprecation / desupport notices -------------------------------------------
+
+- _id: source.oracle-upgrd-26-desupports
+  title: "Oracle Database Changes, Desupports, and Deprecations (Upgrade Guide 26ai)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/26/upgrd/oracle-database-changes-deprecations-desupports.html
+  docVersion: "Upgrade Guide 26ai, G43570-12, updated Jul 2026"
+  retrievedAt: 2026-09-26
+  note: "Sections used: Behavior Changes (Terminal Release of Stored Outlines), Desupported Features in 26ai, Desupported Parameters in 26ai, Deprecated Features in 26ai. Each notice carries an Oracle date stamp. The /23/upgrd/ URL redirects to this page."
+
+- _id: source.oracle-upgrd-21-changes
+  title: "Oracle Database Changes, Desupports, and Deprecations (Upgrade Guide 21c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/21/upgrd/oracle-database-changes-deprecations-desupports.html
+  docVersion: "Upgrade Guide 21c, F17069-48, Feb 2026"
+  retrievedAt: 2026-09-26
+  note: "Sections used: Desupported Features in Oracle Database 21c and Deprecated Features in Oracle Database 21c (notices dated May 2021)."
+
+- _id: source.oracle-upgrd-19-changes
+  title: "Oracle Database Changes, Desupports, and Deprecations (Upgrade Guide 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/upgrd/oracle-database-changes-deprecations-desupports.html
+  docVersion: "Upgrade Guide 19c, E96252-82, Aug 2026"
+  retrievedAt: 2026-09-26
+  note: "Sections used: Behavior Changes for 19c (Support for DBMS_JOB), Desupported Features in Oracle Database 19c, Deprecated Features in Oracle Database 19c. Several 19c deprecation notices were added retroactively in July 2023."
+
+- _id: source.oracle-upgrd-18-deprecated
+  title: "Deprecated Features in Oracle Database 18c"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/18/upgrd/deprecated-features-oracle-database-18c.html
+  docVersion: "Upgrade Guide 18c, E88788-13, Dec 2021"
+  retrievedAt: 2026-09-26
+  note: "Names Oracle Multimedia, DBMS_XMLQUERY and DBMS_XMLSAVE as deprecated in 18c."
+
+- _id: source.oracle-upgrd-18-init-params
+  title: "Initialization Parameter Changes in Oracle Database 18c"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/18/upgrd/initialization-parameter-changes-oracle-database-18c.html
+  docVersion: "Upgrade Guide 18c, E88788-13, Dec 2021"
+  retrievedAt: 2026-09-26
+  note: "States that UTL_FILE_DIR is desupported in 18c and that UTL_FILE no longer follows symbolic links."
+
+- _id: source.oracle-upgrd-122-deprecated
+  title: "Deprecated Features in Oracle Database 12c Release 2 (12.2)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/12.2/upgrd/deprecated-features-oracle-database-12c-r2.html
+  docVersion: "Upgrade Guide 12.2, E86577"
+  retrievedAt: 2026-09-26
+  note: "Lists DBMS_JOB, the non-CDB architecture, and parts of Oracle Multimedia as deprecated in 12.2."
+
+- _id: source.oracle-upgrd-122-desupported
+  title: "Desupported Features in Oracle Database 12c Release 2 (12.2)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/12.2/upgrd/desupported-features-oracle-database-12c-r2.html
+  docVersion: "Upgrade Guide 12.2, E86577"
+  retrievedAt: 2026-09-26
+  note: "Advanced Replication desupported in its entirety; read-only materialized views remain."
+
+- _id: source.oracle-upgrd-121-deprecated-desupported
+  title: "Deprecated and Desupported Features for Oracle Database 12c (12.1)"
+  publisher: oracle
+  url: https://docs.oracle.com/database/121/UPGRD/deprecated.htm
+  docVersion: "Upgrade Guide 12.1, E41397"
+  retrievedAt: 2026-09-26
+  note: "Deprecations of non-CDB, Oracle Streams, Advanced Replication and stored outlines; desupport of Change Data Capture and EM Database Control."
+
+# ---- Reference manuals ----------------------------------------------------------------------
+
+- _id: source.oracle-plsql-ref-19-dbms-job
+  title: "DBMS_JOB (PL/SQL Packages and Types Reference 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/arpls/DBMS_JOB.html
+  docVersion: "PL/SQL Packages and Types Reference 19c"
+  retrievedAt: 2026-09-26
+  note: "Package is described as superseded by DBMS_SCHEDULER; support may be removed in a future release."
+
+- _id: source.oracle-plsql-ref-19-utl-file
+  title: "UTL_FILE (PL/SQL Packages and Types Reference 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/arpls/UTL_FILE.html
+  docVersion: "PL/SQL Packages and Types Reference 19c"
+  retrievedAt: 2026-09-26
+
+- _id: source.oracle-refrn-122-utl-file-dir
+  title: "UTL_FILE_DIR (Database Reference 12.2)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/12.2/refrn/UTL_FILE_DIR.html
+  docVersion: "Database Reference 12.2"
+  retrievedAt: 2026-09-26
+  note: "Carries the 12.2 deprecation notice and the recommendation to use directory objects."
+
+- _id: source.oracle-sqlrf-19-data-types
+  title: "Data Types (SQL Language Reference 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Data-Types.html
+  docVersion: "SQL Language Reference 19c"
+  retrievedAt: 2026-09-26
+  note: "NUMBER precision and scale, DATE components, VARCHAR2 length semantics and MAX_STRING_SIZE, ROWID and UROWID."
+
+- _id: source.oracle-sqlrf-26-data-types
+  title: "Data Types (SQL Language Reference 26ai)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/Data-Types.html
+  docVersion: "SQL Language Reference 26ai"
+  retrievedAt: 2026-09-26
+  note: "Used for the BOOLEAN and VECTOR data types. The /23/sqlrf/ URL redirects here."
+
+- _id: source.oracle-sqlrf-19-nulls
+  title: "Nulls (SQL Language Reference 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Nulls.html
+  docVersion: "SQL Language Reference 19c"
+  retrievedAt: 2026-09-26
+  note: "Zero-length strings are treated as null; Oracle warns this may change and should not be relied on."
+
+- _id: source.oracle-sqlrf-19-hierarchical-queries
+  title: "Hierarchical Queries (SQL Language Reference 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Hierarchical-Queries.html
+  docVersion: "SQL Language Reference 19c"
+  retrievedAt: 2026-09-26
+
+# ---- Database Concepts 19c ------------------------------------------------------------------
+
+- _id: source.oracle-cncpt-19-topics-dba-dev
+  title: "Topics for Database Administrators and Developers (Database Concepts 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/cncpt/topics-for-database-administrators-and-developers.html
+  docVersion: "Database Concepts 19c, E96138-11, Sep 2025"
+  retrievedAt: 2026-09-26
+  note: "Overviews of TDE, VPD, unified audit policies, Data Guard, RAC, RMAN, Flashback, partitioning and materialized views."
+
+- _id: source.oracle-cncpt-19-schema-objects
+  title: "Partitions, Views, and Other Schema Objects (Database Concepts 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/cncpt/partitions-views-and-other-schema-objects.html
+  docVersion: "Database Concepts 19c, E96138-11, Sep 2025"
+  retrievedAt: 2026-09-26
+  note: "Partitioning strategies and indexes, materialized view refresh methods and query rewrite, sequences and gaps."
+
+- _id: source.oracle-cncpt-19-tables
+  title: "Tables and Table Clusters (Database Concepts 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/cncpt/tables-and-table-clusters.html
+  docVersion: "Database Concepts 19c, E96138-11, Sep 2025"
+  retrievedAt: 2026-09-26
+  note: "External tables overview, rowids of row pieces, data type overview."
+
+- _id: source.oracle-cncpt-19-server-side-programming
+  title: "Server-Side Programming: PL/SQL and Java (Database Concepts 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/cncpt/server-side-programming.html
+  docVersion: "Database Concepts 19c, E96138-11, Sep 2025"
+  retrievedAt: 2026-09-26
+  note: "Packages, subprograms, triggers (row and statement level, BEFORE and AFTER, compound, INSTEAD OF), external procedures."
+
+- _id: source.oracle-cncpt-19-transactions
+  title: "Transactions (Database Concepts 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/cncpt/transactions.html
+  docVersion: "Database Concepts 19c, E96138-11, Sep 2025"
+  retrievedAt: 2026-09-26
+  note: "Overview of Autonomous Transactions section."
+
+# ---- Administrator's, Developer's and feature guides ----------------------------------------
+
+- _id: source.oracle-admin-19-support-for-dbms-job
+  title: "Support for DBMS_JOB (Administrator's Guide 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/admin/support-for-DBMS_JOB.html
+  docVersion: "Database Administrator's Guide 19c"
+  retrievedAt: 2026-09-26
+  note: "DBMS_JOB jobs run as Scheduler jobs from 19c; CREATE JOB privilege required; commit semantics differ from DBMS_SCHEDULER."
+
+- _id: source.oracle-admin-19-scheduler-concepts
+  title: "Oracle Scheduler Concepts (Administrator's Guide 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/admin/oracle-scheduler-concepts.html
+  docVersion: "Database Administrator's Guide 19c"
+  retrievedAt: 2026-09-26
+
+- _id: source.oracle-admin-19-distributed-database-concepts
+  title: "Distributed Database Concepts (Administrator's Guide 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/admin/distributed-database-concepts.html
+  docVersion: "Database Administrator's Guide 19c"
+  retrievedAt: 2026-09-26
+  note: "Database link types, users, restrictions, heterogeneous services, two-phase commit."
+
+- _id: source.oracle-adque-19-intro
+  title: "Introduction to Oracle Database Advanced Queuing (AQ User's Guide 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/adque/aq-introduction.html
+  docVersion: "Advanced Queuing User's Guide 19c"
+  retrievedAt: 2026-09-26
+
+- _id: source.oracle-sutil-19-data-pump-overview
+  title: "Overview of Oracle Data Pump (Utilities 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/sutil/oracle-data-pump-overview.html
+  docVersion: "Database Utilities 19c"
+  retrievedAt: 2026-09-26
+
+- _id: source.oracle-sutil-19-original-export
+  title: "Original Export (Utilities 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/sutil/oracle-original-export-utility.html
+  docVersion: "Database Utilities 19c"
+  retrievedAt: 2026-09-26
+  note: "Original Export desupported for general use as of 11g; XMLType backward migration to 10.2 is the only supported use."
+
+- _id: source.oracle-adfns-19-editions
+  title: "Using Edition-Based Redefinition (Development Guide 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/adfns/editions.html
+  docVersion: "Database Development Guide 19c"
+  retrievedAt: 2026-09-26
+
+- _id: source.oracle-adfns-19-flashback
+  title: "Using Oracle Flashback Technology (Development Guide 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/adfns/flashback.html
+  docVersion: "Database Development Guide 19c"
+  retrievedAt: 2026-09-26
+  note: "AS OF and VERSIONS BETWEEN queries, dependence on undo retention, Flashback Data Archive, privileges."
+
+- _id: source.oracle-jsnvu-26-overview
+  title: "Overview of JSON-Relational Duality Views (JSON-Relational Duality Developer's Guide 26ai)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/26/jsnvu/overview-json-relational-duality-views.html
+  docVersion: "JSON-Relational Duality Developer's Guide 26ai"
+  retrievedAt: 2026-09-26
+  note: "The /23/jsnvu/ URL redirects here; the feature shipped with 23ai."
+
+- _id: source.oracle-vecse-26-overview
+  title: "Overview of Oracle AI Vector Search (AI Vector Search User's Guide 26ai)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/26/vecse/overview-ai-vector-search.html
+  docVersion: "AI Vector Search User's Guide 26ai"
+  retrievedAt: 2026-09-26
+  note: "The /23/vecse/ URL redirects here. States COMPATIBLE must be 23.4.0 or higher to use VECTOR."
+
+- _id: source.oracle-ccapp-19-text-overview
+  title: "Understanding Oracle Text Application Development (Text Application Developer's Guide 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/ccapp/understanding-oracle-text-application-development.html
+  docVersion: "Oracle Text Application Developer's Guide 19c"
+  retrievedAt: 2026-09-26
+
+- _id: source.oracle-spatl-19-datatypes
+  title: "Spatial Data Types and Metadata (Spatial Developer's Guide 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/spatl/spatial-datatypes-metadata.html
+  docVersion: "Oracle Spatial Developer's Guide 19c"
+  retrievedAt: 2026-09-26
+
+- _id: source.oracle-adxdb-19-intro
+  title: "Introduction to Oracle XML DB (XML DB Developer's Guide 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/adxdb/intro-to-XML-DB.html
+  docVersion: "Oracle XML DB Developer's Guide 19c"
+  retrievedAt: 2026-09-26
+  note: "XMLType storage models; CLOB storage deprecated since 12.1."
+
+- _id: source.oracle-nlspg-19-choosing-character-set
+  title: "Choosing a Character Set (Globalization Support Guide 19c)"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/nlspg/choosing-character-set.html
+  docVersion: "Database Globalization Support Guide 19c"
+  retrievedAt: 2026-09-26

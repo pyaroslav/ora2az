@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "id": "q12",
+    "type": "fact",
+    "cond": "groq",
+    "num_turns": 7,
+    "duration_ms": 35536,
+    "session_id": "a096b41c-9912-46b6-ad1c-956ef91ff745",
+    "usage": {
+      "input_tokens": 10,
+      "cache_creation_input_tokens": 6733,
+      "cache_read_input_tokens": 37338,
+      "output_tokens": 2630,
+      "output_tokens_details": {
+        "thinking_tokens": 213
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 6733,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1508,
+          "cache_read_input_tokens": 10324,
+          "cache_creation_input_tokens": 1507,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 1507
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q12",
+    "type": "fact",
+    "q": "What replaces the original exp utility in Oracle 26ai and what does that mean for our export-based migration scripts?",
+    "expected": "Original Export (exp) is desupported in 26ai; use Data Pump (expdp); scripts must be rewritten; mention that imp of old dumps may still be relevant if recorded.",
+    "required_sources": [
+      "oracle"
+    ]
+  },
+  "result": "## Verdict\nIn Oracle Database 26ai, the **original Export utility (`exp`)** is **desupported** — its Data Pump‑era replacement is **Data Pump Export (`expdp`)**. For migration scripts, this means any runbook still invoking `exp`/`imp` needs to move to `expdp`/`impdp`, and old `.dmp` files from `exp` cannot be read by Data Pump or by Azure migration tooling.\n\n## Scoped facts\n\n**Desupport status**\n- `exp` was introduced pre-11.2 and is listed as **desupported in Oracle 26ai** (notice dated April 2023), per [Oracle Database Changes, Desupports, and Deprecations (Upgrade Guide 26ai)](https://docs.oracle.com/en/database/oracle/oracle-database/26/upgrd/oracle-database-changes-deprecations-desupports.html).\n- Oracle's own Utilities documentation states original Export was already desupported for general use since 11g, with the sole remaining supported use being backward migration of XMLType data to 10.2; Oracle recommends Data Pump instead — per [Original Export (Utilities 19c)](https://docs.oracle.com/en/database/oracle/oracle-database/19/sutil/oracle-original-export-utility.html). Because that 11g statement is phrased as a limited desupport rather than a deprecation tied to a specific release, the dataset records no `deprecatedIn` value for this feature — only the 26ai desupport.\n- Recorded replacement: **Data Pump Export (`expdp`)**, introduced pre-11.2 as a server-side, parallel design with a different dump-file format, per [Overview of Oracle Data Pump (Utilities 19c)](https://docs.oracle.com/en/database/oracle/oracle-database/19/sutil/oracle-data-pump-overview.html).\n\n**Why it matters for export-based migration scripts**\n- `exp` dump files are a proprietary format that **only `imp` can read** — Data Pump import cannot consume them, and no Azure migration tool accepts them directly. Per the dataset's own note: *\"legacy runbooks and cron jobs still call exp for backups and schema copies. Its dump files cannot be read by Data Pump import, and neither format can be loaded directly into an Azure database service, so an inventory of 'exports' must distinguish old-style dumps from Data Pump dumps before deciding what to keep.\"*\n\n**Migration path mapping (Azure side)**\n- **Target:** SQL Server Migration Assistant for Oracle (SSMA) — fidelity **workaround**, effort **M**, applies to Oracle **11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai** (26ai not listed in `appliesToOracleVersions` for this mapping).\n- Rationale: *\"The original Export utility produced legacy .dmp files that only imp could read; none of the Azure migration tools accept them. SSMA needs a live connection to the Oracle database, so old exp dumps must first be imported into an Oracle instance (any supported release, or Oracle Database@Azure) before SSMA, Ora2Pg or Data Factory can extract from it.\"* — per [SQL Server Migration Assistant for Oracle (OracleToSQL)](https://learn.microsoft.com/en-us/sql/ssma/oracle/sql-server-migration-assistant-for-oracle-oracletosql) and [Azure Database Migration Service: supported migration scenarios](https://learn.microsoft.com/en-us/azure/dms/resource-scenario-status).\n- No caveats are recorded against this specific mapping in the dataset.\n\n## Practical implication\nSince old `exp` dumps require a live Oracle instance to re-import (via `imp`) before any Azure tool (SSMA, Ora2Pg, Data Factory) can extract data, teams should: (1) inventory scripts to separate `exp`-based dumps from `expdp`-based dumps, (2) rehost/replay old dumps through `imp` into a supported Oracle instance if the source data only exists as legacy `.dmp` files, and (3) rewrite ongoing export jobs to use `expdp` going forward, since that is Oracle's recorded replacement path.\n\n## Gaps\nThe dataset has no evidence of a Data Pump–specific Azure-target mapping in this query (only the SSMA workaround mapping was linked to the `exp-utility` feature), and no `pattern` document references this mapping directly.",
+  "stderr": ""
+}

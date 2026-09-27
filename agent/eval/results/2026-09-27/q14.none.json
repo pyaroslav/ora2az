@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q14",
+    "type": "fact",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 23571,
+    "session_id": "98609771-f5ca-4933-958b-99b2a28e9101",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 9988,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 2442,
+      "output_tokens_details": {
+        "thinking_tokens": 893
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 9988,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2442,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 9988,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 9988
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q14",
+    "type": "fact",
+    "q": "Our VARCHAR2(100) columns hold multibyte text. Anything to watch on Azure SQL?",
+    "expected": "Oracle length semantics may be BYTE; SQL Server varchar(n) is bytes in a single-byte collation, nvarchar(n) is characters (UTF-16) — choose nvarchar or UTF-8 collation; SSMA maps varchar2 to varchar by default.",
+    "required_sources": [
+      "microsoft",
+      "oracle"
+    ]
+  },
+  "result": "**Verdict:** Yes. The length number means different things on each side, so a straight `VARCHAR2(100)` → `varchar(100)` mapping can truncate your data or fail the load. First check whether your columns count bytes or characters, then pick `nvarchar` or a UTF-8 collation and size the column to fit.\n\n**1. Check the length semantics in Oracle first**\n- `VARCHAR2(100)` means 100 **bytes** or 100 **characters**, depending on `NLS_LENGTH_SEMANTICS`, or an explicit `BYTE`/`CHAR` on the column.\n- Check with `SELECT column_name, char_used, char_length, data_length FROM dba_tab_columns ...`. `CHAR_USED` is `B` for bytes or `C` for characters.\n- With `AL32UTF8`, a `100 CHAR` column can hold up to 400 bytes.\n- Profile the real data with `MAX(LENGTHB(col))` and `MAX(LENGTH(col))`. Look for supplementary characters (emoji, rare CJK), which take 4 bytes in UTF-8.\n\n**2. In SQL Server, `n` is never \"characters\"**\n- `varchar(n)`: n is **bytes**.\n- `nvarchar(n)`: n is **UTF-16 byte-pairs** (code units). Supplementary characters use 2 each, so `nvarchar(100)` doesn't always hold 100 characters.\n- Maximum inline sizes are `varchar(8000)` and `nvarchar(4000)`. Above that you need `(max)`.\n- Docs: https://learn.microsoft.com/en-us/sql/t-sql/data-types/nchar-and-nvarchar-transact-sql\n\n**3. Your two target options**\n\n| Option | Mapping for `VARCHAR2(100 CHAR)` | Notes |\n|---|---|---|\n| `nvarchar` (classic) | `nvarchar(100)`, or `nvarchar(200)` if emoji/supplementary characters exist | ASCII text takes 2× storage. Row/page compression's Unicode compression helps. |\n| `varchar` + UTF-8 collation (e.g. `Latin1_General_100_CI_AS_SC_UTF8`) | `varchar(400)` for the worst case, or size from measured `LENGTHB` | Byte semantics like Oracle `BYTE`. Compact for mostly-Latin text, bigger for CJK. |\n\n- Collation doc: https://learn.microsoft.com/en-us/sql/relational-databases/collations/collation-and-unicode-support\n- SSMA maps VARCHAR2 → `varchar` by default. Override the type mapping, or you'll get `?` substitution or truncation. Mapping doc: https://learn.microsoft.com/en-us/sql/ssma/oracle/mapping-oracle-and-sql-server-data-types-oraclesql\n\n**4. Knock-on issues**\n- **Index key limits:** 1700 bytes for nonclustered keys and 900 for clustered. Widened columns in composite keys can go over.\n- **Implicit conversions:** mixing `varchar` columns with `nvarchar` parameters causes conversions and index scans. The classic case is JDBC `sendStringParametersAsUnicode=true` against varchar columns. Keep column and parameter types the same.\n- **String literals:** use the `N'...'` prefix for `nvarchar` literals, or the text gets mangled.\n- **Collation behavior:** Oracle compares with binary, case-sensitive rules by default. Azure SQL's default collation is case-insensitive (`SQL_Latin1_General_CP1_CI_AS`), so unique constraints that worked in Oracle can fail and query results can change. Choose the collation on purpose (`_CS`, `_BIN2`, or `_SC` for supplementary characters).\n- **Other semantics:** Oracle treats `''` as NULL and SQL Server doesn't. SQL Server also ignores trailing spaces in `=` comparisons.\n- **Length functions:** `LEN`/`DATALENGTH` don't behave like `LENGTH`/`LENGTHB`. `LEN` counts supplementary characters as 2 unless you use an `_SC` collation. Check any code that validates lengths.\n\n**Recommendation:** Profile the data first. Use `nvarchar` with an `_SC` collation, or a `_UTF8` collation, and size from the measured maximums plus some headroom. After the load, compare row counts and per-column `LENGTH`/`HASHBYTES` checksums with Oracle.",
+  "stderr": ""
+}

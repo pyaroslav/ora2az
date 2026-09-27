@@ -1,0 +1,30 @@
+{
+  "name": "ora2az-desk",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Mortician's Desk: reviewer app for Legacy Obituaries, built on the Sanity App SDK",
+  "license": "UNLICENSED",
+  "scripts": {
+    "dev": "sanity dev",
+    "build": "sanity build",
+    "deploy": "sanity deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "sanity"
+  ],
+  "dependencies": {
+    "@sanity/sdk": "^3.5.0",
+    "@sanity/sdk-react": "^3.5.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "sanity": "^6.16.0",
+    "typescript": "^5.9"
+  }
+}

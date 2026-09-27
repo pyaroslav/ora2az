@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q18",
+    "type": "version-scope",
+    "cond": "groq+kb",
+    "num_turns": 8,
+    "duration_ms": 32641,
+    "session_id": "04e466b5-f8e7-4d22-be87-b0e665ed8113",
+    "usage": {
+      "input_tokens": 10,
+      "cache_creation_input_tokens": 10687,
+      "cache_read_input_tokens": 52161,
+      "output_tokens": 2858,
+      "output_tokens_details": {
+        "thinking_tokens": 471
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 10687,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1482,
+          "cache_read_input_tokens": 15807,
+          "cache_creation_input_tokens": 694,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 694
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q18",
+    "type": "version-scope",
+    "q": "We are on Oracle 12.2 and use Oracle Multimedia for images. What are our options on Azure?",
+    "expected": "Oracle Multimedia deprecated in 18c, desupported in 19c; images should move to Blob Storage with metadata in the database; note that any lift to 19c+ loses the feature.",
+    "required_sources": [
+      "oracle",
+      "microsoft"
+    ]
+  },
+  "result": "No dispute in the dataset touches Oracle Multimedia. Here's the verdict.\n\n**Verdict:** On Oracle 12.2, Oracle Multimedia has no direct equivalent on Azure. The dataset records two options — Azure SQL Database (partial fidelity) and Azure Blob Storage/ADLS Gen2 (workaround fidelity) — both requiring the media-processing logic to be rebuilt outside the database.\n\n**Lifecycle note (scoped to 12.2):** Oracle Multimedia (formerly interMedia) is not yet deprecated at 12.2 — the 12.1/12.2 Upgrade Guides only deprecate *parts* of it (DICOM support, Java APIs). It is deprecated as a whole starting **18c** and desupported in **19c** (implementation removed; objects/packages remain but raise errors when used). Oracle's recorded replacement is \"SecureFiles LOBs plus external media processing.\" [Deprecated Features in Oracle Database 12c Release 2 (12.2)](https://docs.oracle.com/en/database/oracle/oracle-database/12.2/upgrd/deprecated-features-oracle-database-12c-r2.html), [Deprecated Features in Oracle Database 18c](https://docs.oracle.com/en/database/oracle/oracle-database/18/upgrd/deprecated-features-oracle-database-18c.html), [Oracle Database Changes, Desupports, and Deprecations (19c)](https://docs.oracle.com/en/database/oracle/oracle-database/19/upgrd/oracle-database-changes-deprecations-desupports.html)\n\n**Option 1 — Azure SQL Database** · fidelity: **partial** · effort: **M** (applies to Oracle 11.2, 12.1, 12.2, 18c)\n- The binary payload of Multimedia objects (ORDImage/ORDAudio/ORDVideo/ORDDoc, LOBs wrapped in object types) fits `varbinary(max)`, the same type SSMA already uses for BLOB/BFILE; full-text search can index varbinary documents through filters. The Multimedia *methods* (thumbnailing, metadata extraction, format conversion) have no equivalent and must be rebuilt outside the database. [SSMA for Oracle: Project Settings (Type Mapping)](https://learn.microsoft.com/en-us/sql/ssma/oracle/project-settings-type-mapping-oracletosql), [Compare SQL Database Engine features: Azure SQL Database vs Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/database/features-comparison)\n- **Caveat (major severity):** FILESTREAM/FileTable are not supported on Azure SQL Database or Managed Instance, and a backup with FILESTREAM filegroups cannot be restored to Managed Instance — so very large media should use `varbinary(max)` or external Blob Storage rather than FILESTREAM. [T-SQL differences between SQL Server and Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/transact-sql-tsql-differences-sql-server)\n\n**Option 2 — Azure Blob Storage / Data Lake Storage Gen2** · fidelity: **workaround** · effort: **L** (applies to Oracle 11.2, 12.1, 12.2, 18c)\n- Recorded pattern: since Multimedia content usually already sits in BLOBs/BFILEs, move the binaries to Blob Storage/ADLS and keep path, content type, and extracted metadata in relational columns. Processing (thumbnails, format conversion) moves to application code or Azure Functions. No caveats recorded for this mapping. [Azure Data Lake Storage overview](https://learn.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-introduction), [Azure Functions overview](https://learn.microsoft.com/en-us/azure/azure-functions/functions-overview)\n\n**Gaps:** No mapping to Azure SQL Managed Instance, PostgreSQL Flexible Server, or Oracle Database@Azure is recorded for Oracle Multimedia specifically in this dataset, and no dispute or KB \"pattern\" entry addresses this feature — the two mappings above are the complete evidence set found.",
+  "stderr": ""
+}

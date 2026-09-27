@@ -1,0 +1,58 @@
+{
+  "meta": {
+    "id": "q04",
+    "type": "fact",
+    "cond": "groq",
+    "num_turns": 4,
+    "duration_ms": 29128,
+    "session_id": "1a65d222-2a5b-484e-a662-c982fa9ddf35",
+    "usage": {
+      "input_tokens": 8,
+      "cache_creation_input_tokens": 3421,
+      "cache_read_input_tokens": 29220,
+      "output_tokens": 1726,
+      "output_tokens_details": {
+        "thinking_tokens": 91
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 3421,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1112,
+          "cache_read_input_tokens": 8146,
+          "cache_creation_input_tokens": 2906,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 2906
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q04",
+    "type": "fact",
+    "q": "Our app relies on empty string being NULL in VARCHAR2 columns. Which Azure targets keep that behaviour?",
+    "expected": "None of Azure SQL DB/MI or PostgreSQL treat '' as NULL; flags this as a semantic difference requiring code review; Oracle Database@Azure keeps Oracle semantics.",
+    "required_sources": [
+      "oracle",
+      "microsoft",
+      "community"
+    ]
+  },
+  "result": "**Verdict:** Only **Oracle Database@Azure** preserves Oracle's \"empty string = NULL\" behaviour exactly. Azure SQL Database and Azure Database for PostgreSQL Flexible Server do not — they treat `''` as a real, non-NULL value, requiring workarounds.\n\n**Scope:** Oracle 11.2 through 26ai, all Oracle editions covered by this feature ([Empty string equals NULL](https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Nulls.html), introduced pre-11.2, not deprecated/desupported).\n\n### Azure targets, by fidelity\n\n- **Oracle Database@Azure** — **fidelity: exact**, effort S.\n Runs Oracle Database itself (Exadata Database Service, Base Database Service, or Autonomous Database) inside Azure datacenters, so SQL semantics are unchanged: a zero-length VARCHAR2 is still stored and compared as NULL. No caveats recorded. — [Overview: Oracle Database@Azure](https://learn.microsoft.com/en-us/azure/oracle/oracle-db/database-overview), [Nulls (SQL Language Reference 19c)](https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Nulls.html)\n\n- **Azure SQL Database** — **fidelity: workaround**, effort M.\n SQL Server/Azure SQL stores `''` as a distinct, non-null zero-length value. After migration, an INSERT of `''` produces a non-null row, `IS NULL` predicates stop matching it, and `NOT NULL` constraints that used to reject `''` now accept it — Major caveat: \"a null value is different from an empty or zero value.\" — [NULL and UNKNOWN (Transact-SQL)](https://learn.microsoft.com/en-us/sql/t-sql/language-elements/null-and-unknown-transact-sql), [SSMA for Oracle: Project Settings (Conversion)](https://learn.microsoft.com/en-us/sql/ssma/oracle/project-settings-conversion-oracletosql)\n\n- **Azure Database for PostgreSQL Flexible Server** — **fidelity: workaround**, effort M.\n PostgreSQL also distinguishes `''` from NULL. Major caveat notes Ora2Pg's `NULL_EQUAL_EMPTY` directive rewrites `IS NULL`/`IS NOT NULL` tests into `coalesce()`-based checks to preserve Oracle's behaviour, though Ora2Pg's own docs recommend instead converting empty strings to NULL in the application where feasible; the `orafce` extension offers a trigger to replace `''` with NULL on write. — [Ora2Pg documentation](https://ora2pg.darold.net/documentation.html), [orafce README](https://github.com/orafce/orafce/blob/master/README.asciidoc)\n\n**No dispute** is recorded on this feature in the dataset.\n\n**Gap:** No mapping exists in this dataset for other Azure targets (e.g., Oracle on Azure VM, Azure SQL Managed Instance) regarding this specific behavior — only the three above are covered for the \"empty-string-null\" feature.",
+  "stderr": ""
+}

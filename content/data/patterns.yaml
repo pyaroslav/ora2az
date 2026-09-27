@@ -1,0 +1,646 @@
+# Patterns: Knowledge Base prose. Each pattern states the problem, a concrete approach, when not
+# to use it, optional related mappings, and its sources. Firsthand claims are attributed to the
+# author's blog or labs; everything else is paraphrased from public Oracle / Microsoft docs.
+
+- _id: pattern.choose-migration-method
+  title: "Choose the Oracle-to-Azure migration method by target, downtime budget, endianness and edition"
+  problem: >-
+    Teams argue about the destination first and the method last, then discover that the method is
+    what actually sets downtime, risk and the ability to roll back. Azure makes this harder because
+    it offers three very different kinds of target: a full Oracle database you administer (Oracle
+    Database@Azure Exadata or Base, or Oracle on Azure VMs), a managed Oracle database with no
+    SYSDBA (Autonomous), and non-Oracle engines (Azure SQL, PostgreSQL) that can only ever receive
+    a logical, converted copy.
+  approach: |
+    The author's migration-methods lab and the companion post organise the decision as four gates
+    applied in a fixed order. The order matters because each gate eliminates methods before the next
+    one is considered, and most wrong plans come from applying the gates in the wrong order (for
+    example choosing Data Guard for its near-zero downtime before checking whether the target can
+    host a standby at all).
+
+    Gate 1: what does the target allow? Physical methods (RMAN restore or duplicate, transportable
+    tablespaces, a Data Guard standby) need SYSDBA, file-system access and a database you can mount
+    and recover. The Exadata and Base services of Oracle Database@Azure and Oracle on Azure VMs give
+    you that, so every method is on the table there; Oracle's own service page lists Data Guard and
+    Zero Downtime Migration among the supported tooling. Autonomous Database, including the
+    Autonomous flavour offered through Oracle Database@Azure, does not: the blog is explicit that
+    into Autonomous it is logical only, meaning Data Pump from object storage run as ADMIN with the
+    ADB-managed object classes excluded, or GoldenGate. Azure SQL Database, Azure SQL Managed
+    Instance and PostgreSQL Flexible Server are logical by definition and add a schema conversion
+    step; the feature mappings in this dataset describe how faithful that conversion can be.
+
+    Gate 2: are you crossing endianness or version? Query V$TRANSPORTABLE_PLATFORM on both sides.
+    Every Azure target is little-endian Linux x86-64, so a source on AIX, Solaris SPARC or HP-UX is a
+    cross-endian move, which rules out a straight RMAN restore and a physical standby because both
+    copy blocks verbatim. Cross-endian leaves transportable tablespaces with RMAN CONVERT or a
+    logical method. A version change has the same effect on Data Guard: the blog stresses that a
+    switchover is not an upgrade path, so a 12.2 to 19c or 19c to 26ai move either upgrades before
+    or after a physical copy, or goes logical.
+
+    Gate 3: what is the downtime budget? Methods are either an outage whose length scales with data
+    volume (Data Pump, offline RMAN restore, classic read-only transportable tablespaces) or
+    near-zero, where the target is built and synchronised while the source keeps serving and only
+    the cutover is downtime (Data Guard switchover for same-architecture moves, GoldenGate for any
+    architecture, incremental XTTS for very large cross-endian moves). Zero Downtime Migration
+    orchestrates these and inherits their constraints: its physical-online mode is RMAN plus Data
+    Guard plus switchover, its logical-online mode is Data Pump plus GoldenGate. Microsoft's own
+    guidance for Azure VMs makes the same point from the other side: it lists RMAN, Data Pump, Data
+    Guard and GoldenGate as the data-movement tools and notes that Data Pump is not recommended
+    when data volume is large and downtime must be short.
+
+    Gate 4: edition and licensing. Physical Data Guard requires Enterprise Edition, so a Standard
+    Edition 2 source cannot take the physical-online path even to Oracle Database@Azure; the lab's
+    sixth scenario exists to catch an inherited plan that says otherwise. GoldenGate is separately
+    licensed and is the most complex method to run, so it is the answer only when near-zero downtime
+    and a boundary crossing are both mandatory, or when a bidirectional fallback is required.
+
+    - Same endian, same version, EE, near-zero downtime, target you control: Data Guard standby and switchover (ZDM physical online); the old primary becomes the fallback.
+    - Cross-endian or cross-version, outage acceptable: XTTS with RMAN CONVERT for very large databases, Data Pump for small and medium ones.
+    - Cross-endian or cross-version, near-zero downtime: GoldenGate after a Data Pump initial load (ZDM logical online).
+    - Target is Autonomous: Data Pump via object storage, or GoldenGate if downtime must be minimal; run the Cloud Premigration Advisor Tool first because Autonomous is fixed to AL32UTF8.
+    - Target is Azure SQL or PostgreSQL: logical conversion and load; the method question collapses and the effort moves into the feature mappings.
+    - Source is SE2: Data Pump or offline RMAN restore; minimise the window with parallelism and fast transfer rather than with a standby you cannot build.
+
+    Whatever the branch, the lab's discipline applies: write down the four answers before naming a
+    tool, and treat "it is Azure, so it must be logical" as the trap it is when the target is
+    Exadata or a VM rather than a managed PaaS engine.
+  whenNotTo: >-
+    Do not use this tree to decide where the database should live; placement (Oracle Database@Azure
+    versus OCI versus a re-platform to Azure SQL or PostgreSQL) is a separate decision driven by
+    application gravity, commercial commitments and feature fidelity. And when the destination is a
+    non-Oracle engine, spend the analysis time on the feature mappings rather than on transport
+    methods, because only a logical move is possible anyway.
+  relatedMappings: [mapping.data-pump--oracle-db-at-azure]
+  sources: [source.ua-blog-cloud-migration-methods, source.ua-lab-migration-methods, source.ms-kb-oracle-vm-migration, source.oracle-kb-db-at-azure-overview]
+
+- _id: pattern.character-set-conversion-without-silent-loss
+  title: "Convert character sets without silent data loss"
+  problem: >-
+    Loading data into a target whose character set cannot represent every source character does
+    not fail: the import reports success, every row arrives, and the characters that did not fit
+    are quietly transliterated (an accented name loses its accent) or replaced with a question
+    mark. Row counts and "completed successfully" are the checks teams rely on, and both are
+    blind to this. The same failure appears on Azure targets when a column type, collation or
+    database encoding is narrower than the Oracle source, or when a tool in the pipeline
+    misdeclares its client character set.
+  approach: |
+    The author's post and lab describe the mechanism and then reproduce it. The database character
+    set governs what VARCHAR2 and CHAR columns can hold; the client's NLS_LANG tells the server what
+    the bytes arriving from that client mean. When a value moves into a narrower set, Oracle maps
+    each character: a character with a rough ASCII equivalent is transliterated, a character with no
+    mapping becomes a replacement character. Both are treated as a normal, successful conversion.
+    In the lab, ten customer names (five ASCII, five with Latin accents or CJK characters) converted
+    into US7ASCII keep all ten rows and raise zero errors while damaging five names; a Western
+    European target (WE8MSWIN1252) keeps the accents but still loses the CJK name; only AL32UTF8
+    loses nothing. The blog's point is that transliteration is the dangerous case because it looks
+    plausible and survives review.
+
+    Detect before cutover, at the value level. The test that catches what counts miss is a
+    round trip: convert each value to the target character set and back, and select rows where the
+    result differs from the original. In the lab this flags exactly the five non-ASCII rows in
+    advance. For a real estate, Oracle's Database Migration Assistant for Unicode (or the older
+    csscan utility) does the same across every column of every table and reports data that is lossy
+    or that would expand in bytes. Run it against the source before the migration, not against the
+    wreckage afterwards, and keep the source readable until the target has been verified at the
+    value level, because the loss is irreversible once the original value is overwritten.
+
+    Fix by choosing a Unicode target and sizing for it. Oracle to Oracle: land in AL32UTF8, which is
+    a superset of every legacy Oracle character set; Autonomous Database is fixed to AL32UTF8, so a
+    non-Unicode source has to converge on Unicode and the Cloud Premigration Advisor Tool should be
+    run first. Oracle to Azure SQL or PostgreSQL: pick Unicode-capable column types and a Unicode
+    database encoding or collation on the target, then reuse the round-trip idea by comparing a
+    sample of high-risk values (names, addresses, free text) between source and target after the
+    load. Going up to Unicode brings the opposite trap: a character that was one byte can become up
+    to four, so a VARCHAR2(10 BYTE) column that held ten characters may no longer fit and the load
+    fails with ORA-12899 or, worse, truncates. Define lengths in characters (CHAR semantics or
+    NLS_LENGTH_SEMANTICS) and size target columns by character count, not by the Oracle byte length.
+
+    Set the client character set on every tool in the pipeline. The blog calls this the NLS_LANG
+    pass-through trap: a loader that sends UTF-8 bytes while declaring US7ASCII causes the server
+    to store garbage even when both databases are Unicode. Exporters, loaders, ETL agents and ad hoc
+    SQL sessions all count; an Azure Data Factory or Azure Database Migration Service pipeline that
+    reads Oracle should be checked the same way, by comparing values that contain non-ASCII
+    characters after a trial load.
+
+    - Inventory NLS_CHARACTERSET, NLS_NCHAR_CHARACTERSET and every client's NLS_LANG before designing the move.
+    - Run the round-trip scan or DMU against the source; treat any lossy row as a defect to fix at the source or by widening the target.
+    - Choose Unicode on the target (AL32UTF8, Unicode column types and encoding on Azure SQL or PostgreSQL) and size columns in characters.
+    - After a trial load, compare a sample of non-ASCII values byte for byte; do not accept row counts as proof.
+    - Keep the pre-migration source or a pre-cutover export until value-level verification is signed off.
+  whenNotTo: >-
+    Skip the conversion scan when the move is a physical Oracle-to-Oracle copy (RMAN, Data Guard,
+    transportable tablespaces), because no character conversion happens; the datafiles keep the
+    source character set. The scan is also not a substitute for fixing the source: if the scan finds
+    lossy data, correcting the values or widening the target is the remedy, not a post-load
+    clean-up.
+  relatedMappings: [mapping.character-set--azure-sql-mi]
+  sources: [source.ua-blog-charset-migration-data-loss, source.ua-lab-charset-migration, source.oracle-nlspg-19-choosing-character-set]
+
+- _id: pattern.data-pump-for-cloud-move
+  title: "Run Data Pump for a cloud move you can prove"
+  problem: >-
+    A full export with default options is how migrations discover at three in the morning that the
+    dump ran out of space, that a refresh silently left existing tables untouched, that a
+    long-running export captured tables at different points in time so foreign keys no longer
+    line up, or that a plaintext dump of production data is sitting in a storage account. Data
+    Pump is in every Oracle shop; running it deliberately, with the handful of options that make
+    the result verifiable, is not.
+  approach: |
+    Start from the architecture, because it drives the plan. Data Pump runs inside the database
+    server: the client only starts and monitors a job, server processes do the reading and writing,
+    and the dump file lands in a path on the database host referenced through a DIRECTORY object.
+    That is why Microsoft's Azure VM migration guidance pairs Data Pump with AzCopy: export to the
+    directory on the source host, copy the dump files to Blob Storage or directly to the target VM
+    over VPN or ExpressRoute, then import from a directory on the target. For a database-to-database
+    move where both ends can reach each other, the blog recommends skipping the file entirely with
+    NETWORK_LINK, which has impdp pull straight from the source over a database link. For Autonomous
+    Database, including Autonomous on Oracle Database@Azure, the blog's recipe is to stage the dump
+    files in object storage, run the import as ADMIN rather than SYS, and exclude the object classes
+    the service manages (clusters, index types, database links).
+
+    Choose the narrowest mode and the parameters that decide whether the move is clean. The blog's
+    list, in the order that usually matters:
+
+    - SCHEMAS (or TABLES) rather than FULL unless you really are moving the whole database; FULL drags system objects the target may already have.
+    - REMAP_SCHEMA, REMAP_TABLESPACE and REMAP_DATAFILE so the target's layout does not have to mirror the source.
+    - PARALLEL with a DUMPFILE that uses the %U wildcard so each worker writes its own file; parallel workers against one dump file mostly wait.
+    - FLASHBACK_TIME=SYSTIMESTAMP or FLASHBACK_SCN so every table is read as of one system change number; without it a busy source yields an inconsistent dump.
+    - TABLE_EXISTS_ACTION set explicitly (TRUNCATE, APPEND or REPLACE); the default SKIP leaves existing tables alone and turns a refresh into a no-op.
+    - ENCRYPTION_PASSWORD whenever the data would be protected inside the database; the dump is readable data on disk and in whatever bucket you copy it to, and it should be deleted when the move is done.
+    - VERSION when the target release is older than the source; without it the import simply refuses the file.
+    - EXCLUDE=STATISTICS on import and regather on the target, which is usually faster and yields statistics that fit the target's storage.
+
+    Put every filtered job in a parameter file. INCLUDE, EXCLUDE and QUERY contain quotes and
+    parentheses that a shell mangles before Data Pump sees them; the lab's filtered export uses a
+    parfile for exactly this reason, and the blog's rule is that any job with a filter goes in a
+    parfile, always. A TABLES-mode dump also carries no CREATE USER statement, so the target schema
+    must exist before a remap import or the job fails on a missing user.
+
+    Prove the move rather than eyeballing it. The lab builds a schema of known size (5,000 customers
+    and 20,000 orders), exports it, drops it and imports it back, asserting that the counts match;
+    it then imports the same dump into a new schema with REMAP_SCHEMA and asserts the counts again,
+    and runs a filtered export asserting that only the chosen table crossed. Copy that shape into
+    the migration runbook: per-table row counts captured at the FLASHBACK_SCN on the source and
+    compared on the target, a count of invalid objects after recompilation, a check that grants and
+    stored code arrived (people who script CONTENT=DATA_ONLY moves forget both), and a value-level
+    sample for character data as described in the character-set pattern. Statistics are the other
+    thing that is not a row: import them or regather them, or the target will be present but slow.
+  whenNotTo: >-
+    Do not plan a Data Pump outage for a large database with a tight window; Microsoft's guidance
+    and the author's post agree that the unload, reload and index-rebuild cycle scales with volume,
+    so Data Guard, incremental transportable tablespaces or GoldenGate belong there instead. Data
+    Pump dump files are also Oracle-only: for Azure SQL or PostgreSQL targets the loaders are Azure
+    Database Migration Service, Azure Data Factory, SSMA or Ora2Pg, and Data Pump's role shrinks to
+    producing a consistent snapshot to compare against.
+  relatedMappings: [mapping.data-pump--oracle-db-at-azure]
+  sources: [source.ua-blog-data-pump-done-right, source.ua-lab-data-pump, source.oracle-sutil-19-data-pump-overview, source.ms-kb-oracle-vm-migration]
+
+- _id: pattern.rac-vs-data-guard-on-azure
+  title: "Decide RAC versus Data Guard for Oracle on Azure, and which targets can host which"
+  problem: >-
+    "We have RAC, so we are covered for disaster recovery" is one of the most expensive sentences
+    in Oracle operations: RAC and Data Guard sit under the same high-availability umbrella but
+    protect against different failures. On Azure the choice is further constrained by the target,
+    because Oracle does not certify RAC on Azure virtual machines, so a RAC estate cannot be lifted
+    as-is onto VMs and must either land on Oracle Database@Azure or be redesigned around Data Guard.
+  approach: |
+    Start with the failure, not the feature. The author's decision-tree post maps four failure
+    modes to what survives them: an instance or node failure is absorbed by RAC without any role
+    change; a site or region loss is survived only by an independent copy, which is Data Guard;
+    block corruption is handled by Data Guard (the standby has its own writes, and Active Data
+    Guard can repair blocks from the other side) and by validated backups; and human or logical
+    error, the bad DELETE or dropped table, is survived by neither RAC nor Data Guard because both
+    faithfully replicate the mistake. Only backups, point-in-time recovery and Flashback cover that
+    row, so they are mandatory in every branch of the tree.
+
+    Then apply the Azure target constraints. Microsoft's reference architecture for Oracle on Azure
+    Virtual Machines states that Oracle does not currently certify or support RAC on Azure VMs, that
+    RAC alone protects only against instance-level failure anyway, and that the recommended
+    high-availability design is Data Guard (with Fast-Start Failover and observers spread across
+    availability zones) for a 99.99 percent uptime SLA, Far Sync for zero-loss protection across
+    regions (which needs an Active Data Guard licence), and GoldenGate where an active-active
+    topology is required. The guide applies to Enterprise Edition only. Oracle Database@Azure is
+    the other case: it is Exadata Database Service running in Azure datacenters, Oracle's service
+    page lists RAC explicitly, and the author's placement post describes it as the same service as
+    OCI Exadata. So the full topology of the post, RAC at each site with Data Guard between them
+    (MAA Gold), is possible on Oracle Database@Azure and is not possible on Azure VMs.
+
+    Set RTO and RPO with the business before choosing. The post reduces the architecture to two
+    numbers: how long you can be down and how much data you can lose. RAC handles node failure in
+    seconds with zero data loss; Data Guard recovers a site loss in seconds to minutes, with zero
+    loss under a synchronous protection mode (Maximum Availability or Maximum Protection) and
+    seconds of redo under the default Maximum Performance; backups mean hours and last-backup RPO.
+    The MAA tiers (Bronze: single instance plus RMAN and Flashback; Silver: plus RAC or RAC One
+    Node; Gold: plus Active Data Guard; Platinum: plus GoldenGate and application continuity)
+    exist so that spend climbs only as far as the agreed RTO and RPO require. You do not start at
+    Gold.
+
+    Count the licences honestly. RAC is a separately licensed option on Enterprise Edition; plain
+    physical Data Guard is included with Enterprise Edition; Active Data Guard (read-only open
+    standby, automatic block repair, Far Sync) is another option; none of these exist on Standard
+    Edition 2. When a RAC cluster is moved onto Azure VMs as a single instance plus a Data Guard
+    standby across zones, the RAC option licence goes away and the design gains site protection it
+    may not have had before; the post's composite example of a three-node cluster taken down by one
+    storage firmware push is the reason to see that as an upgrade rather than a loss.
+
+    - Must survive a region or site loss: Data Guard standby in a paired region (Azure VMs or Oracle Database@Azure), asynchronous or with Far Sync for zero loss.
+    - Must survive node loss with no role change: Oracle Database@Azure (RAC on Exadata); on Azure VMs the closest substitute is Data Guard with Fast-Start Failover across availability zones and application retry logic.
+    - Must survive a bad DELETE: Flashback Database with guaranteed restore points before risky changes, plus tested RMAN backups; neither RAC nor Data Guard helps.
+    - Standard Edition 2 source: neither RAC nor Data Guard is available; plan around backups, availability zones and a longer RTO, or move to Enterprise Edition on the target.
+  whenNotTo: >-
+    Do not buy or keep RAC to solve disaster recovery, and do not buy Data Guard to solve human
+    error; each protects against something else. Do not design RAC into an Azure VM landing zone,
+    because it is not supported there. And when the destination is Azure SQL or PostgreSQL the
+    conversation changes vocabulary entirely (zone redundancy, geo-replication, read replicas,
+    point-in-time restore) and belongs to those services' own documentation rather than this
+    pattern.
+  relatedMappings: [mapping.rac--azure-sql-mi, mapping.data-guard--azure-sql-mi]
+  sources: [source.ua-blog-ha-decision-tree, source.ms-kb-oracle-vm-reference-architecture, source.oracle-kb-db-at-azure-overview, source.oracle-glossary-licensing-editions]
+
+- _id: pattern.data-guard-switchover-vs-failover-at-cutover
+  title: "Cut over with a Data Guard switchover, and reserve failover for a lost primary"
+  problem: >-
+    When the migration target is a physical standby built in Azure, the cutover itself is a Data
+    Guard role transition, and the two role transitions are not interchangeable. Calling a
+    failover against a healthy source throws away the zero-loss hand-off and the built-in
+    rollback, and may lose the last seconds of redo; attempting a switchover against a source
+    that has already died cannot complete. Incident bridges confuse the two under pressure.
+  approach: |
+    Apply the author's one-sentence test: is the primary still healthy and reachable? For a
+    migration the answer is normally yes, so the cutover is a switchover. In a switchover the
+    primary stops accepting transactions, ships its final redo and becomes a standby; the standby
+    in Azure applies that redo and becomes the primary. Because the old primary participated in the
+    hand-off there is no data loss, and it is left as a valid standby of the new Azure primary, so
+    if the cloud database misbehaves in the first days you switch back with no data loss. That
+    reversibility is why the migration-methods post calls Data Guard the method with the best
+    rollback story, and it is exactly what Zero Downtime Migration's physical-online mode performs.
+
+    Pre-flight the configuration the way the post's worked example does, through the Broker.
+    SHOW CONFIGURATION should report success; VALIDATE DATABASE on the standby should say it is
+    ready for switchover, with transport and apply lag at zero and Flashback Database on for both
+    databases. If it is not ready, the usual causes are an archive gap, missing standby redo logs or
+    apply lag, and the fix comes before the cutover, not during it. Test client redirection to the
+    Azure primary ahead of time: the post's composite scenario of a failover that stalled on
+    firewall ports and a decommissioned host in the runbook is a network and readiness failure, not
+    a Data Guard failure. Decide the protection mode consciously; a switchover is always zero-loss,
+    but the mode decides what a failover would lose if the source died mid-migration, and it decides
+    whether commit latency across the on-premises to Azure link is acceptable for synchronous
+    transport during the synchronisation window.
+
+    Use failover only when the primary is actually gone. Then the standby is promoted with the redo
+    it has, loss depends on the protection mode, and the old primary is out of the configuration
+    until it is reinstated with Flashback Database (one Broker command) or rebuilt from a backup
+    (hours). This is the reason to run the migration with Flashback Database enabled on both sides
+    even though the plan is a switchover. If Fast-Start Failover is configured, keep the observer
+    off the primary host; Microsoft's Azure VM reference architecture places observers on separate
+    small VMs across availability zones for the same reason the author gives, that an observer on
+    the primary dies with the failure it exists to detect.
+
+    After the role change, verify and keep the safety net. On the new Azure primary confirm the
+    role is PRIMARY and the open mode is READ WRITE, confirm redo is now flowing back to the
+    on-premises standby, and keep that standby in the configuration for the agreed fallback window
+    before decommissioning it. Rehearse the whole thing at least once before the real cutover; the
+    post's position is that a standby that has never been switched over is a hope, not a plan, and
+    a migration cutover is the worst place for a first attempt.
+
+    - Confirm the source is healthy; if it is, the cutover is a switchover, never a failover.
+    - Broker pre-flight: configuration success, validate database ready for switchover, zero lag, Flashback on both databases, client redirection tested.
+    - Quiesce or drain the application, run the switchover through the Broker, verify roles and reverse redo flow.
+    - Keep the old primary as a standby for the fallback window; switch back if the Azure primary misbehaves.
+    - Only if the source dies mid-migration: fail over, then reinstate the old primary with Flashback Database rather than rebuilding it.
+  whenNotTo: >-
+    This pattern does not apply when no standby can exist: cross-endian or cross-version moves,
+    Standard Edition 2 sources, Autonomous Database targets, and any Azure SQL or PostgreSQL
+    target. There the cutover is a GoldenGate drain-and-reconnect or a Data Pump outage, and the
+    fallback is bidirectional replication or the retained source, not a switch back.
+  sources: [source.ua-blog-dg-switchover-vs-failover, source.ua-blog-ha-decision-tree, source.ua-blog-cloud-migration-methods, source.ms-kb-oracle-vm-reference-architecture]
+
+- _id: pattern.rman-moves-to-oracle-on-azure
+  title: "Move an Oracle database with RMAN to Azure VMs or Oracle Database@Azure"
+  problem: >-
+    RMAN backup-and-restore or duplication is the simplest physical move for a same-endian source
+    and the first method Microsoft documents for Azure VMs, but it is an outage method whose
+    failure modes (confusing restore with recover, a missing DBID, a forgotten RESETLOGS, a backup
+    nobody ever restored) surface exactly on cutover night. It also only works into a target you can
+    mount, which excludes Autonomous and every non-Oracle service.
+  approach: |
+    Confirm RMAN is the right tool before planning it. The migration-methods post places RMAN
+    restore among the outage methods for same-endian moves where the architecture does not change;
+    its answer key uses RMAN "restore from service" or active duplication to seed a standby in the
+    cloud, and names an offline RMAN restore (Zero Downtime Migration's physical-offline mode) as
+    the physical path available to a Standard Edition 2 source that cannot build a Data Guard
+    standby. Check V$TRANSPORTABLE_PLATFORM first: a big-endian source cannot be restored onto
+    Linux x86-64 without transportable tablespaces and RMAN CONVERT, and no RMAN method can target
+    Autonomous Database, Azure SQL or PostgreSQL.
+
+    Plan the transport. Microsoft's Azure VM migration guidance describes the RMAN scenarios as a
+    backup taken on premises, moved to Azure and restored on the VM, with the network between the
+    two as the constraint: VPN or ExpressRoute for online copies, AzCopy into Blob Storage or Azure
+    Files as the staging area, and Data Box when the volume makes shipping a device faster than
+    sending it. For Oracle Database@Azure the same shape applies with OCI object storage as the
+    staging area, and Oracle's tooling automates it. Test the bandwidth against the backup size
+    before committing to a window; the copy, not the restore, is usually the long pole.
+
+    Run the restore as a runbook, not from memory. The author's RMAN post rests on one distinction:
+    RESTORE copies datafiles back from backup, RECOVER rolls them forward with redo, and a restore
+    without a recover silently discards every transaction since the backup. On a fresh host the
+    sequence is NOMOUNT, SET DBID (from your records, because the database that knows it is the one
+    you do not have yet), RESTORE CONTROLFILE FROM AUTOBACKUP, MOUNT, RESTORE DATABASE, RECOVER
+    DATABASE, then OPEN RESETLOGS because a restored controlfile makes this an incomplete recovery.
+    RESETLOGS starts a new incarnation, so take a full backup immediately afterwards. If the plan
+    recovers to a specific point (for example the SCN at which the application was stopped), SET
+    UNTIL belongs at the top of the RUN block before both RESTORE and RECOVER; placed only before
+    RECOVER, the restored files may already be past the target. Enable controlfile autobackup on the
+    source today and write the DBID down somewhere outside the database.
+
+    Shrink the outage with incrementals. A level 0 backup can be taken and restored to the target
+    days ahead while the source keeps running, level 1 incrementals applied as they are produced,
+    and only the final incremental plus the archived logs after the application is stopped fall
+    inside the window. This is the same idea the migration-methods post describes for incremental
+    transportable tablespaces, and it is how an RMAN move stays inside a weekend even for a large
+    database.
+
+    Prove the backup before you need it. RESTORE DATABASE VALIDATE with CHECK LOGICAL confirms the
+    backup pieces a restore would need exist and are not corrupt without writing a datafile;
+    RESTORE DATABASE PREVIEW lists exactly which backups and archived logs would be used, so a gap
+    in the archived-log chain is found before the window opens. Neither is a rehearsal: the post's
+    rule is that the only real proof is an actual restore to a scratch host, and the author's RMAN
+    lab row-checks every recovery for the same reason. For a migration that scratch restore is
+    cheap insurance, because the target VM or Exadata VM cluster is the scratch host.
+
+    - Same endian, outage acceptable, target you can mount: RMAN qualifies; otherwise use transportable tablespaces, Data Guard or a logical method.
+    - Stage: backup on premises, AzCopy or Data Box to Azure, restore on the target; measure bandwidth against backup size first.
+    - Restore runbook: SET DBID, controlfile from autobackup, RESTORE then RECOVER, SET UNTIL at the top of the RUN block if recovering to a point, OPEN RESETLOGS, fresh full backup.
+    - Use level 0 ahead of time plus incrementals to keep only the last increment and archived logs inside the window.
+    - Validate and preview the backups before the window; rehearse the restore on the target at least once.
+  whenNotTo: >-
+    Do not use RMAN restore when the source is big-endian (use XTTS with RMAN CONVERT or go
+    logical), when the target is Autonomous Database or a non-Oracle engine (no file access, no
+    Oracle datafiles), or when downtime must be near-zero and the source is Enterprise Edition
+    (build a Data Guard standby and switch over instead, which RMAN can seed but should not be the
+    cutover mechanism).
+  sources: [source.ua-blog-rman-recovery-runbook, source.ua-blog-cloud-migration-methods, source.ua-lab-migration-methods, source.ms-kb-oracle-vm-migration]
+
+- _id: pattern.scheduler-jobs-to-azure
+  title: "Move DBMS_SCHEDULER and DBMS_JOB jobs to SQL Agent, Elastic Jobs or pg_cron"
+  problem: >-
+    Oracle schedules live inside the database with calendar expressions, programs, chains,
+    windows, credentials, event-based triggers and external (OS) jobs, and DBMS_JOB code from
+    older releases is still common. Each Azure target offers a narrower scheduler, and which one is
+    available depends on the service rather than on the job: SQL Server Agent exists on Managed
+    Instance but not on Azure SQL Database, Elastic Jobs exists for SQL Database, and PostgreSQL
+    Flexible Server relies on the pg_cron extension.
+  approach: |
+    Inventory first. Pull DBA_SCHEDULER_JOBS and DBA_JOBS and classify each job by type (PL/SQL
+    block, stored procedure, executable or external script, chain), by schedule (a simple repeat
+    interval versus a calendar with BYDAY or exclusion rules), by dependencies (chains, windows,
+    event queues) and by what it actually does. Many jobs turn out to be data refreshes or purges
+    that belong in a pipeline tool rather than in a database scheduler, and the DBMS_JOB entries are
+    almost always simple intervals that map to any target. Record time zones explicitly; Oracle jobs
+    can carry a session time zone, while two of the three Azure schedulers run in UTC.
+
+    Azure SQL Managed Instance: SQL Server Agent. Microsoft documents that Agent runs inside the
+    instance and executes Transact-SQL job steps, operating-system and PowerShell steps, SSIS
+    package steps and transactional-replication steps, with schedules that can be recurring, one
+    time, or triggered at Agent start (which also fires after every failover). Notifications are
+    email only through Database Mail, and the mail profile has to carry a specific name for Agent
+    to use it. The limitations matter for a port: Agent settings are read-only and Agent is always
+    running, proxies and alerts are not supported, the idle-CPU trigger is unavailable, scripts
+    stored as files on disk cannot be run, external PowerShell modules and PowerShell Core are not
+    supported, and job history is fixed at the defaults. A PL/SQL procedure job becomes a T-SQL step
+    calling the converted procedure; a chain becomes a multi-step job with on-success and on-failure
+    branching; an external job that ran a shell script needs either the OS step's restrictions
+    accepted or a move to Azure Functions or Azure Automation.
+
+    Azure SQL Database: Elastic Jobs. There is no Agent, so Microsoft's substitute is an elastic job
+    agent (an Azure resource) backed by a job database, running T-SQL scripts against target groups
+    that can be individual databases, all databases on a logical server or all databases in an
+    elastic pool, enumerated dynamically at run time. Schedules are in UTC, a schedule created in
+    the past fires immediately when enabled, execution history is kept for 45 days, authentication
+    is by user-assigned managed identity (recommended) or database-scoped credentials, and the
+    agent has concurrency tiers. Two design rules follow from the documentation: scripts must be
+    idempotent because the agent retries on transient failures, and only T-SQL runs, so anything
+    that called out to the operating system or sent mail from the job moves to Azure Functions,
+    Logic Apps or Automation. Microsoft also notes that the agent's constant polling of the job
+    database produces audit noise if server auditing is on, which can be filtered by application
+    name.
+
+    PostgreSQL Flexible Server: pg_cron. Microsoft's extension guidance requires pg_cron to be
+    present in shared_preload_libraries (a server restart), allowlisted in the azure.extensions
+    parameter, and created in each database that will call its functions; jobs are defined with
+    cron.schedule, or with cron.schedule_in_database to run in another database on the same server,
+    and are listed in cron.job. The extension runs at most one instance of a given job at a time
+    and queues an overlapping run, times are GMT, and the optional username parameter needs
+    superuser and is not supported on the service, so jobs run as the scheduling user, which should
+    hold the azure_pg_admin role. pg_cron runs SQL, so procedural logic becomes a PL/pgSQL procedure
+    (Ora2Pg converts most PL/SQL packages) invoked by a CALL in the job.
+
+    Cross-cutting conversions. Oracle calendar syntax (FREQ, INTERVAL, BYDAY, BYHOUR) maps to Agent
+    schedules or cron expressions, with exclusion calendars re-implemented as a guard clause inside
+    the job. Oracle windows and resource plans have no equivalent; use scheduling times and, on
+    Azure SQL, service-tier headroom instead. Job run history (DBA_SCHEDULER_JOB_RUN_DETAILS) maps to
+    msdb job history on Managed Instance, the jobs.job_executions table for Elastic Jobs, and
+    cron.job_run_details for pg_cron. Monitoring of failures moves to Azure Monitor alerts (Elastic
+    Jobs expose a failed-jobs metric) rather than Oracle's job-failure notifications.
+
+    - Classify every job by type, schedule complexity, dependencies and purpose; move pure data refreshes to Azure Data Factory pipelines rather than porting the scheduler entry.
+    - Managed Instance: SQL Agent with T-SQL steps; accept the documented Agent limitations; Database Mail with the required profile name for notifications.
+    - Azure SQL Database: Elastic Jobs with idempotent T-SQL, UTC schedules, managed-identity authentication; move OS and mail actions to Functions, Logic Apps or Automation.
+    - PostgreSQL Flexible Server: pg_cron after shared_preload_libraries and allowlisting; wrap logic in PL/pgSQL procedures; one instance per job at a time.
+    - Re-implement chains as multi-step Agent jobs or as an orchestrator pipeline; re-check every time zone assumption.
+  whenNotTo: >-
+    Do not rebuild a scheduler entry whose only purpose is to move or refresh data; a pipeline
+    tool with its own scheduling and monitoring is the better home. Do not use Elastic Jobs or
+    pg_cron for sub-minute or operating-system-level tasks, and do not use pg_cron to orchestrate
+    work across servers. Jobs on an Oracle Database@Azure target stay in DBMS_SCHEDULER untouched.
+  relatedMappings: [mapping.dbms-scheduler--sql-agent-mi]
+  sources: [source.ms-kb-sqlmi-sql-agent-jobs, source.ms-sqldb-elastic-jobs, source.ms-pg-flex-extensions-considerations, source.ms-sqldb-mi-feature-comparison]
+
+- _id: pattern.advanced-queuing-to-service-bus
+  title: "Replace Oracle Advanced Queuing with Azure Service Bus"
+  problem: >-
+    Oracle Advanced Queuing is a message broker inside the database: enqueue and dequeue commit or
+    roll back together with the surrounding SQL, PL/SQL callbacks fire on arrival, and
+    multi-consumer queues, delays, expirations and exception queues are all built in. Azure SQL
+    Database and PostgreSQL have no in-engine equivalent (Service Broker exists only on Managed
+    Instance), and Azure Service Bus is a separate broker with its own transaction boundary, so
+    the port is a redesign of the consistency model, not a rename.
+  approach: |
+    Map the concepts one to one where they exist. Oracle's documentation describes AQ as queue
+    tables holding messages for point-to-point (single-consumer) or publish-subscribe
+    (multi-consumer, with subscribers and rule-based routing) delivery, with dequeue modes to
+    browse, lock or remove, wait timeouts, delivery delays, expirations and automatic movement of
+    expired messages to an exception queue. Microsoft's Service Bus overview offers the same
+    vocabulary at the broker level: queues for point-to-point, topics with subscriptions for
+    publish-subscribe, subscription filters and actions for rule-based routing, peek-lock and
+    receive-and-delete for the dequeue modes, long-polling pull receive for dequeue-with-wait,
+    scheduled delivery for delay, time-to-live plus a dead-letter subqueue for expiration and
+    exception handling, sessions for strict first-in first-out ordering and request-response
+    correlation, deferral for messages an application cannot process yet, and duplicate detection
+    for senders that are unsure whether a send succeeded.
+
+    Redesign the transaction boundary, because that is where AQ differs. In Oracle, inserting an
+    order row and enqueuing the order event are one transaction. Service Bus transactions group
+    operations against a single messaging entity (for example receive from one queue, send the
+    result, complete the input) but never include a database write. The robust replacement is the
+    transactional outbox: write the business row and an outbox row in one database transaction on
+    Azure SQL or PostgreSQL, and have a relay publish outbox rows to Service Bus and mark them sent.
+    The relay can be an Azure Functions timer, a SQL Agent job on Managed Instance, a pg_cron job on
+    PostgreSQL, or a change-feed reader. Consumers must be idempotent because the relay may publish
+    twice; Service Bus duplicate detection on the send side and an idempotency key on the receive
+    side close the gap. The inverse direction (a consumer that must update the database and
+    complete the message atomically) uses peek-lock: process and commit the database change, then
+    complete the message, and treat redelivery of an already-processed message as a no-op.
+
+    Replace the callbacks and the consumers. PL/SQL notification callbacks registered on a queue
+    become Azure Functions with a Service Bus trigger (or any AMQP 1.0 client, and JMS 2.0 clients on
+    the Premium tier), which gives competing consumers for free; message grouping that AQ expressed
+    through correlation identifiers or dequeue conditions becomes sessions keyed by the same value.
+    Exception-queue handling, which Oracle performs automatically, becomes an explicit operational
+    process around the dead-letter queue: inspect, fix, resubmit or log. Retention differs too: AQ
+    messages can sit in queue tables indefinitely under database backup and recovery, while Service
+    Bus messages are subject to time-to-live and the namespace's own resilience, so long-lived
+    queue contents should be persisted to a table on the target rather than parked in the broker.
+
+    - Single-consumer queue to a Service Bus queue; multi-consumer queue with subscribers to a topic with filtered subscriptions.
+    - Delay to scheduled delivery; expiration and exception queue to time-to-live and the dead-letter subqueue; dequeue-with-wait to a long-polling receive.
+    - Transactional enqueue to an outbox table plus a relay; transactional dequeue to peek-lock, commit, then complete, with idempotent consumers.
+    - PL/SQL callbacks to Azure Functions Service Bus triggers; correlation-based grouping to sessions.
+    - Oracle-side inventory: queue tables, subscribers, rules, retention settings and every dequeue condition, because each becomes a filter, a session key or application code.
+  whenNotTo: >-
+    If the queue is only an intra-database work list consumed by code in the same database, a
+    table-as-queue pattern on the target (SQL Server READPAST and UPDLOCK hints, PostgreSQL SKIP
+    LOCKED) is simpler than a broker and keeps the single transaction; on Managed Instance,
+    Service Broker is an in-engine option too. High-volume telemetry or event streaming belongs in
+    Azure Event Hubs rather than Service Bus. On Oracle Database@Azure, AQ stays as it is.
+  relatedMappings: [mapping.advanced-queuing--service-bus]
+  sources: [source.oracle-adque-19-intro, source.ms-service-bus-overview, source.ms-sqldb-mi-feature-comparison]
+
+- _id: pattern.unified-auditing-to-azure-auditing
+  title: "Map Oracle Unified Auditing to Azure SQL Auditing and pgAudit"
+  problem: >-
+    Compliance controls that exist as Oracle unified audit policies (the ORA_SECURECONFIG and
+    ORA_LOGON_FAILURES baselines plus custom policies on sensitive tables) must be re-expressed on
+    the target, where auditing is a service-level configuration with different granularity,
+    different destinations and specific gaps. Migrations that copy the intent literally either
+    drown the target in audit volume or miss events the Oracle policy used to capture.
+  approach: |
+    Inventory the intent, not the syntax. List enabled policies from AUDIT_UNIFIED_ENABLED_POLICIES
+    and their definitions from AUDIT_UNIFIED_POLICIES, then classify each into logon events
+    (successful and failed), privileged and security-relevant actions (user and role management,
+    grants, parameter changes, DDL), object access on named sensitive tables, and the accounts or
+    conditions exempted. Record where the records go today (retention in the trail, export to a
+    SIEM) and who reads them. Oracle's documentation describes unified auditing as policy-driven
+    records consolidated into UNIFIED_AUDIT_TRAIL; the author's lab shows the practical wrinkle that
+    the trail is written in queued mode and must be flushed before an investigation trusts an empty
+    result, which has an analogue on every target in the form of destination ingestion delay.
+
+    Azure SQL Database and Managed Instance: Azure SQL Auditing. Microsoft's overview describes
+    auditing that tracks database events and writes them to a storage account (append blobs in
+    extended-event format), a Log Analytics workspace or Event Hubs, configured at the server level
+    (all databases) or the database level. Since the 2025 re-architecture, server auditing runs one
+    extended-event session per server and writes all databases' events into a single folder, and
+    Microsoft's recommendation for many databases with heavy OLTP is to prefer database-level
+    auditing and a filtered set of action groups rather than capturing every completed batch. Map the
+    Oracle baselines to the logon and security action groups, custom table policies to
+    object-scoped action groups, and Oracle's exemptions to predicate filters. Know the documented
+    gaps before signing off: capture is best-effort under very high load, the statement text is
+    truncated at 4,000 characters, tempdb and temporary tables are not audited, and failed logins
+    for Microsoft Entra identities do not appear in the SQL audit log at all (they are in Entra
+    sign-in logs), so a control that relied on ORA_LOGON_FAILURES needs both sources. Immutable
+    storage can be configured for tamper evidence.
+
+    PostgreSQL Flexible Server: pgAudit. Microsoft's guidance is to allowlist the extension, load its
+    library through shared_preload_libraries and create it in each database, then set pgaudit.log to
+    the classes needed (READ, WRITE, ROLE, DDL, FUNCTION, MISC), naming each class explicitly
+    because the minus shortcut from the upstream documentation is not supported on the service.
+    Session audit logging covers statement classes; object audit logging, driven by grants to a
+    designated audit role, is the equivalent of an Oracle policy on one sensitive table. Use the
+    ROLE class rather than log_statement for user management so passwords are redacted. Records go
+    to the server log with an AUDIT: prefix and, with resource logging enabled, to Log Analytics,
+    Storage or Event Hubs, queryable from the AzureDiagnostics table with the PostgreSQLLogs
+    category. Two operational notes from the documentation: leave pgaudit.log_client off, and expect
+    an in-place major version upgrade to drop and recreate the extension without preserving custom
+    pgaudit settings, so keep the configuration in infrastructure code.
+
+    Verify the way the lab does. After configuring the target, trigger one representative event per
+    control (a failed login, a user or role creation, a read of the sensitive table), wait for
+    ingestion, and query the destination for each. A policy that is enabled but not capturing is
+    worse than none, and that is the finding the lab is built to surface. Oracle Database@Azure is
+    the one target where nothing changes: unified auditing stays in the database, and Microsoft's
+    overview notes that audit logs can additionally be surfaced through Azure Monitor.
+
+    - ORA_LOGON_FAILURES: Azure SQL failed-login action group plus Entra sign-in logs; pgAudit does not log failed logins, so use PostgreSQL connection logging.
+    - ORA_SECURECONFIG (privileged actions, user and role management, DDL): Azure SQL security and DDL action groups; pgAudit ROLE and DDL classes.
+    - Custom policy on a sensitive table: Azure SQL object-scoped action groups or predicate filter; pgAudit object audit logging via the audit role.
+    - Exempt accounts: Azure SQL predicate expression; pgAudit has no per-user exemption, so filter at the log analytics layer.
+    - Destination and retention: Storage, Log Analytics or Event Hubs on both platforms; set retention and immutability to match the Oracle control.
+  whenNotTo: >-
+    Do not attempt a record-for-record reproduction of the Oracle trail; audit volume and Log
+    Analytics ingestion cost behave differently and the auditors care about the control, not the
+    row format. Do not port traditional auditing settings (the AUDIT_TRAIL parameter and its
+    statement-level audits) literally either; convert them to policy intent first, since traditional
+    auditing is desupported in 26ai and its granularity does not match either Azure mechanism.
+  sources: [source.oracle-glossary-intro-auditing, source.ua-lab-unified-auditing, source.ms-sqldb-auditing, source.ms-kb-pgaudit, source.ms-oracle-db-at-azure-overview]
+
+- _id: pattern.app-tier-latency-to-oracle-database-at-azure
+  title: "Handle application-tier latency to Oracle Database@Azure and across the OCI-Azure Interconnect"
+  problem: >-
+    "Two milliseconds is nothing" is true only for applications that do not multiply it. A chatty
+    OLTP application issuing hundreds of sequential single-row statements per user action pays
+    round trips times latency on every one, so where the database lives relative to the
+    application tier (same Azure datacenter through Oracle Database@Azure, a paired OCI region over
+    the Interconnect, or a cross-region path) is a latency-tier decision that must be measured
+    rather than assumed.
+  approach: |
+    Know the three latency tiers. The author's placement post describes them: Oracle
+    Database@Azure puts Oracle-operated Exadata inside the Azure datacenter on your virtual network,
+    so an Azure application talks to it at same-building latency; the OCI-Azure Interconnect keeps
+    the database in OCI and links paired regions privately at under two milliseconds round trip with
+    no charges for traffic over the link; anything cross-region or cross-cloud without the
+    Interconnect is in the ten-millisecond class. Microsoft's overview of the service makes the
+    same point from its side, describing colocation in Azure datacenters as the way to give
+    database workloads the low latency they require and Azure Virtual Network as the network
+    fabric.
+
+    Measure the multiplication instead of debating it. The author's latency lab runs two workloads
+    against one database while injecting 0, 2 and 10 milliseconds of app-to-database delay: a chatty
+    workload of about 1,000 single-row statements (the shape of row-by-row ORM traffic) and a
+    batched workload that fetches the same rows in one statement with a large array size. In the
+    published run the chatty workload went from roughly 0.6 seconds to 3.2 seconds to 11.7 seconds
+    while the batched one moved from about 0.1 to 0.15 to 0.26 seconds; the penalty is almost
+    exactly round trips times injected delay, and the round-trip counts are read from V$MYSTAT
+    rather than assumed. Do the same for your application: count SQL*Net round trips per
+    transaction from V$SESSTAT or an AWR report (the SQL*Net message from client wait is where a
+    chatty application shows up on the database side), multiply by the latency of each candidate
+    home, and you have the added response time before anyone signs a contract.
+
+    Reduce round trips before you move buildings. The batched workload in the lab barely notices
+    latency because it makes a handful of round trips; that is a property of the code, not the
+    cloud. Array fetching and bulk binds, fewer per-row statements from the data access layer,
+    moving loops into PL/SQL procedures so the logic runs next to the data, connection pooling, and
+    committing per batch rather than per row all shrink the multiplier. These changes also pay off
+    on Azure SQL and PostgreSQL targets, whose managed gateways add their own hops, so they are
+    worth doing regardless of the placement decision.
+
+    Then place by application gravity and measured tolerance. If the application estate is
+    committed to Azure and the measured multiplication is unacceptable at two milliseconds, put the
+    database in the same region through Oracle Database@Azure and keep the application tier in the
+    same region (and, where the service allows, the same availability zone) as the database VM
+    cluster's delegated subnet. If the measured added time is tolerable, the Interconnect keeps OCI
+    economics and the full OCI catalogue with the application in the paired Azure region. Batch,
+    reporting and services with sane call patterns usually tolerate the Interconnect; chatty OLTP
+    usually does not. The Interconnect is also the natural cross-cloud disaster-recovery link, with
+    a Data Guard standby on the other side and asynchronous transport chosen for the distance.
+
+    - Measure round trips per transaction on the source (V$SESSTAT, AWR) and multiply by 0, 2 and 10 milliseconds to price each home.
+    - Fix the code first: array operations, batching, server-side procedures, pooling, fewer commits.
+    - Chatty and Azure-committed: Oracle Database@Azure in the application's region; latency-tolerant: OCI plus the Interconnect; neither anchored to Azure: OCI native.
+    - Keep the application tier in the same region as the database and test the path end to end before cutover, including the Data Guard standby path if DR crosses clouds.
+  whenNotTo: >-
+    Do not move the database into Azure purely for latency when the workload is batch or reporting
+    with few round trips; the cost profile and the two-control-plane operating model of Oracle
+    Database@Azure matter more there. And do not use latency to choose between Oracle
+    Database@Azure and a re-platform to Azure SQL or PostgreSQL; that decision is about feature
+    fidelity and licensing, and every PaaS target sits behind a gateway of its own.
+  sources: [source.ua-blog-database-at-azure-vs-oci, source.ua-lab-latency, source.ms-oracle-db-at-azure-overview]

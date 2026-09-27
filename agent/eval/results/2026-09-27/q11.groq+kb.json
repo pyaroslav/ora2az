@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "id": "q11",
+    "type": "fact",
+    "cond": "groq+kb",
+    "num_turns": 6,
+    "duration_ms": 25607,
+    "session_id": "5e10e2bd-c40b-4280-bb31-b00cbac8b26b",
+    "usage": {
+      "input_tokens": 8,
+      "cache_creation_input_tokens": 12177,
+      "cache_read_input_tokens": 37947,
+      "output_tokens": 1763,
+      "output_tokens_details": {
+        "thinking_tokens": 140
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12177,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1027,
+          "cache_read_input_tokens": 14078,
+          "cache_creation_input_tokens": 3913,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 3913
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q11",
+    "type": "fact",
+    "q": "Does Azure SQL Database (not Managed Instance) support database links / cross-database queries like Oracle?",
+    "expected": "Azure SQL Database lacks linked servers and cross-database queries (elastic query is the partial workaround); SQL MI supports linked servers; answer must distinguish DB from MI.",
+    "required_sources": [
+      "microsoft"
+    ]
+  },
+  "result": "**Verdict: No.** Azure SQL Database does not support Oracle-style database links or true cross-database queries; the closest workaround (Elastic Query) is a limited, preview-status, read-only substitute.\n\n**Scoped facts:**\n\n- Mapping: Oracle Database links (all versions 11.2–26ai) → Azure SQL Database has **fidelity: workaround**, effort **L**. \"Azure SQL Database supports neither linked servers nor cross-database three-part-name queries. Elastic query (still in preview) exposes remote Azure SQL tables as read-only external tables and can execute remote procedures with sp_execute_remote, which covers reporting-style database links but not DML through the link or links to non-SQL targets. Many teams instead consolidate schemas into one database or move to Managed Instance.\" — [Compare SQL Database Engine features: Azure SQL Database vs Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/database/features-comparison)\n\n- **Blocker caveat**: \"Azure SQL Database supports neither linked servers nor cross-database three-part-name queries or cross-database transactions; the feature comparison points to elastic query as the partial workaround for read-only cross-database access.\" — [Compare SQL Database Engine features: Azure SQL Database vs Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/database/features-comparison)\n\n- **Major caveat on the workaround itself (Elastic Query)**: \"Elastic query is in preview, supports only read-only access to external tables (DML must go through sp_execute_remote), does not support LOB types other than nvarchar(max) in external table definitions, works only with SQL authentication, and its shard-map mode reaches end of support on 2027-03-31.\" — [Elastic query overview (Azure SQL Database)](https://learn.microsoft.com/en-us/azure/azure-sql/database/elastic-query-overview)\n\n**Contrast with Managed Instance** (confirms the \"not Managed Instance\" framing in your question): Azure SQL Managed Instance *does* support cross-database queries/transactions within the instance and linked servers to other SQL-family targets (SQL MI, Azure SQL DB, Synapse SQL pools, SQL Server) — fidelity **partial**, effort **M** — but linked servers still cannot target Oracle or other non-SQL RDBMS. — [T-SQL differences between SQL Server and Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/transact-sql-tsql-differences-sql-server)\n\n**Practical implication** (per the same mapping rationale): if your Oracle estate depends on database links for cross-schema/cross-database access, either consolidate the linked schemas into a single Azure SQL Database, or target Managed Instance instead, since Elastic Query only covers reporting-style read access.\n\nNo dispute record in the dataset touches this specific mapping, so there are no conflicting claims to present.",
+  "stderr": ""
+}

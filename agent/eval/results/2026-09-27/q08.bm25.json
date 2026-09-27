@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "id": "q08",
+    "type": "fact",
+    "cond": "bm25",
+    "num_turns": 1,
+    "duration_ms": 12001,
+    "session_id": "6a5a1a17-3663-43e3-bfb5-bdfd4c7c21c2",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 12653,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 1091,
+      "output_tokens_details": {
+        "thinking_tokens": 135
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12653,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1091,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 12653,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 12653
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q08",
+    "type": "fact",
+    "q": "Which Oracle auditing method survives into 26ai and what does Azure SQL offer instead?",
+    "expected": "Traditional auditing desupported in 26ai (deprecated 21c) → Unified Auditing; on Azure SQL use Azure SQL Auditing (server/database policies to Log Analytics/Storage); note gaps vs FGA if recorded.",
+    "required_sources": [
+      "oracle",
+      "microsoft"
+    ]
+  },
+  "passages": [
+    {
+      "id": "feature_before-row-triggers",
+      "type": "oracleFeature",
+      "text": "plsql | pre-11.2 | BEFORE row triggers | Oracle triggers fire at statement or row level, before or after the triggering DML, or instead of it on views, and compound triggers bundle several timing points with shared state. A BEFORE row trigger runs once per affected row before the change is applied and may modify the new values, which makes it the standard place to populate keys from sequences, stamp audit columns, and validate or normalize data. Migrations care because SQL Server has no BEFORE triggers. Its AFTER triggers fire once per statement after the change, and INSTEAD OF triggers replace the statement, so per-row pre-modification logic must move into defaults, computed columns, INSTEAD OF triggers or application code. PostgreSQL does offer BEFORE ROW triggers with modifiable new-row values, which makes that path closer, but the mutating-table rules and firing-order guarantees still differ. Triggers are core PL/SQL and not deprecated.",
+      "score": 14.7
+    },
+    {
+      "id": "feature_traditional-auditing",
+      "type": "oracleFeature",
+      "text": "security | 21c | 26ai | pre-11.2 | Traditional (pre-Unified) Auditing | Unified Auditing | Traditional auditing is the pre-12c audit model: AUDIT and NOAUDIT statements, the AUDIT_TRAIL initialization parameter, records written to the SYS.AUD$ and FGA_LOG$ tables or to operating-system and XML files, and fine-grained audit policies managed through DBMS_FGA. Unified auditing, introduced in 12.1, replaced all of this with policy objects and a single audit trail. Migrations care because audit configuration is usually compliance-driven and must be reproduced on the target. Knowing which statements, privileges and objects were audited, what conditions fine-grained policies applied, and where the records were written is needed to configure Azure SQL Auditing or the pgAudit extension. Databases running in mixed mode, with both traditional and unified auditing active, are harder to inventory. Oracle's 21c Upgrade Guide declares traditional auditing deprecated (notice dated May 2021) and recommends unified auditing. The 26ai Upgrade Guide lists it as desupported (notice dated April 2023). The same 26ai page deprecates the PL/SQL cleanup helpers tied to the old trail and removes the FLUSH_UN",
+      "score": 13.384
+    },
+    {
+      "id": "mapping_before-row-triggers--azure-sql-db",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | M | partial | SQL Server DML triggers are AFTER or INSTEAD OF and fire once per statement over the inserted and deleted pseudo-tables; there is no BEFORE EACH ROW trigger. SSMA converts BEFORE triggers into INSTEAD OF triggers and emulates row-level logic with cursors, which works but is slow for bulk DML. The common Oracle idiom of assigning sequence values or defaults in a BEFORE INSERT trigger is better replaced with DEFAULT constraints or identity columns. | Classify BEFORE ROW triggers: value derivation, validation, auditing, or complex cross-row logic. Replace sequence assignment with DEFAULT (NEXT VALUE FOR seq) or IDENTITY. Rewrite validation as CHECK constraints or set-based INSTEAD OF triggers without cursors. Keep SSMA's cursor-based conversion only for low-volume tables.",
+      "score": 13.311
+    },
+    {
+      "id": "mapping_tls-1-0-1-1--azure-pg-flex",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | S | exact | Flexible Server requires TLS on every connection by default and accepts only TLS 1.2 and 1.3, denying 1.0 and 1.1, which matches Oracle's desupport of the older versions. It does not offer mutual TLS or custom server certificates, so wallet-based client certificate authentication used with Oracle Net cannot be reproduced and must become password or Entra authentication. | Keep require_secure_transport on and optionally set ssl_min_protocol_version to TLSv1.3. Configure clients with sslmode=verify-full or verify-ca and the Azure root CA certificates, not pinned intermediates. Replace Oracle client-certificate authentication with Entra or password authentication.",
+      "score": 11.401
+    },
+    {
+      "id": "mapping_database-links--azure-sql-db",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | L | workaround | Azure SQL Database supports neither linked servers nor cross-database three-part-name queries. Elastic query (still in preview) exposes remote Azure SQL tables as read-only external tables and can execute remote procedures with sp_execute_remote, which covers reporting-style database links but not DML through the link or links to non-SQL targets. Many teams instead consolidate schemas into one database or move to Managed Instance. | Inventory DBA_DB_LINKS and classify link usage (read-only lookup, DML, distributed transaction, non-Oracle target). Consolidate tightly coupled schemas into one database where possible. For read-only access across Azure SQL databases, create external data sources and external tables (elastic query). Replace DML over links with application-level orchestration or Data Factory.",
+      "score": 10.829
+    },
+    {
+      "id": "caveat_azure-sql-auditing-best-effort",
+      "type": "caveat",
+      "text": "General Purpose, Business Critical, Hyperscale | major | Azure SQL auditing is optimized for availability and may allow transactions to proceed without recording every audited event during very high activity, truncates the statement field at 4,000 characters, does not audit tempdb or temporary tables, and does not record failed Microsoft Entra logins in the SQL audit log.",
+      "score": 10.401
+    },
+    {
+      "id": "pattern_choose-migration-method",
+      "type": "pattern",
+      "text": "The author's migration-methods lab and the companion post organise the decision as four gates applied in a fixed order. The order matters because each gate eliminates methods before the next one is considered, and most wrong plans come from applying the gates in the wrong order (for example choosing Data Guard for its near-zero downtime before checking whether the target can host a standby at all). Gate 1: what does the target allow? Physical methods (RMAN restore or duplicate, transportable tablespaces, a Data Guard standby) need SYSDBA, file-system access and a database you can mount and recover. The Exadata and Base services of Oracle Database@Azure and Oracle on Azure VMs give you that, so every method is on the table there; Oracle's own service page lists Data Guard and Zero Downtime Migration among the supported tooling. Autonomous Database, including the Autonomous flavour offered through Oracle Database@Azure, does not: the blog is explicit that into Autonomous it is logical only, meaning Data Pump from object storage run as ADMIN with the ADB-managed object classes excluded, or GoldenGate. Azure SQL Database, Azure SQL Managed Instance and PostgreSQL Flexible Server are lo",
+      "score": 10.393
+    },
+    {
+      "id": "mapping_tls-1-0-1-1--azure-sql-db",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | S | exact | Azure SQL Database and Managed Instance already enforce what Oracle's desupport of TLS 1.0 and 1.1 demands: those versions are retired, the lowest configurable minimum is TLS 1.2, the default accepts TLS 1.2 and above, and TLS 1.3 can be required. The migration task is on the client side, upgrading drivers that cannot negotiate TLS 1.2 or later. | Audit client TLS versions with SQL auditing (client_tls_version_name) or the portal connection metrics. Upgrade drivers and runtimes that cannot negotiate TLS 1.2. Set the server minimum TLS version to 1.2 (or 1.3 after driver testing).",
+      "score": 10.069
+    }
+  ],
+  "result": "**Unified Auditing is the method that survives into 26ai.** Traditional auditing is desupported there. On Azure SQL Database, the replacement is **Azure SQL Auditing**, which has some important limits.\n\n**Oracle side [2]**\n- **Traditional auditing** is the pre-12c model. It covers:\n  - `AUDIT`/`NOAUDIT` statements and the `AUDIT_TRAIL` parameter\n  - records in `SYS.AUD$` and `FGA_LOG$`, or in OS and XML files\n  - fine-grained audit policies managed through `DBMS_FGA`\n- **Its status by release:**\n  - 21c Upgrade Guide: deprecated (notice dated May 2021). Oracle recommends unified auditing instead.\n  - 26ai Upgrade Guide: desupported (notice dated April 2023). The same page also deprecates the PL/SQL cleanup helpers tied to the old audit trail. The passage is cut off after that, so I can't give the full list of what 26ai removes.\n- **Unified Auditing** arrived in 12.1. It replaced all of the above with policy objects and a single audit trail.\n- **Migration impact:** audit settings are usually required for compliance, so the target has to reproduce them. Before configuring Azure SQL Auditing, inventory:\n  - which statements, privileges and objects were audited\n  - the conditions set in fine-grained audit policies\n  - where the records were written\n\n  Databases running both traditional and unified auditing (\"mixed mode\") are harder to inventory.\n\n**Azure side**\n- **Azure SQL Auditing** is the target named for Azure SQL [2]. For PostgreSQL, the equivalent is the pgAudit extension.\n- **Limits that apply on General Purpose, Business Critical and Hyperscale** (rated \"major\") [6]:\n  - It prioritises availability. During very high activity, transactions can go ahead without every audited event being recorded.\n  - The statement text is cut off at 4,000 characters.\n  - It doesn't audit tempdb or temporary tables.\n  - Failed Microsoft Entra logins aren't recorded in the SQL audit log.\n\n  Check these against your compliance requirements before you sign off. They matter most if you relied on complete capture, like Oracle's fine-grained auditing or full SQL text.\n- **Audit columns stamped by `BEFORE` row triggers** (a separate mechanism): SQL Server has no `BEFORE` triggers. Move that logic to `DEFAULT` constraints, set-based `INSTEAD OF` triggers, or application code [1][3].\n\n**What the passages don't cover:** how to configure Azure SQL Auditing (targets, retention, action groups), or any direct mapping from `DBMS_FGA` policies to Azure SQL features. The passages also have no source URLs, so I can't cite links.",
+  "stderr": ""
+}

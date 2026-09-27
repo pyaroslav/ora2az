@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q13",
+    "type": "dispute",
+    "cond": "groq",
+    "num_turns": 5,
+    "duration_ms": 27625,
+    "session_id": "57c837b6-c29f-477d-a52d-c6236d7c455e",
+    "usage": {
+      "input_tokens": 8,
+      "cache_creation_input_tokens": 8884,
+      "cache_read_input_tokens": 27130,
+      "output_tokens": 2523,
+      "output_tokens_details": {
+        "thinking_tokens": 109
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 8884,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1784,
+          "cache_read_input_tokens": 8624,
+          "cache_creation_input_tokens": 5358,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 5358
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q13",
+    "type": "dispute",
+    "q": "Some posts say DBMS_JOB was removed in 19c. True?",
+    "expected": "No: deprecated, still functional (Oracle doc) vs community 'removed' claims — present both and the resolution (jobs are converted to scheduler jobs under the hood; package still works).",
+    "required_sources": [
+      "oracle",
+      "community"
+    ]
+  },
+  "result": "**Verdict: False.** DBMS_JOB was not removed in 19c — it is deprecated (since 12.2) but still functional through 26ai. There's a recorded dispute over exactly this misconception.\n\n**Feature facts** — DBMS_JOB: `deprecatedIn` = 12.2, `desupportedIn` = not set (no desupport recorded), Oracle-side replacement recorded as DBMS_SCHEDULER. [DBMS_JOB (PL/SQL Packages and Types Reference 19c)](https://docs.oracle.com/en/database/oracle/oracle-database/19/arpls/DBMS_JOB.html), [Deprecated Features in Oracle Database 12c Release 2 (12.2)](https://docs.oracle.com/en/database/oracle/oracle-database/12.2/upgrd/deprecated-features-oracle-database-12c-r2.html)\n\n**Dispute on record: \"Did DBMS_JOB stop working in 19c?\"**\n- **Claim A** (ORACLE-BASE, community): \"DBMS_JOB is deprecated but continues to function in 19c and later: each DBMS_JOB.SUBMIT creates a paired DBMS_SCHEDULER job named DBMS_JOB$_n, existing jobs are converted during upgrade, and the legacy interface remains a supported wrapper over the scheduler.\" — [ORACLE-BASE: DBMS_JOB jobs converted to DBMS_SCHEDULER jobs in Oracle Database 19c](https://oracle-base.com/articles/19c/dbms_job-jobs-converted-to-dbms_scheduler-jobs-19c)\n- **Claim B** (Ask TOM thread, community): A poster reported DBMS_JOB.SUBMIT \"not working anymore\" after a 12.1.0.2 → 19.8 upgrade, framing that circulates as \"removed in 19c.\" — [Ask TOM: dbms_job.submit ... not working anymore in 19c](https://asktom.oracle.com/ords/f?p=100:11::::RP:P11_QUESTION_ID:9543716900346819825)\n- **What disagrees**: Oracle's own docs say deprecated-but-functional with jobs auto-converted to Scheduler; the Ask TOM thread's framing suggests removal.\n- **Resolution** (resolved by [DBMS_JOB (PL/SQL Packages and Types Reference 19c)](https://docs.oracle.com/en/database/oracle/oracle-database/19/arpls/DBMS_JOB.html), Oracle): Both observations are compatible. From 19c, a schema calling DBMS_JOB.SUBMIT needs the new **CREATE JOB** privilege or it fails with **ORA-27486** — that privilege change, not removal, explains most \"stopped working\" reports. The package remains deprecated and functional through 26ai. For Azure migration purposes the practical conclusion is unchanged regardless: job bodies still need to be re-homed, but the timeline isn't forced by removal.\n\n**Related caveats for context** (all apply to 19c/21c/23ai unless noted):\n- CREATE JOB privilege requirement causing ORA-27486 is the \"usual reason\" for reports of DBMS_JOB \"no longer working.\" — [ORACLE-BASE: DBMS_JOB jobs converted to DBMS_SCHEDULER jobs in Oracle Database 19c](https://oracle-base.com/articles/19c/dbms_job-jobs-converted-to-dbms_scheduler-jobs-19c)\n- Upgrading to 19c converts existing DBMS_JOB jobs into DBMS_SCHEDULER jobs (tracked in `scheduler$_dbmsjob_map`); \"Oracle had announced no desupport\" at time of writing. — [Mike Dietrich: DBMS_JOB behavior change in Oracle 19c during upgrade](https://mikedietrichde.com/2019/05/24/dbms_job-behavior-change-in-oracle-19c-during-upgrade/)\n- DBMS_JOB.SUBMIT remains transactional (rolled back with caller's transaction) even in 19c — a behavior difference from Azure targets (Elastic Jobs, SQL Agent, pg_cron) that commit immediately. — [Connor McDonald: DBMS_JOB - the joy of transactions](https://connor-mcdonald.com/2019/05/28/dbms_job-the-joy-of-transactions/)\n\n**Azure migration implication** (unaffected by the removal myth): DBMS_JOB maps with `partial` fidelity, effort M, to SQL Server Agent (Managed Instance), Azure SQL Elastic Jobs, or pg_cron (PostgreSQL Flexible Server) — [Elastic jobs in Azure SQL Database](https://learn.microsoft.com/en-us/azure/azure-sql/database/elastic-jobs-overview), [T-SQL differences between SQL Server and Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/transact-sql-tsql-differences-sql-server), [pg_cron README](https://github.com/citusdata/pg_cron).",
+  "stderr": ""
+}

@@ -1,0 +1,106 @@
+{
+  "meta": {
+    "id": "q12",
+    "type": "fact",
+    "cond": "bm25",
+    "num_turns": 1,
+    "duration_ms": 12542,
+    "session_id": "ccb654a2-1211-4988-80f4-5d1752816acc",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 12584,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 1250,
+      "output_tokens_details": {
+        "thinking_tokens": 212
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12584,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1250,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 12584,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 12584
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q12",
+    "type": "fact",
+    "q": "What replaces the original exp utility in Oracle 26ai and what does that mean for our export-based migration scripts?",
+    "expected": "Original Export (exp) is desupported in 26ai; use Data Pump (expdp); scripts must be rewritten; mention that imp of old dumps may still be relevant if recorded.",
+    "required_sources": [
+      "oracle"
+    ]
+  },
+  "passages": [
+    {
+      "id": "feature_exp-utility",
+      "type": "oracleFeature",
+      "text": "tooling | 26ai | pre-11.2 | Original Export utility (exp) | Data Pump Export (expdp) | The original Export utility, exp, is the client-side program that reads a database over a session and writes a proprietary dump file; imp is its import counterpart. Data Pump (expdp and impdp) replaced the pair in 10g with a server-side, parallel design and a different dump-file format. Migrations care because legacy runbooks and cron jobs still call exp for backups and schema copies. Its dump files cannot be read by Data Pump import, and neither format can be loaded directly into an Azure database service, so an inventory of \"exports\" must distinguish old-style dumps from Data Pump dumps before deciding what to keep. Oracle's Utilities guide says original Export has been desupported for general use since 11g, with backward migration of XMLType data to 10.2 the only remaining supported use, and recommends Data Pump. The 26ai Upgrade Guide lists the utility itself as desupported (notice dated April 2023). Because the 11g statement is phrased as a limited desupport rather than a deprecation of a named release, no deprecation release is recorded here.",
+      "score": 32.792
+    },
+    {
+      "id": "mapping_exp-utility--ssma",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai | M | workaround | The original Export utility produced legacy .dmp files that only imp could read; none of the Azure migration tools accept them. SSMA needs a live connection to the Oracle database, so old exp dumps must first be imported into an Oracle instance (any supported release, or Oracle Database@Azure) before SSMA, Ora2Pg or Data Factory can extract from it. | Import legacy exp dumps into a staging Oracle database with imp. Point SSMA (or Ora2Pg / Data Factory) at the staging database. Retire exp-based nightly extracts in favour of Data Factory pipelines or SQL backups.",
+      "score": 26.541
+    },
+    {
+      "id": "glossary_data-pump-vs-original-export",
+      "type": "glossary",
+      "text": "expdp/impdp, exp/imp | Data Pump is Oracle's server-side export and import engine: the expdp and impdp clients only start and monitor a job run by the DBMS_DATAPUMP and DBMS_METADATA packages on the database server, which read and write dump files through a DIRECTORY object on the server's file system, run in parallel, restart after failure, and can remap schemas, tablespaces and datafiles or skip the dump file altogether over a database link. The original Export and Import utilities (exp and imp) stream data through the client, are single-threaded, and are legacy tools that Oracle steers new work away from; their dump files are not readable by Data Pump and vice versa. Data Pump is also the only supported load path into Autonomous Database. | Data Pump vs original Export/Import",
+      "score": 19.023
+    },
+    {
+      "id": "source_oracle-sutil-19-original-export",
+      "type": "source",
+      "text": "Database Utilities 19c | Original Export desupported for general use as of 11g; XMLType backward migration to 10.2 is the only supported use. | oracle | 2026-09-26 | Original Export (Utilities 19c) | https://docs.oracle.com/en/database/oracle/oracle-database/19/sutil/oracle-original-export-utility.html",
+      "score": 18.227
+    },
+    {
+      "id": "target_azure-dms",
+      "type": "azureTarget",
+      "text": "Azure Database Migration Service | migration-tool | Azure Database Migration Service orchestrates migrations to Azure data platforms, with generally available scenarios for SQL Server, MySQL, PostgreSQL and MongoDB sources. Its supported-scenario table lists Oracle to Azure SQL targets as offline-only preview scenarios that rely on SSMA for schema conversion and data movement, and it has no Oracle to PostgreSQL scenario; the separate migration service inside Azure Database for PostgreSQL also accepts only PostgreSQL sources. In practice, an Oracle migration uses DMS as a wrapper around SSMA for SQL targets and uses Ora2Pg, the VS Code schema conversion feature or Data Factory for PostgreSQL targets. Dump-file based tooling such as Data Pump or the original Export utility cannot be consumed by DMS. | Oracle appears only as an offline source for Azure SQL Database, Managed Instance and SQL Server on Azure VMs, marked 'using DMS via SSMA' and Preview. No Oracle source is listed for online migrations or for Azure Database for PostgreSQL.",
+      "score": 18.162
+    },
+    {
+      "id": "feature_data-pump",
+      "type": "oracleFeature",
+      "text": "tooling | pre-11.2 | Data Pump (expdp/impdp) | Data Pump is Oracle's server-side export and import framework: the expdp and impdp clients, the DBMS_DATAPUMP job API and the DBMS_METADATA API for extracting object definitions. Jobs run inside the database, write proprietary dump files to directory objects, can run in parallel on Enterprise Edition, can move data over a database link without files, and can transport whole tablespaces by copying data files. Migrations care in two ways. For Oracle-to-Oracle moves to Oracle Database@Azure or Oracle on Azure virtual machines, Data Pump is the workhorse. For heterogeneous moves its dump files are useless to Azure SQL or PostgreSQL, but the metadata API is a reliable way to extract DDL for conversion tools, and existing Data Pump jobs and directory objects are part of the operational inventory. Data Pump is supported and not deprecated; it is the replacement Oracle names for the original Export utility that the 26ai Upgrade Guide desupports.",
+      "score": 15.663
+    },
+    {
+      "id": "feature_oracle-wallet-manager",
+      "type": "oracleFeature",
+      "text": "security | 21c | 26ai | pre-11.2 | Oracle Wallet Manager (OWM) | orapki command-line tool | Oracle Wallet Manager is the graphical Java tool for creating and maintaining Oracle wallets, the PKCS#12 containers that hold TLS certificates, private keys and, in many deployments, the Transparent Data Encryption keystore and secure external password store entries. Migrations care because wallets hold material the migration itself depends on: the TDE master key needed to read encrypted tablespaces during export, and the certificates used for TLS connections from migration tooling. Moving key management to Azure Key Vault starts with an inventory of wallets, and scripts that invoked the GUI must be rewritten around command-line tools. Oracle's 21c Upgrade Guide deprecates Oracle Wallet Manager (notice dated May 2021), and the 26ai guide desupports it (notice dated April 2023), recommending the orapki command-line tool instead.",
+      "score": 15.074
+    },
+    {
+      "id": "glossary_character-set-vs-national-character-set",
+      "type": "glossary",
+      "text": "NLS_CHARACTERSET, NLS_NCHAR_CHARACTERSET, NLS_LANG | The database character set (NLS_CHARACTERSET) is the encoding used for CHAR, VARCHAR2, CLOB and LONG columns and for identifiers and stored source code; Oracle recommends AL32UTF8 (Unicode) for all new databases, and legacy sets such as US7ASCII or WE8MSWIN1252 can only represent a subset of characters. The national character set (NLS_NCHAR_CHARACTERSET) is a second, always-Unicode encoding (AL16UTF16 or UTF8) used only for NCHAR, NVARCHAR2 and NCLOB columns, intended for storing Unicode in a database whose main character set is not Unicode. A third setting, the client's NLS_LANG, is not a database property at all: it declares what the bytes arriving from a client mean, and a wrong declaration corrupts data even when both databases are Unicode. Migration agents must map all three, not just the first. | Database character set vs national character set",
+      "score": 14.579
+    }
+  ],
+  "result": "**Verdict:** Data Pump Export (`expdp`, paired with `impdp`) replaces the original `exp` utility. The 26ai Upgrade Guide lists `exp` as desupported (notice dated April 2023), so any script that calls `exp` needs to be rewritten or retired before you rely on 26ai.\n\n**Key facts**\n- **Status:** Oracle has treated original Export as desupported for general use since 11g. The only supported use left was backward migration of XMLType data to 10.2. The 26ai Upgrade Guide goes further and desupports the utility itself. Oracle names Data Pump as the replacement, and Data Pump is supported, not deprecated. [1][4][6] Source: https://docs.oracle.com/en/database/oracle/oracle-database/19/sutil/oracle-original-export-utility.html\n- **Not a drop-in swap:** Data Pump runs on the database server. The `expdp`/`impdp` clients only start and monitor a job, which writes dump files to a server-side DIRECTORY object. It can run in parallel, restart after failure, remap schemas and tablespaces, or skip dump files entirely by using a database link. `exp` streams data through the client on a single thread. Scripts that expect a dump file to land on the client machine, or that use `exp` parameters, need a real rewrite, not a renamed command. [3][6]\n- **Dump formats don't mix:** Data Pump import can't read old `exp` dumps, and `imp` can't read Data Pump dumps. Your inventory should label each existing dump by format before you decide what to keep. [1][3]\n\n**What this means for migration scripts**\n1. **Oracle-to-Oracle targets** (Oracle Database@Azure, Oracle on Azure VMs): move the scripts to `expdp`/`impdp`, which is the main tool for these moves. Data Pump is also the only supported load path into Autonomous Database. [3][6]\n2. **Azure SQL or PostgreSQL targets:** changing the export tool won't make the output usable. Neither `exp` dumps nor Data Pump dumps can be loaded by Azure database services, DMS, SSMA, Ora2Pg or Data Factory. SSMA needs a live Oracle connection, and for SQL targets DMS just wraps SSMA. [1][2][5]\n3. **Legacy `exp` dumps you need to keep:** use `imp` to load them into a staging Oracle database (any supported release, or Oracle Database@Azure). Then point SSMA, Ora2Pg or Data Factory at that staging database. [2]\n4. **Nightly `exp` cron jobs and backups:** replace them with Data Factory pipelines or SQL backups on the Azure side. [2] Data Pump's metadata API (DBMS_METADATA) is still useful for pulling DDL to feed conversion tools. [6]\n\n**Gaps in these passages:** They don't say whether `imp` still runs against a 26ai database, so plan the legacy-dump staging instance on a release where `imp` is known to work. They also give no URL for the 26ai Upgrade Guide notice.",
+  "stderr": ""
+}

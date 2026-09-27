@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "id": "q03",
+    "type": "fact",
+    "cond": "groq+kb",
+    "num_turns": 8,
+    "duration_ms": 34319,
+    "session_id": "cbadd907-977d-4b1b-9c5c-d99ceacdbe1a",
+    "usage": {
+      "input_tokens": 10,
+      "cache_creation_input_tokens": 11484,
+      "cache_read_input_tokens": 52082,
+      "output_tokens": 2693,
+      "output_tokens_details": {
+        "thinking_tokens": 326
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 11484,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1564,
+          "cache_read_input_tokens": 16017,
+          "cache_creation_input_tokens": 1281,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 1281
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q03",
+    "type": "fact",
+    "q": "Is Oracle Streams still an option for replicating to Azure?",
+    "expected": "No: desupported in Oracle Database 19c (deprecated since 12.1); name the replacement route (GoldenGate or a log-based CDC tool / Azure DMS where applicable).",
+    "required_sources": [
+      "oracle"
+    ]
+  },
+  "result": "**Verdict: No.** Oracle Streams is deprecated and desupported by Oracle itself — it isn't a supported replication mechanism for any current Oracle release, and Azure has no service that reproduces it directly.\n\n**Lifecycle status**\n- Introduced pre-11.2; **deprecated in Oracle 12.1** and **desupported starting 19c** (19.1, per an April 2019 notice). Oracle's replacement is **GoldenGate**. — [Deprecated and Desupported Features for Oracle Database 12c (12.1)](https://docs.oracle.com/database/121/UPGRD/deprecated.htm), [Oracle Database Changes, Desupports, and Deprecations (Upgrade Guide 19c)](https://docs.oracle.com/en/database/oracle/oracle-database/19/upgrd/oracle-database-changes-deprecations-desupports.html)\n- Streams never supported 12c-era multitenant features; note that **Advanced Queuing itself is not deprecated** and remains fully supported (Streams used AQ queues internally). — same 19c source above, per the feature summary in the dataset.\n\n**Azure replication options mapped for Streams-era workloads (Oracle 11.2–18c scope in the dataset)**\n\n| Azure target | Fidelity | Key caveat |\n|---|---|---|\n| Azure Database Migration Service | **none** | No online/continuous-sync scenario with Oracle as a source at all — only offline SSMA migrations to Azure SQL targets. [Azure Database Migration Service: supported migration scenarios](https://learn.microsoft.com/en-us/azure/dms/resource-scenario-status) |\n| Azure Data Factory | **workaround** (effort L) | No native CDC or auto-incremental support for Oracle; requires a customer-managed watermark pipeline — batch micro-batches, not log-based streaming, and no delete capture without a soft-delete column. [Change data capture in Azure Data Factory and Azure Synapse](https://learn.microsoft.com/en-us/azure/data-factory/concepts-change-data-capture), [Copy data to and from Oracle with Azure Data Factory](https://learn.microsoft.com/en-us/azure/data-factory/connector-oracle) |\n| Microsoft Fabric (mirroring) | **partial** (effort M) | Reads redo via LogMiner into OneLake Delta tables (latency as low as tens of seconds) but is one-directional into OneLake only, requires archive log mode, supplemental logging, and an on-premises data gateway — not database-to-database replication. [Mirror Oracle databases in Microsoft Fabric](https://learn.microsoft.com/en-us/fabric/mirroring/oracle) |\n| Oracle Database@Azure | **partial** (effort M) | The Oracle-native successor, GoldenGate, is supported as a monitored deployment type for active-active replication, but is **not included** in the Database@Azure price and needs its own license; capture/replicat setup differs from Streams rules. [Business continuity and disaster recovery for Oracle Database@Azure](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/scenarios/oracle-on-azure/oracle-disaster-recovery-oracle-database-azure), [Overview: Oracle Database@Azure](https://learn.microsoft.com/en-us/azure/oracle/oracle-db/database-overview) |\n\nAll four mappings apply to Oracle versions **11.2, 12.1, 12.2, 18c**. Given Streams' 19c desupport, if you're planning on 19c or later, Streams isn't in scope at all and **GoldenGate on Oracle Database@Azure** is the closest documented replacement in this dataset.\n\n**Disputes:** none recorded for Oracle Streams in the dataset.\n\n**Gap:** the dataset has no mapping evaluating GoldenGate itself as an Azure-independent replication engine beyond the Oracle Database@Azure caveat above (e.g., GoldenGate on Oracle-on-Azure-VM targets isn't covered by a distinct mapping here).",
+  "stderr": ""
+}

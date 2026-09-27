@@ -1,0 +1,1415 @@
+# Oracle feature -> Azure target mappings. Ids: mapping.<feature-slug>--<target-slug>.
+# Versions: 11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai.
+
+# ---------------------------------------------------------------- scheduler
+
+- _id: mapping.dbms-job--sql-agent-mi
+  oracleFeature: feature.dbms-job
+  azureTarget: target.sql-agent-mi
+  fidelity: partial
+  effort: M
+  rationale: "DBMS_JOB jobs are anonymous PL/SQL blocks or procedure calls on an interval; SQL Server Agent on Managed Instance runs T-SQL job steps on schedules, which covers the same ground once the PL/SQL is converted. What does not carry over is the transactional submit semantics of DBMS_JOB (a job submitted inside a rolled-back transaction disappears) and the interval expression syntax, which becomes an Agent schedule. Agent on Managed Instance also lacks CmdExec steps, proxies and alerts."
+  steps: |
+    - Inventory jobs in DBA_JOBS and note that from 19c each one is also visible as a DBMS_JOB$_n row in DBA_SCHEDULER_JOBS.
+    - Convert the WHAT block with SSMA into a stored procedure.
+    - Create an Agent job with a T-SQL step calling the procedure and a schedule equivalent to the INTERVAL expression.
+    - Replace failure handling that relied on BROKEN flags with Agent job step retry and notification settings.
+    - Re-test any job that assumed the submit was rolled back with the caller's transaction.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.ms-sqlmi-tsql-differences, source.ms-sql-job-automation-overview, source.oracle-base-dbms-job-19c]
+
+- _id: mapping.dbms-job--elastic-jobs
+  oracleFeature: feature.dbms-job
+  azureTarget: target.elastic-jobs
+  fidelity: partial
+  effort: M
+  rationale: "Azure SQL Database has no Agent, so legacy DBMS_JOB submissions become Elastic Jobs: T-SQL steps run by a separate job agent against one or more databases on a UTC schedule. Simple interval jobs map cleanly; jobs that expected to run inside the same database engine with the submitter's transaction semantics, or that called OS-level code, do not."
+  steps: |
+    - Provision an elastic job agent with a dedicated, non-Hyperscale job database.
+    - Convert each job's PL/SQL body to a stored procedure in the target database.
+    - Define a target group for the database(s) and a job with a T-SQL step that executes the procedure.
+    - Translate the Oracle INTERVAL expression to a schedule, remembering all times are UTC.
+    - Make the step idempotent, because the agent retries failed executions.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.ms-sqldb-elastic-jobs, source.ms-sql-job-automation-overview]
+
+- _id: mapping.dbms-job--pg-cron
+  oracleFeature: feature.dbms-job
+  azureTarget: target.pg-cron
+  fidelity: partial
+  effort: M
+  rationale: "pg_cron schedules SQL commands with cron expressions inside PostgreSQL, so a DBMS_JOB that ran a procedure every N minutes becomes a cron.schedule call running CALL procedure(). Cron granularity is a minute (or a fixed seconds interval), there is no transactional submit, and jobs run in the configured cron database unless scheduled with cron.schedule_in_database."
+  steps: |
+    - Allowlist pg_cron and add it to shared_preload_libraries, then restart the server.
+    - Convert the job body to a PL/pgSQL procedure (Ora2Pg or the VS Code schema conversion tool).
+    - Schedule with cron.schedule_in_database so the job runs in the application database, leaving the username argument null.
+    - Set cron.timezone if the Oracle job times were local, since pg_cron defaults to GMT.
+    - Monitor cron.job_run_details and forward failures to Azure Monitor alerts.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.ms-pg-flex-extensions-considerations, source.pg-cron-readme]
+
+- _id: mapping.dbms-scheduler--sql-agent-mi
+  oracleFeature: feature.dbms-scheduler
+  azureTarget: target.sql-agent-mi
+  fidelity: partial
+  effort: M
+  rationale: "SQL Server Agent is the closest instance-hosted scheduler: jobs, multi-step workflows, schedules, operators and email notifications all exist. DBMS_SCHEDULER concepts without an Agent equivalent are calendaring strings with complex rules, job classes and resource-manager windows, event-based jobs raised from Advanced Queuing, chains with conditional branching, and external or remote-database job types, because Managed Instance Agent supports only T-SQL, SSIS and some replication step types."
+  steps: |
+    - Export scheduler metadata (DBA_SCHEDULER_JOBS, _PROGRAMS, _SCHEDULES, _CHAINS) and classify each job by job_type.
+    - Convert PLSQL_BLOCK and STORED_PROCEDURE jobs to T-SQL job steps; route EXECUTABLE and EXTERNAL_SCRIPT jobs to Azure Functions or Data Factory.
+    - Rebuild simple chains as multi-step jobs with on-success/on-failure step flow.
+    - Recreate schedules; verify calendaring strings that used BYWEEKNO, INTERSECT or exclusions manually.
+    - Configure the single permitted Database Mail profile for notifications.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sqlmi-tsql-differences, source.ms-sql-job-automation-overview]
+
+- _id: mapping.dbms-scheduler--elastic-jobs
+  oracleFeature: feature.dbms-scheduler
+  azureTarget: target.elastic-jobs
+  fidelity: partial
+  effort: L
+  rationale: "Elastic Jobs provide scheduled, retried, multi-database T-SQL execution for Azure SQL Database, which covers the core of DBMS_SCHEDULER for SQL work and adds dynamic enumeration of targets that Oracle lacks. Everything else in the scheduler (external programs, file watchers, event-driven jobs, chains, windows, credentials for OS accounts) has to be rebuilt in Azure Functions, Logic Apps or Data Factory."
+  steps: |
+    - Separate scheduler jobs into pure-SQL jobs and jobs touching the OS, files or network.
+    - Create the elastic job agent and target groups; grant the agent's managed identity rights in each target database.
+    - Recreate SQL jobs as job steps with retry and timeout settings; use output tables for results that Oracle jobs logged to tables.
+    - Implement non-SQL jobs as timer-triggered Azure Functions or Data Factory pipelines.
+    - Replace job chains with pipeline orchestration since Elastic Jobs have no cross-job dependencies.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sqldb-elastic-jobs, source.ms-sql-job-automation-overview, source.ms-functions-overview]
+
+- _id: mapping.dbms-scheduler--azure-sql-db
+  oracleFeature: feature.dbms-scheduler
+  azureTarget: target.azure-sql-db
+  fidelity: workaround
+  effort: L
+  rationale: "There is nothing inside an Azure SQL Database that schedules work: SQL Server Agent is not part of the service. Scheduling therefore has to come from outside the database, either Elastic Jobs for T-SQL or Azure Functions, Logic Apps and Data Factory for anything else. Applications that created scheduler jobs dynamically from PL/SQL need redesign."
+  steps: |
+    - Decide per job between Elastic Jobs (T-SQL only) and an external orchestrator.
+    - Remove PL/SQL that calls DBMS_SCHEDULER.CREATE_JOB at run time; expose the work as a stored procedure instead.
+    - Use Azure Functions timer triggers or Data Factory tumbling-window triggers for schedules that need non-SQL steps.
+    - Centralize monitoring in Azure Monitor alerts rather than DBA_SCHEDULER_JOB_RUN_DETAILS.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sql-job-automation-overview, source.ms-sqldb-mi-feature-comparison, source.ms-functions-overview]
+
+- _id: mapping.dbms-scheduler--pg-cron
+  oracleFeature: feature.dbms-scheduler
+  azureTarget: target.pg-cron
+  fidelity: partial
+  effort: M
+  rationale: "pg_cron covers time-based SQL jobs with cron syntax, second-level intervals and per-database scheduling, and logs runs in a table. It has no programs, chains, windows, event triggers, external jobs or resource classes, and it runs jobs as the scheduling user, so PL/SQL that relied on those scheduler objects needs an external orchestrator."
+  steps: |
+    - Enable pg_cron (allowlist, shared_preload_libraries, restart) on the Flexible Server.
+    - Convert job bodies to PL/pgSQL procedures and schedule them with cron.schedule_in_database.
+    - Approximate calendaring strings with cron expressions; jobs that need last-day-of-month can use the dollar sign syntax.
+    - Move EXECUTABLE and file-watcher jobs to Azure Functions or Data Factory.
+    - Query cron.job_run_details for history and set cron.timezone to match the old server time zone.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-pg-flex-extensions-considerations, source.pg-cron-readme]
+
+# ---------------------------------------------------------------- auditing
+
+- _id: mapping.traditional-auditing--azure-sql-auditing
+  oracleFeature: feature.traditional-auditing
+  azureTarget: target.azure-sql-auditing
+  fidelity: partial
+  effort: M
+  rationale: "Oracle AUDIT statements on objects, privileges and sessions map to Azure SQL audit action groups (batch completed, logins, schema changes, permission changes) written to Blob Storage, Log Analytics or Event Hubs. The granularity differs: Azure SQL audits statement and login events with optional predicate filters, whereas Oracle traditional auditing records per-object success or failure with BY ACCESS / BY SESSION options, and Azure SQL explicitly warns that capture is best-effort under heavy load."
+  steps: |
+    - Export DBA_STMT_AUDIT_OPTS, DBA_PRIV_AUDIT_OPTS and DBA_OBJ_AUDIT_OPTS to see what is actually audited.
+    - Choose server-level or database-level auditing (database-level for busy multi-database servers).
+    - Map each Oracle audit option to action groups; on Managed Instance create server and database audit specifications with T-SQL.
+    - Send logs to Log Analytics for querying and to immutable Blob Storage for retention.
+    - Validate that failed Entra logins are reviewed in Entra sign-in logs, not the SQL audit.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.ms-sqldb-auditing, source.ms-sqlmi-auditing-configure]
+
+- _id: mapping.traditional-auditing--pgaudit
+  oracleFeature: feature.traditional-auditing
+  azureTarget: target.pgaudit
+  fidelity: partial
+  effort: M
+  rationale: "pgAudit reproduces statement-class auditing (reads, writes, DDL, role changes, function calls) and object-level auditing through grants to an audit role, which covers most AUDIT ... BY ACCESS use cases. It writes to the server log rather than a table, cannot reliably audit superusers, is best-effort, and has no equivalent of Oracle's session-level aggregation or the SYS.AUD$ retention tooling."
+  steps: |
+    - Allowlist pgaudit, add it to shared_preload_libraries and create the extension in each audited database.
+    - Set pgaudit.log to the needed classes (listing each class explicitly, since the minus shorthand is rejected on Flexible Server).
+    - For object auditing, create an audit role, grant it the audited privileges and set pgaudit.role.
+    - Enable PostgreSQL diagnostic settings so AUDIT: lines reach Log Analytics, Storage or Event Hubs.
+    - Document parameter values, because a major version upgrade recreates pgaudit without them.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.ms-pg-flex-audit, source.pgaudit-readme]
+
+# ---------------------------------------------------------------- media / LOB
+
+- _id: mapping.oracle-multimedia--blob-adls
+  oracleFeature: feature.oracle-multimedia
+  azureTarget: target.blob-adls
+  fidelity: workaround
+  effort: L
+  rationale: "Oracle Multimedia stored images, audio and video as ORDImage and related object types with in-database metadata extraction and processing; it was desupported in 19c, so the content usually sits in BLOBs or BFILEs already. Azure has no in-database media type: the pragmatic pattern is to move binaries to Blob Storage or Data Lake Storage and keep a path, content type and extracted metadata in relational columns. Processing (thumbnails, format conversion) moves to application code or Azure Functions."
+  steps: |
+    - Extract media payloads and their ORDImage metadata attributes (mime type, height, width, length) from the source tables.
+    - Upload binaries to a container with a hierarchical namespace, using the primary key in the path.
+    - Replace the object column with a URL or path column plus the metadata columns.
+    - Regenerate derived assets with Azure Functions triggered by blob uploads.
+    - Secure access with SAS tokens or Entra RBAC instead of database grants.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c]
+  sources: [source.ms-adls-overview, source.ms-functions-overview]
+
+- _id: mapping.oracle-multimedia--azure-sql-db
+  oracleFeature: feature.oracle-multimedia
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: M
+  rationale: "The binary payload of Multimedia objects fits varbinary(max), which SSMA already uses for BLOB and BFILE, and full-text search can index varbinary documents through filters. There is no FILESTREAM or FileTable in Azure SQL Database or Managed Instance, so very large media is better kept in Blob Storage with a reference; the Multimedia methods themselves have no equivalent."
+  steps: |
+    - Map ORDImage.source.localData to varbinary(max) and the descriptive attributes to scalar columns.
+    - Keep files above a few megabytes in Blob Storage and store the URL instead.
+    - Rewrite calls to Multimedia methods (process, setProperties) in the application tier.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c]
+  sources: [source.ms-ssma-type-mapping, source.ms-sqlmi-tsql-differences, source.ms-sqldb-mi-feature-comparison]
+
+# ---------------------------------------------------------------- messaging
+
+- _id: mapping.advanced-queuing--service-bus
+  oracleFeature: feature.advanced-queuing
+  azureTarget: target.service-bus
+  fidelity: partial
+  effort: L
+  rationale: "Service Bus offers the messaging patterns AQ applications use: point-to-point queues, publish-subscribe topics with subscription filters, FIFO through sessions, dead-lettering, delayed delivery and deferral. The structural difference is that AQ lives inside the database transaction (an enqueue commits or rolls back with the surrounding DML), whereas Service Bus is an external broker whose transactions span only its own entities, so exactly-once coordination with table changes needs an outbox pattern."
+  steps: |
+    - Catalogue queues, queue tables, subscribers and transformations in DBA_QUEUES and DBA_QUEUE_SUBSCRIBERS.
+    - Create Service Bus queues for single-consumer queues and topics with subscriptions for multi-consumer queues.
+    - Replace PL/SQL enqueue calls with an outbox table written in the same transaction and relayed by an Azure Function.
+    - Replace dequeue loops and AQ notifications with Service Bus triggered functions or SDK receivers.
+    - Map message priority, expiration and retry counts to Service Bus scheduled enqueue, time-to-live and max delivery count.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-service-bus-overview, source.ms-functions-overview]
+
+- _id: mapping.advanced-queuing--azure-sql-mi
+  oracleFeature: feature.advanced-queuing
+  azureTarget: target.azure-sql-mi
+  fidelity: partial
+  effort: L
+  rationale: "Service Broker is the in-engine, transactional queuing feature of SQL Server and it is available on Managed Instance, which makes it the nearest thing to AQ for PL/SQL code that enqueues and dequeues inside a transaction. Managed Instance restricts routing to other managed instances on port 4022 and does not support dialog security, and Service Broker's conversation model differs enough from AQ's queue tables that code is rewritten rather than translated."
+  steps: |
+    - Identify queues used only within the database versus queues consumed by external clients.
+    - For in-database queues, define message types, contracts, queues and services in Service Broker and rewrite enqueue/dequeue as SEND and RECEIVE.
+    - For externally consumed queues, prefer Service Bus with an outbox relay.
+    - Use activation procedures on queues to replace AQ notification callbacks.
+    - Keep cross-instance conversations within managed instances only.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sqlmi-tsql-differences, source.ms-sqldb-mi-feature-comparison]
+
+- _id: mapping.advanced-queuing--azure-sql-db
+  oracleFeature: feature.advanced-queuing
+  azureTarget: target.azure-sql-db
+  fidelity: none
+  effort: L
+  rationale: "Azure SQL Database has no Service Broker and no other in-database queue, so Advanced Queuing has no direct target here. Messaging must move to Service Bus (or Storage queues) with an outbox table for transactional consistency, and consumers become application services or Azure Functions."
+  steps: |
+    - Move queue definitions to Service Bus.
+    - Write an outbox table in the same transaction as business DML and relay it with a function or worker.
+    - Replace dequeue-driven PL/SQL with Service Bus triggered code.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sqldb-mi-feature-comparison, source.ms-service-bus-overview]
+
+# ---------------------------------------------------------------- datatypes (SSMA defaults and Ora2Pg defaults)
+
+- _id: mapping.number-unconstrained--azure-sql-db
+  oracleFeature: feature.number-unconstrained
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: S
+  rationale: "Oracle NUMBER without precision or scale is an exact decimal with up to 38 significant digits. SSMA's default column mapping turns it into float(53), a binary floating-point type that cannot represent most decimal fractions exactly, so amounts and identifiers can drift. The safe target is decimal or numeric with an explicit precision and scale chosen from the actual data, or bigint when the column only ever held integers."
+  steps: |
+    - Profile each unconstrained NUMBER column for maximum digits before and after the decimal point.
+    - Override the SSMA type mapping (project or table level) from float[53] to numeric(p,s) or bigint before conversion.
+    - Keep float only for columns that genuinely hold scientific measurements.
+    - Compare SUM() and COUNT(DISTINCT) of key columns between source and target after migration.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-ssma-type-mapping, source.ms-oracle-to-sqldb-guide]
+
+- _id: mapping.number-unconstrained--azure-pg-flex
+  oracleFeature: feature.number-unconstrained
+  azureTarget: target.azure-pg-flex
+  fidelity: partial
+  effort: S
+  rationale: "PostgreSQL numeric is exact and effectively unbounded, so it can hold anything an Oracle NUMBER holds; that is what Ora2Pg's base type table maps NUMBER to. The trap is the shipped configuration: with PG_INTEGER_TYPE enabled (the default) an unconstrained NUMBER is emitted as DEFAULT_NUMERIC, which defaults to bigint, silently truncating decimals unless the setting is changed or the column is overridden."
+  steps: |
+    - Run Ora2Pg SHOW_COLUMN and look for columns marked for review (unconstrained NUMBER).
+    - Set DEFAULT_NUMERIC to numeric, or disable PG_INTEGER_TYPE, for schemas with decimal data in unconstrained columns.
+    - Use MODIFY_TYPE for individual columns that should be integer types for speed.
+    - Validate with TEST_DATA or checksums after loading.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ora2pg-docs, source.ora2pg-source, source.postgres-docs-numeric-types]
+
+- _id: mapping.date-with-time--azure-sql-db
+  oracleFeature: feature.date-with-time
+  azureTarget: target.azure-sql-db
+  fidelity: exact
+  effort: S
+  rationale: "Oracle DATE always carries a time to the second. SSMA maps it to datetime2(0), which stores date and time at one-second precision and covers the Oracle range, so values round-trip without loss. Effort comes from code, not storage: date arithmetic in days, TRUNC and TO_CHAR formats need T-SQL rewrites."
+  steps: |
+    - Accept the datetime2(0) default unless the column truly holds dates only, in which case use date.
+    - Rewrite date + n arithmetic to DATEADD and TRUNC(date) to CAST(... AS date).
+    - Review implicit string-to-date conversions, which depend on session language and DATEFORMAT in SQL Server.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-ssma-type-mapping]
+
+- _id: mapping.date-with-time--azure-pg-flex
+  oracleFeature: feature.date-with-time
+  azureTarget: target.azure-pg-flex
+  fidelity: partial
+  effort: S
+  rationale: "PostgreSQL date has no time component, so a literal type-name mapping loses data; Ora2Pg therefore maps DATE to timestamp(0), which is the correct default. Code that mixed dates and timestamps, or relied on Oracle DATE arithmetic returning day fractions, needs review because timestamp minus timestamp yields an interval in PostgreSQL. orafce offers an oracle.date type with Oracle-compatible arithmetic for code that is hard to change."
+  steps: |
+    - Keep Ora2Pg's DATE to timestamp(0) mapping; use MODIFY_TYPE to make true date-only columns date.
+    - Rewrite date subtraction that expected a number of days to EXTRACT(EPOCH ...) or interval logic.
+    - Consider orafce's oracle.date and nls_date_format for legacy PL/SQL ported with minimal change.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ora2pg-docs, source.postgres-docs-datetime, source.orafce-readme]
+
+- _id: mapping.varchar2-byte-semantics--azure-sql-db
+  oracleFeature: feature.varchar2-byte-semantics
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: M
+  rationale: "SSMA maps varchar2(n) to varchar(n) by default. SQL Server varchar stores the code page of its collation, so multilingual data that lived in an AL32UTF8 Oracle database is either lost or must go to nvarchar, or to varchar under a UTF-8 collation available since SQL Server 2019 and on Azure SQL. Length semantics also differ: Oracle's CHAR length semantics count characters, while SQL Server's n for varchar counts bytes and for nvarchar counts byte-pairs, so supplementary characters can overflow."
+  steps: |
+    - Check NLS_CHARACTERSET and NLS_LENGTH_SEMANTICS on the source.
+    - For non-ASCII data, change the SSMA mapping to nvarchar(n) or create the database with a UTF-8 (_UTF8) collation.
+    - Widen columns declared with CHAR semantics when the target collation is UTF-8 (up to 4 bytes per character).
+    - Test sorting and comparisons, since Oracle binary sorts differ from SQL Server collations.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-ssma-type-mapping, source.ms-sql-collation-unicode]
+
+- _id: mapping.varchar2-byte-semantics--azure-pg-flex
+  oracleFeature: feature.varchar2-byte-semantics
+  azureTarget: target.azure-pg-flex
+  fidelity: partial
+  effort: S
+  rationale: "PostgreSQL varchar(n) counts characters, not bytes, and databases are normally UTF-8, so Oracle columns declared with CHAR semantics map one-to-one. Columns declared in BYTE semantics on a multibyte database are looser in PostgreSQL, which is harmless, but applications that depended on byte-length overflow errors will no longer get them; orafce ships a varchar2 type with byte semantics for that case."
+  steps: |
+    - Let Ora2Pg map VARCHAR2 to varchar; consider text where lengths were arbitrary.
+    - Where byte-exact behaviour is required, install orafce and use its varchar2 type.
+    - Remember trailing spaces are significant in varchar and text but ignored for char(n) comparisons.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.postgres-docs-character-types, source.ora2pg-docs, source.orafce-readme]
+
+- _id: mapping.rowid--azure-sql-db
+  oracleFeature: feature.rowid
+  azureTarget: target.azure-sql-db
+  fidelity: workaround
+  effort: M
+  rationale: "ROWID is a physical row address exposed to SQL; SQL Server has no such value, so SSMA maps the type to uniqueidentifier and can add a ROWID column defaulting to NEWID() with a unique index, which gives applications a surrogate row identity but not the physical addressing, fast-access or duplicate-elimination tricks Oracle code used ROWID for. Queries that used ROWID to locate the current row should use the primary key instead."
+  steps: |
+    - Find ROWID and UROWID usage in code (SELECT ROWID, WHERE ROWID =, DELETE duplicates by ROWID).
+    - Decide whether SSMA should generate ROWID columns (default only for tables with triggers) and whether a unique index is wanted.
+    - Rewrite duplicate-removal and cursor-update patterns to use primary keys or ROW_NUMBER().
+    - Drop the generated ROWID column once the application no longer references it.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-ssma-type-mapping, source.ms-ssma-project-settings-conversion]
+
+- _id: mapping.rowid--azure-pg-flex
+  oracleFeature: feature.rowid
+  azureTarget: target.azure-pg-flex
+  fidelity: workaround
+  effort: M
+  rationale: "PostgreSQL's ctid is a physical row locator like ROWID, but it changes on every UPDATE and after VACUUM FULL, so it is unusable as an identifier beyond a single statement. Ora2Pg maps ROWID to oid by default and warns that this fails during data import, recommending bigserial, text or uuid instead. Code should be rewritten around primary keys or an identity column."
+  steps: |
+    - Override the Ora2Pg DATA_TYPE for ROWID and UROWID to bigint (identity) or uuid.
+    - Add a generated identity or uuid column to tables whose rows lacked a natural key.
+    - Replace ROWID-based duplicate deletion with ctid only inside a single statement, or with ROW_NUMBER().
+    - Remove ROWID columns from result sets consumed by applications.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ora2pg-docs, source.postgres-docs-system-columns]
+
+- _id: mapping.xmltype--azure-sql-db
+  oracleFeature: feature.xmltype
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: M
+  rationale: "SSMA maps XMLType to the SQL Server xml type, which stores well-formed XML up to 2 GB, supports typed XML through schema collections and offers XQuery methods (query, value, exist, modify, nodes) and XML indexes. Oracle-specific storage options (binary XML, object-relational storage, XMLIndex) and functions such as EXTRACT, EXTRACTVALUE and XMLTABLE need rewriting to XQuery method calls."
+  steps: |
+    - Accept the xml default; bind an XML schema collection where Oracle used a registered schema.
+    - Rewrite EXTRACTVALUE and XMLQuery calls to the value() and query() methods.
+    - Create primary and selective XML indexes to replace XMLIndex.
+    - Check documents larger than 2 GB or with DTD references, which the xml type rejects.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-ssma-type-mapping, source.ms-sql-xml-type]
+
+- _id: mapping.xmltype--azure-pg-flex
+  oracleFeature: feature.xmltype
+  azureTarget: target.azure-pg-flex
+  fidelity: partial
+  effort: M
+  rationale: "Ora2Pg maps XMLType to the PostgreSQL xml type, which validates well-formedness and provides xpath() and xmltable(). The type has no comparison operators, so it cannot be indexed or used in DISTINCT or GROUP BY directly; expression indexes over XPath results replace Oracle XMLIndex, and there is no schema validation or binary XML storage."
+  steps: |
+    - Keep the xml mapping, or use text if the application only stores and retrieves documents.
+    - Rewrite EXTRACTVALUE and XMLTABLE queries to xpath() and xmltable().
+    - Add expression indexes on frequently queried XPath values.
+    - Validate against XSD in the application layer if Oracle enforced a registered schema.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ora2pg-docs, source.postgres-docs-xml]
+
+- _id: mapping.boolean-23ai--azure-sql-db
+  oracleFeature: feature.boolean-23ai
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: S
+  rationale: "SQL Server has no boolean column type; SSMA maps BOOLEAN to bit, which stores 0, 1 or NULL and cannot appear as a standalone predicate. Storage is equivalent, but every WHERE is_active style expression must be rewritten as a comparison with 1, and three-valued logic on NULL bits mirrors Oracle's UNKNOWN."
+  steps: |
+    - Accept the bit mapping for columns and parameters.
+    - Rewrite boolean-valued predicates and PL/SQL boolean variables to bit comparisons.
+    - Review CHECK constraints and defaults that used TRUE/FALSE literals.
+  appliesToOracleVersions: [23ai, 26ai]
+  sources: [source.ms-ssma-type-mapping]
+
+- _id: mapping.boolean-23ai--azure-pg-flex
+  oracleFeature: feature.boolean-23ai
+  azureTarget: target.azure-pg-flex
+  fidelity: exact
+  effort: S
+  rationale: "PostgreSQL has had a native 1-byte boolean type for decades, accepting true/false, yes/no, on/off and 1/0 literals and usable directly as a predicate, so 23ai BOOLEAN columns and PL/SQL booleans map without change. Ora2Pg can also promote legacy NUMBER(1) or CHAR(1) flag columns to boolean with REPLACE_AS_BOOLEAN."
+  steps: |
+    - Map BOOLEAN to boolean (Ora2Pg default).
+    - Optionally use REPLACE_AS_BOOLEAN NUMBER:1 CHAR:1 to convert pre-23ai flag columns, extending BOOLEAN_VALUES for custom literals.
+  appliesToOracleVersions: [23ai, 26ai]
+  sources: [source.postgres-docs-boolean, source.ora2pg-docs, source.ora2pg-source]
+
+- _id: mapping.empty-string-null--azure-sql-db
+  oracleFeature: feature.empty-string-null
+  azureTarget: target.azure-sql-db
+  fidelity: workaround
+  effort: M
+  rationale: "Oracle stores a zero-length VARCHAR2 as NULL, so applications never see an empty string. SQL Server keeps '' as a real value distinct from NULL, and Microsoft's documentation states that a null value differs from an empty or zero value. After migration the same INSERT of '' produces a non-null row, IS NULL predicates stop matching it, and NOT NULL constraints that used to reject '' now accept it, so data and code need explicit handling."
+  steps: |
+    - Decide a policy: normalize '' to NULL on write (application or trigger) or treat '' and NULL as equivalent in queries with NULLIF.
+    - Add CHECK constraints or triggers that reject '' where Oracle's implicit NULL enforced NOT NULL.
+    - Enable SSMA's ISNULL-in-concatenation option so NULL || 'x' keeps Oracle's result.
+    - Search code for = '' and <> '' comparisons, which were always false or unknown in Oracle.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sql-null-and-unknown, source.ms-ssma-project-settings-conversion]
+
+- _id: mapping.empty-string-null--azure-pg-flex
+  oracleFeature: feature.empty-string-null
+  azureTarget: target.azure-pg-flex
+  fidelity: workaround
+  effort: M
+  rationale: "PostgreSQL distinguishes '' from NULL exactly as SQL Server does. Ora2Pg offers NULL_EQUAL_EMPTY, which rewrites IS NULL and IS NOT NULL tests into coalesce()-based checks so converted code keeps Oracle's behaviour, and its documentation recommends instead converting empty strings to NULL when the application can be changed. orafce adds a trigger function that replaces empty strings with NULL on write."
+  steps: |
+    - Choose between NULL_EQUAL_EMPTY rewriting and normalizing data at write time.
+    - If normalizing, add orafce's replace_empty_strings trigger or an application-side rule.
+    - Re-express NVL(col, 'x') logic that assumed '' was NULL with coalesce(nullif(col, ''), 'x').
+    - Test NOT NULL columns that Oracle allowed to be "empty" by rejecting the insert.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ora2pg-docs, source.orafce-readme]
+
+- _id: mapping.character-set--azure-sql-db
+  oracleFeature: feature.character-set
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: M
+  rationale: "Oracle has one database character set (typically AL32UTF8) and one national set; SQL Server has a collation per database and per column that determines both encoding for char/varchar and sort rules, while nchar/nvarchar are always UTF-16. Managed Instance defaults to SQL_Latin1_General_CP1_CI_AS and Azure SQL Database has database and catalog collations fixed at creation, so encoding and case-sensitivity decisions must be made up front."
+  steps: |
+    - Record NLS_CHARACTERSET, NLS_NCHAR_CHARACTERSET and NLS_SORT / NLS_COMP from the source.
+    - Choose a case-sensitive or binary collation if Oracle used binary comparison semantics, and a _UTF8 collation if varchar must hold Unicode.
+    - Set the collation at database creation (it cannot be changed later on Azure SQL Database) and align column collations.
+    - Test ORDER BY and equality on accented and mixed-case data.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sql-collation-unicode, source.ms-sqlmi-tsql-differences]
+
+- _id: mapping.character-set--azure-sql-mi
+  oracleFeature: feature.character-set
+  azureTarget: target.azure-sql-mi
+  fidelity: partial
+  effort: M
+  rationale: "Managed Instance has an instance collation, set only at creation and defaulting to SQL_Latin1_General_CP1_CI_AS, plus per-database and per-column collations that decide both the code page of char/varchar data and the comparison rules; nchar/nvarchar are UTF-16 regardless. An AL32UTF8 Oracle database with binary sorting therefore needs a deliberate choice of a _UTF8 or nvarchar strategy and a case- and accent-sensitive or binary collation before the instance is created, because the instance collation cannot be changed afterwards."
+  steps: |
+    - Capture NLS_CHARACTERSET, NLS_NCHAR_CHARACTERSET, NLS_SORT and NLS_COMP from the source.
+    - Pick the instance collation at provisioning time (binary or case-sensitive if Oracle used binary comparison), since it is a creation parameter.
+    - Decide between nvarchar columns and a _UTF8 database collation for Unicode varchar data, and widen lengths accordingly.
+    - Verify tempdb behaviour, since temporary objects inherit the instance collation.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sqlmi-tsql-differences, source.ms-sql-collation-unicode]
+
+- _id: mapping.json-duality-views--azure-sql-db
+  oracleFeature: feature.json-duality-views
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: L
+  rationale: "Azure SQL has a native json type, JSON functions and the FOR JSON / OPENJSON constructs, so the document view of relational data can be rebuilt as ordinary views with FOR JSON output plus stored procedures or INSTEAD OF triggers that shred incoming documents with OPENJSON. What is missing is the bidirectional, automatically updatable duality view with ETAG-based optimistic locking, which must be coded by hand."
+  steps: |
+    - Rebuild each duality view as a read view returning JSON with FOR JSON PATH.
+    - Implement writes as stored procedures using OPENJSON to update the base tables in one transaction.
+    - Add a rowversion column to emulate ETAG concurrency checks.
+    - Use the json type for stored documents to get in-place modify and compression benefits.
+  appliesToOracleVersions: [23ai, 26ai]
+  sources: [source.ms-sql-json-type]
+
+- _id: mapping.vector-datatype--azure-sql-db
+  oracleFeature: feature.vector-datatype
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: M
+  rationale: "Azure SQL Database and SQL Server 2025 provide a vector(n) type with up to 1998 float32 dimensions (float16 in preview), the VECTOR_DISTANCE function and vector index support, which covers embedding storage and similarity search in the same way as Oracle's VECTOR type. Oracle's larger dimension limits, in-database ONNX model loading and the broader AI Vector Search feature set do not carry over."
+  steps: |
+    - Create vector(n) columns for embeddings up to 1998 dimensions; truncate or re-embed larger vectors.
+    - Rewrite VECTOR_DISTANCE and approximate search queries to T-SQL VECTOR_DISTANCE with the matching metric.
+    - Generate embeddings in the application or through Azure AI services rather than in-database models.
+    - On Managed Instance confirm the Always-up-to-date update policy, which vector features require.
+  appliesToOracleVersions: [23ai, 26ai]
+  sources: [source.ms-sql-vector-type]
+
+- _id: mapping.vector-datatype--azure-pg-flex
+  oracleFeature: feature.vector-datatype
+  azureTarget: target.azure-pg-flex
+  fidelity: partial
+  effort: M
+  rationale: "The vector (pgvector) extension on Flexible Server gives a vector type with up to 2,000 dimensions (halfvec up to 4,000), L2, inner product, cosine and other distance operators, and HNSW or IVFFlat approximate indexes; pg_diskann adds DiskANN indexing on PostgreSQL 14 and later. This matches the core of Oracle AI Vector Search, though dimension limits, in-database model execution and SQL syntax differ."
+  steps: |
+    - Allowlist and create the vector extension (and pg_diskann if wanted).
+    - Map VECTOR(n, FLOAT32) to vector(n); use halfvec for dimensions between 2,000 and 4,000.
+    - Rewrite VECTOR_DISTANCE calls to the pgvector operators and build an HNSW index with the same metric.
+    - Move embedding generation to the application or the azure_ai extension.
+  appliesToOracleVersions: [23ai, 26ai]
+  sources: [source.ms-pg-flex-extensions, source.pgvector-readme]
+
+- _id: mapping.spatial-sdo-geometry--azure-sql-db
+  oracleFeature: feature.spatial-sdo-geometry
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: M
+  rationale: "SQL Server's geometry (planar) and geography (round-earth) CLR types with spatial indexes and OGC methods cover the storage and query side of SDO_GEOMETRY. Oracle Spatial features beyond simple features (network data model, topology, georaster, linear referencing, coordinate system transformations across many SRIDs) have no built-in equivalent and require application libraries."
+  steps: |
+    - Export SDO_GEOMETRY as WKT or WKB and load into geometry or geography columns with the matching SRID.
+    - Replace SDO_RELATE, SDO_WITHIN_DISTANCE and SDO_GEOM functions with STIntersects, STDistance and related methods.
+    - Create spatial indexes tuned to the data extent.
+    - Handle SRID transformations in the application if the data used multiple coordinate systems.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sql-spatial-data]
+
+- _id: mapping.spatial-sdo-geometry--azure-pg-flex
+  oracleFeature: feature.spatial-sdo-geometry
+  azureTarget: target.azure-pg-flex
+  fidelity: partial
+  effort: M
+  rationale: "PostGIS is available on Flexible Server (3.6.1 for PostgreSQL 14-18) and Ora2Pg maps SDO_GEOMETRY to the geometry type and can export spatial data as WKT or EWKT. PostGIS covers most Oracle Spatial simple-feature functions, topology and raster through companion extensions, but function names and SRID handling differ and Oracle's proprietary options (network data model, georaster) need redesign."
+  steps: |
+    - Allowlist and create postgis (plus postgis_topology or postgis_raster as needed).
+    - Let Ora2Pg export SDO_GEOMETRY columns as geometry with the source SRID.
+    - Map SDO_* operators to ST_* functions and rebuild spatial (GiST) indexes.
+    - Validate geometries with ST_IsValid after load.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-pg-flex-extensions, source.ora2pg-source]
+
+# ---------------------------------------------------------------- PL/SQL and SQL semantics
+
+- _id: mapping.autonomous-transactions--azure-sql-mi
+  oracleFeature: feature.autonomous-transactions
+  azureTarget: target.azure-sql-mi
+  fidelity: workaround
+  effort: L
+  rationale: "SQL Server has no autonomous transaction: nested BEGIN TRAN calls join the outer transaction. SSMA emulates the pragma at routine level by splitting the routine into an implementation procedure and a wrapper that calls an extended stored procedure to open a second connection, but Managed Instance does not support extended stored procedures, so this emulation cannot be deployed there. Logging-style autonomous transactions are better replaced with table variables (which survive rollback) or an external log sink."
+  steps: |
+    - List routines with PRAGMA AUTONOMOUS_TRANSACTION and classify them (audit logging, error logging, counters, business logic).
+    - For logging, write to a table variable and persist after the outer transaction ends, or send to Azure Monitor / Event Hubs.
+    - For business logic, restructure so the independent work is a separate call from the application.
+    - Avoid the SSMA extended-procedure emulator on PaaS targets; rewrite instead.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-ssma-o2ss0205, source.ms-sqlmi-tsql-differences, source.ms-ssma-converting-schemas]
+
+- _id: mapping.autonomous-transactions--azure-pg-flex
+  oracleFeature: feature.autonomous-transactions
+  azureTarget: target.azure-pg-flex
+  fidelity: workaround
+  effort: M
+  rationale: "PostgreSQL has no autonomous transactions; procedures can COMMIT only when called at top level, and functions cannot commit at all. Both Ora2Pg and Microsoft's schema conversion tool emulate the pragma by running the body over a second connection with dblink (Ora2Pg optionally with pg_background), which works but adds a connection per call and bypasses the caller's snapshot."
+  steps: |
+    - Keep AUTONOMOUS_TRANSACTION enabled in Ora2Pg (or accept the tool's dblink wrapper) for a first working port.
+    - Allowlist dblink on the Flexible Server and secure its connection string.
+    - Replace high-frequency logging autonomous routines with plain inserts committed by the caller, or with an external log.
+    - Load-test, since each wrapped call opens a new session.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.postgres-docs-plpgsql-transactions, source.ora2pg-docs, source.ms-pg-oracle-schema-conversion]
+
+- _id: mapping.utl-file--azure-sql-mi
+  oracleFeature: feature.utl-file
+  azureTarget: target.azure-sql-mi
+  fidelity: workaround
+  effort: L
+  rationale: "UTL_FILE reads and writes files in server directories; Managed Instance cannot reach any file system, network share or xp_cmdshell. Reads become BULK INSERT or OPENROWSET from Blob Storage, bulk writes can use CREATE EXTERNAL TABLE AS SELECT to Blob or Data Lake Storage, and record-by-record file writing moves to Azure Functions fed by the database."
+  steps: |
+    - Catalogue UTL_FILE callers and the directories they use (DBA_DIRECTORIES).
+    - For file ingestion, land files in Blob Storage and read them with OPENROWSET(BULK) through an external data source.
+    - For exports, use CETAS to Parquet or CSV, or an Azure Function that queries the database and writes the file.
+    - Replace interactive file parsing loops in PL/SQL with application code.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sqlmi-tsql-differences, source.ms-sql-bulk-access-blob, source.ms-functions-overview]
+
+- _id: mapping.packages--azure-sql-db
+  oracleFeature: feature.packages
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: L
+  rationale: "T-SQL has no package construct. SSMA converts a package into a set of stored procedures and functions that share a naming prefix, and emulates package-level state with its ssma_oracle helper objects. Public constants, package variables with session lifetime, overloading and package initialization blocks all need manual attention, and functions with side effects may become procedures with wrapper functions."
+  steps: |
+    - Run the SSMA assessment and review each package's variables, overloads and initialization section.
+    - Accept the flattened procedure and function set; group them in a schema named after the package.
+    - Re-implement package state with SESSION_CONTEXT or parameters passed explicitly.
+    - Replace overloaded subprograms with distinctly named ones.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-ssma-converting-schemas, source.ms-ssma-project-settings-conversion]
+
+- _id: mapping.packages--azure-pg-flex
+  oracleFeature: feature.packages
+  azureTarget: target.azure-pg-flex
+  fidelity: partial
+  effort: L
+  rationale: "PostgreSQL has schemas but no packages. Ora2Pg emulates each package as a schema containing its functions (PACKAGE_AS_SCHEMA), and Microsoft's schema conversion tool goes further: constants become immutable functions, package variables become getter and setter functions over session settings, collections become array or jsonb domains, and user-defined exceptions become SQLSTATE-returning functions. Overloading and REF CURSOR are supported natively, so the callable surface usually survives, but initialization blocks and session state need testing."
+  steps: |
+    - Export packages with Ora2Pg PACKAGE type or the VS Code schema conversion feature.
+    - Validate bodies with plpgsql_check on a scratch database before deployment.
+    - Rework package state that depended on initialization-on-first-call semantics.
+    - Update callers to schema.function naming.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-pg-oracle-schema-conversion, source.ora2pg-docs]
+
+- _id: mapping.before-row-triggers--azure-sql-db
+  oracleFeature: feature.before-row-triggers
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: M
+  rationale: "SQL Server DML triggers are AFTER or INSTEAD OF and fire once per statement over the inserted and deleted pseudo-tables; there is no BEFORE EACH ROW trigger. SSMA converts BEFORE triggers into INSTEAD OF triggers and emulates row-level logic with cursors, which works but is slow for bulk DML. The common Oracle idiom of assigning sequence values or defaults in a BEFORE INSERT trigger is better replaced with DEFAULT constraints or identity columns."
+  steps: |
+    - Classify BEFORE ROW triggers: value derivation, validation, auditing, or complex cross-row logic.
+    - Replace sequence assignment with DEFAULT (NEXT VALUE FOR seq) or IDENTITY.
+    - Rewrite validation as CHECK constraints or set-based INSTEAD OF triggers without cursors.
+    - Keep SSMA's cursor-based conversion only for low-volume tables.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sql-create-trigger, source.ms-ssma-converting-schemas]
+
+- _id: mapping.sequences--azure-sql-db
+  oracleFeature: feature.sequences
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: S
+  rationale: "SQL Server sequences (CREATE SEQUENCE with START WITH, INCREMENT BY, MINVALUE, MAXVALUE, CYCLE and CACHE) are functionally the same object, and SSMA converts Oracle sequences to them by default. The gap is CURRVAL: SQL Server has no way to read the last value fetched in the session, so code using seq.CURRVAL after NEXTVAL must capture the value in a variable or use OUTPUT."
+  steps: |
+    - Convert sequences with SSMA's SQL Server sequence generator option.
+    - Replace NEXTVAL in INSERT triggers with DEFAULT NEXT VALUE FOR on the column.
+    - Capture values returned by NEXT VALUE FOR into variables wherever CURRVAL was used.
+    - Reset START WITH to the source's current value plus cache headroom before cutover.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sql-create-sequence, source.ms-ssma-project-settings-conversion]
+
+- _id: mapping.sequences--azure-pg-flex
+  oracleFeature: feature.sequences
+  azureTarget: target.azure-pg-flex
+  fidelity: exact
+  effort: S
+  rationale: "PostgreSQL sequences support the same options as Oracle's, and nextval(), currval() and setval() cover NEXTVAL and CURRVAL directly. Ora2Pg exports sequences with their last values (SEQUENCE and SEQUENCE_VALUES export types), so the only work is syntax translation from seq.NEXTVAL to nextval('seq')."
+  steps: |
+    - Export with Ora2Pg TYPE=SEQUENCE and, at cutover, SEQUENCE_VALUES to align current values.
+    - Rewrite seq.NEXTVAL / seq.CURRVAL to nextval('seq') / currval('seq'), or use identity columns.
+    - Match CACHE and CYCLE settings.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ora2pg-docs]
+
+- _id: mapping.connect-by--azure-sql-db
+  oracleFeature: feature.connect-by
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: M
+  rationale: "Hierarchical CONNECT BY queries become recursive common table expressions: START WITH is the anchor member, CONNECT BY PRIOR is the recursive member, and LEVEL is a computed depth column. T-SQL recursive CTEs forbid GROUP BY, TOP, outer joins and subqueries in the recursive member, default to 100 levels (MAXRECURSION), and have no built-in equivalent for SYS_CONNECT_BY_PATH, CONNECT_BY_ROOT, ORDER SIBLINGS BY or NOCYCLE, which must be emulated with path columns."
+  steps: |
+    - Rewrite each CONNECT BY as WITH cte AS (anchor UNION ALL recursive) SELECT ... with a level counter.
+    - Build a path string column to replace SYS_CONNECT_BY_PATH and to order siblings.
+    - Detect cycles by checking the path string, since NOCYCLE has no equivalent.
+    - Set OPTION (MAXRECURSION 0) or an explicit limit for deep hierarchies.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sql-recursive-cte]
+
+- _id: mapping.connect-by--azure-pg-flex
+  oracleFeature: feature.connect-by
+  azureTarget: target.azure-pg-flex
+  fidelity: partial
+  effort: M
+  rationale: "PostgreSQL WITH RECURSIVE handles hierarchical queries and, since version 14, adds SEARCH DEPTH FIRST / BREADTH FIRST for ordering and a CYCLE clause for loop detection, which cover ORDER SIBLINGS BY and NOCYCLE more directly than T-SQL. Microsoft's schema conversion tool converts CONNECT BY, PRIOR, START WITH, LEVEL, SYS_CONNECT_BY_PATH and CONNECT_BY_ROOT automatically, though results should be checked."
+  steps: |
+    - Convert with Ora2Pg (--plsql) or the VS Code schema conversion tool and review the generated recursive CTE.
+    - Use SEARCH DEPTH FIRST ... SET ordercol to reproduce ORDER SIBLINGS BY.
+    - Use CYCLE col SET is_cycle USING path to replace NOCYCLE.
+    - Compare row counts and ordering against Oracle for representative roots.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.postgres-docs-queries-with, source.ms-pg-oracle-schema-conversion]
+
+- _id: mapping.materialized-views-fast-refresh--azure-sql-db
+  oracleFeature: feature.materialized-views-fast-refresh
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: L
+  rationale: "The closest engine feature is the indexed view: a view with a unique clustered index whose rows are maintained synchronously as base tables change, which is stronger than fast refresh (no staleness) but far more restrictive. SSMA converts materialized views to indexed views and fails when the definition has outer joins, subqueries, DISTINCT, MIN/MAX, UNION, HAVING, window functions or nondeterministic expressions, and indexed views add cost to every write on the base tables. Views that cannot be indexed become tables refreshed by a scheduled job."
+  steps: |
+    - Test each materialized view definition against the indexed-view restrictions (SCHEMABINDING, COUNT_BIG with GROUP BY, no outer joins).
+    - Convert eligible views to indexed views and measure DML overhead on the base tables.
+    - For the rest, create a table plus a stored procedure doing a full or delta rebuild, scheduled with Elastic Jobs or Agent.
+    - Drop the concept of REFRESH ON COMMIT; indexed views are always current, tables are refreshed on schedule.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sql-indexed-views, source.ms-ssma-converting-schemas]
+
+- _id: mapping.materialized-views-fast-refresh--azure-pg-flex
+  oracleFeature: feature.materialized-views-fast-refresh
+  azureTarget: target.azure-pg-flex
+  fidelity: partial
+  effort: M
+  rationale: "PostgreSQL materialized views persist a query result but are refreshed only by REFRESH MATERIALIZED VIEW, which recomputes the whole result (CONCURRENTLY avoids blocking readers but still recomputes). There are no materialized view logs, no fast refresh and no refresh on commit. The pg_ivm extension, available on Flexible Server for PostgreSQL 13 and later, adds incrementally maintained views for a subset of query shapes."
+  steps: |
+    - Export with Ora2Pg TYPE=MVIEW and schedule REFRESH MATERIALIZED VIEW CONCURRENTLY with pg_cron.
+    - Add a unique index to each view so CONCURRENTLY is allowed.
+    - Evaluate pg_ivm for views that need near-real-time freshness and fit its supported query shapes.
+    - Rewrite query-rewrite-dependent code, because PostgreSQL never substitutes a materialized view automatically.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.postgres-docs-matviews, source.postgres-docs-refresh-matview, source.ms-pg-flex-extensions]
+
+- _id: mapping.vpd--azure-sql-db
+  oracleFeature: feature.vpd
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: M
+  rationale: "Row-Level Security in Azure SQL implements the same idea as DBMS_RLS: a security policy attaches an inline table-valued predicate function to a table, silently filtering reads and optionally blocking writes. Differences: predicates are schema-bound T-SQL functions rather than PL/SQL policy functions returning a WHERE string, context comes from SESSION_CONTEXT instead of application contexts, policies apply even to dbo and table owners, and there is no column-level relevance (VPD sec_relevant_cols) or policy groups."
+  steps: |
+    - Rewrite each VPD policy function as an inline table-valued function returning 1 for allowed rows.
+    - Replace SYS_CONTEXT application context reads with SESSION_CONTEXT keys set by the application after connect.
+    - Create security policies with FILTER and BLOCK predicates per table.
+    - Grant administrators an explicit bypass in the predicate, since RLS also filters dbo.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sql-row-level-security]
+
+- _id: mapping.vpd--azure-pg-flex
+  oracleFeature: feature.vpd
+  azureTarget: target.azure-pg-flex
+  fidelity: partial
+  effort: M
+  rationale: "PostgreSQL row security policies (ENABLE ROW LEVEL SECURITY plus CREATE POLICY with USING and WITH CHECK expressions, permissive or restrictive) map directly onto VPD policies for SELECT, INSERT, UPDATE and DELETE. Policy expressions are SQL rather than a PL/SQL function returning a predicate string, context is read from current_setting() instead of SYS_CONTEXT, and table owners and roles with BYPASSRLS bypass policies unless FORCE ROW LEVEL SECURITY is set."
+  steps: |
+    - Translate each DBMS_RLS policy into CREATE POLICY statements per command type.
+    - Replace application contexts with custom GUC settings set by SET or set_config() at session start.
+    - Enable and, where owners connect, FORCE row level security on each table.
+    - Verify that referential integrity checks bypass policies as they did in Oracle.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.postgres-docs-row-security]
+
+- _id: mapping.flashback-query--azure-sql-db
+  oracleFeature: feature.flashback-query
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: M
+  rationale: "System-versioned temporal tables give SELECT ... FOR SYSTEM_TIME AS OF, FROM/TO, BETWEEN, CONTAINED IN and ALL over a history table, which reproduces AS OF TIMESTAMP and VERSIONS BETWEEN queries for tables that opt in. Unlike Flashback, history exists only for tables where system versioning was enabled and only from that point onward, there is no undo-based flashback of arbitrary tables, no FLASHBACK TABLE, and no transaction-level flashback; point-in-time restore of the database is the fallback."
+  steps: |
+    - Enable SYSTEM_VERSIONING with a history table on tables that used Flashback Query or need audit history.
+    - Rewrite AS OF TIMESTAMP queries to FOR SYSTEM_TIME AS OF (values are UTC).
+    - Define a history retention policy to bound storage.
+    - Use point-in-time restore for accidental changes on tables without versioning.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sql-temporal-tables]
+
+- _id: mapping.edition-based-redefinition--azure-sql-db
+  oracleFeature: feature.edition-based-redefinition
+  azureTarget: target.azure-sql-db
+  fidelity: none
+  effort: L
+  rationale: "Edition-Based Redefinition lets two versions of code objects and editioning views coexist for online upgrades; neither SQL Server nor Azure SQL has editions. The nearest practice is versioned schemas plus synonyms or views that are repointed at cutover, with expand-and-contract table changes, and SSMA can create synonyms for tables, views, procedures and functions to support such indirection. Session-level edition switching cannot be reproduced."
+  steps: |
+    - Freeze the current edition as the baseline before migration; migrate only one edition.
+    - Adopt a schema-per-release or synonym-based indirection layer for future online upgrades.
+    - Use expand-and-contract column changes with computed columns instead of crossedition triggers.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-ssma-project-settings-conversion, source.ms-ssma-converting-schemas]
+
+# ---------------------------------------------------------------- integration and storage
+
+- _id: mapping.database-links--azure-sql-db
+  oracleFeature: feature.database-links
+  azureTarget: target.azure-sql-db
+  fidelity: workaround
+  effort: L
+  rationale: "Azure SQL Database supports neither linked servers nor cross-database three-part-name queries. Elastic query (still in preview) exposes remote Azure SQL tables as read-only external tables and can execute remote procedures with sp_execute_remote, which covers reporting-style database links but not DML through the link or links to non-SQL targets. Many teams instead consolidate schemas into one database or move to Managed Instance."
+  steps: |
+    - Inventory DBA_DB_LINKS and classify link usage (read-only lookup, DML, distributed transaction, non-Oracle target).
+    - Consolidate tightly coupled schemas into one database where possible.
+    - For read-only access across Azure SQL databases, create external data sources and external tables (elastic query).
+    - Replace DML over links with application-level orchestration or Data Factory.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sqldb-mi-feature-comparison, source.ms-sqldb-elastic-query]
+
+- _id: mapping.database-links--azure-sql-mi
+  oracleFeature: feature.database-links
+  azureTarget: target.azure-sql-mi
+  fidelity: partial
+  effort: M
+  rationale: "Managed Instance supports linked servers and cross-database queries within the instance, so links between Oracle schemas that land in the same instance become plain three-part names, and links to other SQL Server, Managed Instance, Azure SQL Database or Synapse endpoints become linked servers with SQL or Entra authentication. Linked servers to Oracle or other non-SQL databases are not supported, and distributed transactions over linked servers are limited to the DTC preview scenarios."
+  steps: |
+    - Co-locate linked schemas in one instance and replace link syntax with database.schema.object names.
+    - Create linked servers for remaining SQL-family targets; test with OPENQUERY for pushdown.
+    - Route remaining Oracle-side dependencies through Data Factory or the application.
+    - Avoid distributed transactions across linked servers unless the DTC preview is acceptable.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sqlmi-tsql-differences, source.ms-sqldb-mi-feature-comparison]
+
+- _id: mapping.database-links--azure-pg-flex
+  oracleFeature: feature.database-links
+  azureTarget: target.azure-pg-flex
+  fidelity: partial
+  effort: M
+  rationale: "Foreign data wrappers replace database links: postgres_fdw and dblink connect to other PostgreSQL servers or databases, and oracle_fdw (available on Flexible Server for PostgreSQL 12 and later) connects to Oracle with WHERE pushdown and IMPORT FOREIGN SCHEMA, which is useful during coexistence. Both servers must allow the network path (Microsoft recommends VNet integration), and there is no two-phase commit across foreign servers."
+  steps: |
+    - Allowlist postgres_fdw or oracle_fdw and create the foreign server and user mappings.
+    - Use IMPORT FOREIGN SCHEMA to expose remote tables, then repoint schema.table@link references.
+    - Deploy servers with VNet integration or network rules permitting the connection.
+    - Keep cross-server writes idempotent, since distributed transactions are not atomic.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-pg-flex-extensions-considerations, source.ms-pg-flex-extensions, source.oracle-fdw-readme]
+
+- _id: mapping.external-tables--azure-sql-mi
+  oracleFeature: feature.external-tables
+  azureTarget: target.azure-sql-mi
+  fidelity: partial
+  effort: M
+  rationale: "Oracle external tables read flat files through a directory object; Managed Instance's data virtualization does the same over Azure Blob Storage and Data Lake Storage Gen2 for CSV and Parquet files with OPENROWSET or CREATE EXTERNAL TABLE, and CETAS can write results back to storage. Fixed-width formats, preprocessor programs and ORACLE_DATAPUMP driver files are not supported and need conversion to delimited or Parquet files."
+  steps: |
+    - Move source files to a storage account and create an external data source with a SAS or managed identity credential.
+    - Recreate external tables over CSV or Parquet, or query ad hoc with OPENROWSET.
+    - Convert fixed-width or preprocessed inputs with Data Factory before loading.
+    - Use CETAS for the export direction previously served by ORACLE_DATAPUMP external tables.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sqlmi-tsql-differences, source.ms-sql-bulk-access-blob]
+
+- _id: mapping.oracle-text--azure-sql-db
+  oracleFeature: feature.oracle-text
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: M
+  rationale: "SQL Server Full-Text Search provides word breaking, stemming, thesaurus, stoplists, prefix and proximity queries through CONTAINS and FREETEXT, plus ranking via CONTAINSTABLE, which covers the common CONTEXT index use cases. Only one full-text index per table is allowed, non-Microsoft filters and word breakers are not supported on Azure SQL, and Oracle Text's CTXCAT, CTXRULE, section groups, custom lexers and result snippets have no direct counterpart; Azure AI Search is the alternative for richer search."
+  steps: |
+    - Create a full-text catalog and index on the columns that had CONTEXT indexes, specifying the language.
+    - Rewrite CONTAINS(col, 'query') > 0 predicates to CONTAINS(col, 'query') and use FORMSOF for stemming and thesaurus.
+    - Replace SCORE() with the RANK column from CONTAINSTABLE.
+    - Evaluate Azure AI Search for faceting, autocomplete or vector-hybrid requirements.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sql-full-text-search, source.ms-sqldb-mi-feature-comparison]
+
+- _id: mapping.partitioning--azure-sql-db
+  oracleFeature: feature.partitioning
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: M
+  rationale: "SQL Server partitions tables and indexes through a partition function and scheme on a single column, supporting range partitioning with switch-in/switch-out and up to 15,000 partitions, available in every Azure SQL Database tier (on the PRIMARY filegroup only). Oracle list, hash, composite, interval and reference partitioning have no native equivalent: list and hash must be emulated with a computed partitioning column, and interval partitioning's automatic partition creation becomes a maintenance job."
+  steps: |
+    - Map RANGE partitions to a RANGE RIGHT partition function with equivalent boundaries.
+    - Emulate LIST or HASH partitioning with a persisted computed column fed to the partition function.
+    - Replace interval partitioning with a scheduled job that splits the last range.
+    - Ensure unique indexes include the partitioning column, or accept non-aligned indexes.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sql-partitioned-tables]
+
+- _id: mapping.partitioning--azure-pg-flex
+  oracleFeature: feature.partitioning
+  azureTarget: target.azure-pg-flex
+  fidelity: partial
+  effort: M
+  rationale: "Declarative partitioning in PostgreSQL supports RANGE, LIST and HASH strategies with sub-partitioning, partition pruning and ATTACH/DETACH, which Ora2Pg exports directly for range and list partitions. Partitions are not created automatically (no interval partitioning) so pg_partman is used for time-based maintenance, unique constraints must include the partition key, there are no global indexes, and reference partitioning must be flattened by duplicating the parent key."
+  steps: |
+    - Export with Ora2Pg TYPE=PARTITION and review the generated PARTITION BY definitions.
+    - Set PARTITION_BY_REFERENCE to duplicate or hash to handle reference-partitioned tables.
+    - Allowlist pg_partman and configure it to pre-create future range partitions.
+    - Add the partition key to primary and unique keys, or move uniqueness enforcement to the application.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.postgres-docs-partitioning, source.ora2pg-docs, source.ms-pg-flex-extensions]
+
+# ---------------------------------------------------------------- HA and security
+
+- _id: mapping.rac--azure-sql-mi
+  oracleFeature: feature.rac
+  azureTarget: target.azure-sql-mi
+  fidelity: partial
+  effort: L
+  rationale: "RAC provides active-active instances on shared storage for both availability and write scale-out. Managed Instance provides built-in availability through a single writable primary with standby nodes (General Purpose) or an Always On style four-node cluster (Business Critical), plus optional zone redundancy and failover groups. Availability is comparable; multi-writer scale-out is not, so workloads that depended on adding RAC nodes for throughput must scale up the instance or offload reads to the Business Critical readable replica."
+  steps: |
+    - Size a single instance for the whole RAC workload (vCores, memory, IOPS) rather than per node.
+    - Choose Business Critical for low-latency storage and the free read-only replica.
+    - Enable zone redundancy to survive a datacenter failure; add a failover group for regional DR.
+    - Route report queries to the read-only replica with ApplicationIntent=ReadOnly.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sqlmi-service-tiers, source.ms-sqlmi-overview]
+
+- _id: mapping.data-guard--azure-sql-mi
+  oracleFeature: feature.data-guard
+  azureTarget: target.azure-sql-mi
+  fidelity: partial
+  effort: M
+  rationale: "Data Guard's standby database for disaster recovery corresponds to a Managed Instance failover group, which keeps a geo-secondary instance in another region with read-only access and listener endpoints that redirect after failover, and Microsoft offers a license-free DR-only replica. Synchronous zero-data-loss protection like Maximum Availability mode is not offered across regions, and there is no equivalent of snapshot standby, Far Sync or Active Data Guard rolling upgrades."
+  steps: |
+    - Create a failover group between a primary and a secondary managed instance in the paired region.
+    - Point applications at the failover group read-write listener; send reports to the read-only listener.
+    - Recreate instance-level objects (logins, Agent jobs) on the secondary, since system databases are not replicated.
+    - Test planned and forced failover and document the expected RPO.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sqlmi-overview, source.ms-sqlmi-tsql-differences]
+
+- _id: mapping.tde--azure-sql-db
+  oracleFeature: feature.tde
+  azureTarget: target.azure-sql-db
+  fidelity: exact
+  effort: S
+  rationale: "Azure SQL Database and Managed Instance encrypt data files, logs and backups with transparent data encryption by default using a service-managed key, and customer-managed TDE puts the protector in Azure Key Vault or Managed HSM under the customer's control, mirroring Oracle TDE with an external keystore. Column-level TDE has no direct equivalent; Always Encrypted covers client-side column encryption."
+  steps: |
+    - Confirm service-managed TDE is on (default) for a like-for-like tablespace encryption replacement.
+    - For customer-managed keys, create a Key Vault with soft-delete and purge protection and grant the server identity get, wrapKey and unwrapKey.
+    - Enable automatic rotation or schedule manual rotation; retain old key versions for backup restore.
+    - Replace Oracle column-level TDE with Always Encrypted where the threat model requires it.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sql-tde-byok, source.ms-sqldb-mi-feature-comparison]
+
+# ---------------------------------------------------------------- tooling
+
+- _id: mapping.data-pump--azure-sql-mi
+  oracleFeature: feature.data-pump
+  azureTarget: target.azure-sql-mi
+  fidelity: workaround
+  effort: M
+  rationale: "Data Pump dump files are Oracle-proprietary and nothing on the SQL side can read them; Managed Instance restores only native SQL Server backups from Blob Storage. Data therefore moves with SSMA's data migration, Azure Data Factory's Oracle connector, or flat files landed in Blob Storage and loaded with BULK INSERT or OPENROWSET, with Data Pump useful only for producing external-table extracts or refreshing a staging Oracle copy."
+  steps: |
+    - Use SSMA server-side or client-side data migration for initial loads after schema conversion.
+    - For large tables, extract with Data Factory using partitioned parallel copy into Parquet or CSV.
+    - Load with BULK INSERT from an external data source of type BLOB_STORAGE.
+    - Use Data Pump only to stage an Oracle copy for the migration run, never as an import format.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sqlmi-tsql-differences, source.ms-oracle-to-sqlmi-guide, source.ms-adf-oracle-connector, source.ms-sql-bulk-access-blob]
+
+- _id: mapping.data-pump--ssma
+  oracleFeature: feature.data-pump
+  azureTarget: target.ssma
+  fidelity: partial
+  effort: M
+  rationale: "SSMA replaces the schema half of Data Pump by reading metadata from a live Oracle connection, converting it and synchronizing it to SQL, and replaces the data half with its own migration engine that copies table data client-side or server-side through the extension pack. It cannot read .dmp files and does not offer Data Pump's network-mode or parallel worker tuning, so very large data sets are usually moved with Data Factory instead."
+  steps: |
+    - Connect SSMA to the source Oracle instance and select the schemas to assess and convert.
+    - Synchronize the converted schema to the target, then run Migrate Data per table or schema.
+    - Install the extension pack on a SQL Server staging instance for server-side migration of large tables when the target is Managed Instance or SQL Server.
+    - Validate with SSMA Tester or row counts.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.ms-ssma-overview, source.ms-oracle-to-sqldb-guide]
+
+- _id: mapping.data-pump--azure-dms
+  oracleFeature: feature.data-pump
+  azureTarget: target.azure-dms
+  fidelity: partial
+  effort: M
+  rationale: "Azure Database Migration Service lists Oracle only as an offline, preview source for Azure SQL Database, Managed Instance and SQL Server on Azure VMs, and the scenario is documented as running through SSMA. It offers no Oracle online (continuous sync) scenario and no Oracle to PostgreSQL scenario, and like every non-Oracle tool it does not consume Data Pump dump files."
+  steps: |
+    - Use DMS with SSMA for offline Oracle to Azure SQL migrations where a managed, repeatable pipeline is wanted.
+    - Plan a downtime window; there is no Oracle online migration path in DMS.
+    - For PostgreSQL targets use Ora2Pg or the VS Code schema conversion feature plus Data Factory for data.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.ms-azure-dms-oracle, source.ms-azure-dms-overview, source.ms-pg-migration-service]
+
+- _id: mapping.data-pump--ora2pg
+  oracleFeature: feature.data-pump
+  azureTarget: target.ora2pg
+  fidelity: partial
+  effort: M
+  rationale: "Ora2Pg is the Data Pump equivalent for PostgreSQL targets: it connects to Oracle, exports schema objects by type and streams table data as COPY or INSERT files (or directly into PostgreSQL), with parallel jobs, table filters, WHERE clauses and type overrides. It cannot read dump files, and unlike Data Pump the export is a conversion, so type mapping decisions (NUMBER, DATE, ROWID) are made during export."
+  steps: |
+    - Generate a project with ora2pg --project_base and run SHOW_REPORT --estimate_cost for assessment.
+    - Export TABLE, SEQUENCE, VIEW, TRIGGER, FUNCTION, PROCEDURE and PACKAGE types and load DDL.
+    - Export data with TYPE=COPY using parallel jobs; review DEFAULT_NUMERIC and DATA_TYPE overrides first.
+    - Run TEST and TEST_COUNT exports to compare object and row counts.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ora2pg-docs]
+
+- _id: mapping.data-pump--oracle-db-at-azure
+  oracleFeature: feature.data-pump
+  azureTarget: target.oracle-db-at-azure
+  fidelity: exact
+  effort: S
+  rationale: "Oracle Database@Azure runs unmodified Oracle Database on Exadata infrastructure operated by OCI, so expdp and impdp work as on any Oracle system, including network-mode imports over a database link. Dump files are typically staged in OCI Object Storage or Azure Blob Storage mounted or accessed through the database, and CDB/PDB administration happens in the OCI console."
+  steps: |
+    - Provision the Exadata VM cluster and target database from the Azure portal and OCI console.
+    - Stage dump files in object storage reachable from the database nodes, or use network mode with a link to the source.
+    - Run impdp with the usual parameters; no type mapping is involved.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-oracle-db-at-azure-overview, source.ms-oracle-db-at-azure-exadata]
+
+- _id: mapping.rman--azure-sql-mi
+  oracleFeature: feature.rman
+  azureTarget: target.azure-sql-mi
+  fidelity: workaround
+  effort: M
+  rationale: "Managed Instance replaces RMAN with service-managed backups: automatic full, differential and log backups with 1-35 day point-in-time restore and up to 10 years of long-term retention, plus user-initiated COPY_ONLY full backups to Blob Storage. Users cannot run differential or log backups, cannot restore with WITH options, and can restore native backups only to SQL Server 2022/2025 or another managed instance, so RMAN scripts, catalogs and retention policies are retired rather than ported."
+  steps: |
+    - Set short-term retention and long-term retention policies to match the RMAN retention window.
+    - Replace ad hoc RMAN backups with BACKUP DATABASE ... TO URL WITH COPY_ONLY when an out-of-band copy is needed.
+    - Use point-in-time restore and geo-restore instead of RMAN recovery scripts.
+    - For customer-managed TDE, keep key versions available or COPY_ONLY backups cannot be restored.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sqlmi-tsql-differences, source.ms-sqldb-mi-feature-comparison]
+
+- _id: mapping.rman--oracle-db-at-azure
+  oracleFeature: feature.rman
+  azureTarget: target.oracle-db-at-azure
+  fidelity: exact
+  effort: S
+  rationale: "On Oracle Database@Azure RMAN is fully available: OCI-managed automatic backups use Autonomous Recovery Service or OCI Object Storage, self-managed RMAN backups can stream to Azure Blob Storage, Azure Files or Azure NetApp Files, and third-party agents from the marketplace are supported. Existing RMAN scripts and retention policies carry over, with the option to keep backup data inside Azure."
+  steps: |
+    - Choose OCI-managed backups for simplicity or self-managed RMAN to Azure storage when data must stay in Azure.
+    - Mount Blob, Files or NetApp Files volumes on the database nodes for RMAN channels.
+    - Schedule with cron on the nodes and monitor through Azure Monitor logs.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-oracle-db-at-azure-bcdr, source.ms-oracle-db-at-azure-overview]
+
+- _id: mapping.exp-utility--ssma
+  oracleFeature: feature.exp-utility
+  azureTarget: target.ssma
+  fidelity: workaround
+  effort: M
+  rationale: "The original Export utility produced legacy .dmp files that only imp could read; none of the Azure migration tools accept them. SSMA needs a live connection to the Oracle database, so old exp dumps must first be imported into an Oracle instance (any supported release, or Oracle Database@Azure) before SSMA, Ora2Pg or Data Factory can extract from it."
+  steps: |
+    - Import legacy exp dumps into a staging Oracle database with imp.
+    - Point SSMA (or Ora2Pg / Data Factory) at the staging database.
+    - Retire exp-based nightly extracts in favour of Data Factory pipelines or SQL backups.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.ms-ssma-overview, source.ms-azure-dms-oracle]
+
+# ---------------------------------------------------------------- obituary roster follow-up
+
+- _id: mapping.oracle-streams--data-factory
+  oracleFeature: feature.oracle-streams
+  azureTarget: target.data-factory
+  fidelity: workaround
+  effort: L
+  rationale: "Oracle Streams captured redo and propagated changes between databases continuously. Azure Data Factory's Oracle connector is a batch copy source: Oracle is not among the connectors with native change data capture in mapping data flows, nor among the auto-incremental connectors, so deltas from Oracle can only be extracted with a customer-managed watermark pipeline (lookup the last high-water mark, copy rows above it, write the new mark). That gives scheduled micro-batches, not log-based streaming, and no capture of deletes without a soft-delete column."
+  steps: |
+    - Identify a monotonically increasing column (timestamp or sequence) on each replicated table, or add one.
+    - Build a watermark pipeline: Lookup old mark, Copy activity with a WHERE on the column, stored procedure to store the new mark.
+    - Handle deletes with soft-delete flags or periodic full reconciliation.
+    - Schedule with tumbling-window triggers at the latency the consumers tolerate.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c]
+  sources: [source.ms-adf-change-data-capture, source.ms-adf-oracle-connector]
+
+- _id: mapping.oracle-streams--fabric
+  oracleFeature: feature.oracle-streams
+  azureTarget: target.fabric
+  fidelity: partial
+  effort: M
+  rationale: "Fabric mirroring for Oracle reads the redo stream through LogMiner and lands changes as Delta tables in OneLake with latency as low as tens of seconds, which reproduces the capture-and-apply side of Streams for analytics consumers. It is one-directional into OneLake, requires archive log mode, supplemental logging and an on-premises data gateway, and cannot replicate into another Oracle or SQL database, so operational database-to-database replication still needs GoldenGate or application-level replication."
+  steps: |
+    - Enable archive log mode and supplemental logging on the source and grant the LogMiner-related privileges.
+    - Install the on-premises data gateway with network reach to the Oracle listener.
+    - Create a mirrored database in Fabric selecting the schemas or tables to replicate.
+    - Point reporting and downstream pipelines at the SQL analytics endpoint or Delta tables.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c]
+  sources: [source.ms-fabric-mirroring-oracle, source.ms-fabric-mirroring-overview]
+
+- _id: mapping.oracle-streams--azure-dms
+  oracleFeature: feature.oracle-streams
+  azureTarget: target.azure-dms
+  fidelity: none
+  effort: L
+  rationale: "Azure Database Migration Service has no online (continuous sync) scenario with Oracle as a source; the only Oracle scenarios are offline migrations to Azure SQL targets through SSMA. It therefore cannot stand in for Streams either as a replication engine or as a minimal-downtime migration path."
+  steps: |
+    - Plan Oracle migrations to Azure SQL as offline cutovers with SSMA or DMS-via-SSMA.
+    - Use Fabric mirroring, Data Factory watermark pipelines or Oracle GoldenGate for continuous change movement.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c]
+  sources: [source.ms-azure-dms-oracle]
+
+- _id: mapping.oracle-streams--oracle-db-at-azure
+  oracleFeature: feature.oracle-streams
+  azureTarget: target.oracle-db-at-azure
+  fidelity: partial
+  effort: M
+  rationale: "Streams was desupported in 19c, so on Oracle Database@Azure the Oracle-native successor is GoldenGate, which Microsoft lists as a monitored deployment type in the service and describes as the option for active-active replication. GoldenGate is not included in the Database@Azure price and needs its own licence, and its capture/replicat configuration differs from Streams rules."
+  steps: |
+    - Rewrite Streams capture, propagation and apply rules as GoldenGate extract, pump and replicat parameter files.
+    - Deploy GoldenGate on Database@Azure or on Azure VMs with network reach to both endpoints.
+    - Monitor GoldenGate deployments through Azure Monitor metrics and logs.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c]
+  sources: [source.ms-oracle-db-at-azure-overview, source.ms-oracle-db-at-azure-bcdr]
+
+- _id: mapping.oracle-change-data-capture--data-factory
+  oracleFeature: feature.oracle-change-data-capture
+  azureTarget: target.data-factory
+  fidelity: workaround
+  effort: L
+  rationale: "Oracle CDC (the DBMS_CDC_PUBLISH change tables, desupported in 12.1) published row changes for ETL consumers, which is exactly Data Factory's purpose, but Data Factory has no native change capture for Oracle sources. The supported patterns are a customer-managed watermark pipeline over a timestamp or sequence column, or landing changes from another capture mechanism (Fabric mirroring, GoldenGate) in storage and picking up new files."
+  steps: |
+    - Choose the delta detection column per table and add one where none exists.
+    - Implement the watermark control table and pipeline; run on a tumbling-window trigger.
+    - Where deletes matter, add soft-delete markers or reconcile periodically.
+    - Consider Fabric mirroring when the consumer is analytics rather than another operational database.
+  appliesToOracleVersions: [11.2]
+  sources: [source.ms-adf-change-data-capture, source.ms-adf-oracle-connector]
+
+- _id: mapping.oracle-change-data-capture--fabric
+  oracleFeature: feature.oracle-change-data-capture
+  azureTarget: target.fabric
+  fidelity: partial
+  effort: M
+  rationale: "For the classic CDC use case, feeding a warehouse with incremental changes, Fabric mirroring of Oracle does the capture (LogMiner) and the apply (Delta tables in OneLake) as a managed service, replacing both the change tables and the ETL that read them. Consumers query the mirrored tables instead of subscribing to change sets, so downstream jobs that depended on change-set semantics (before and after images, operation codes) must be redesigned around Delta time travel or snapshots."
+  steps: |
+    - Satisfy the Oracle prerequisites (archive log mode, supplemental logging, LogMiner privileges).
+    - Mirror the tables that had CDC change tables into a Fabric mirrored database.
+    - Rebuild warehouse loads as reads of the mirrored Delta tables or Direct Lake models.
+    - Tune the Delta retention setting if consumers need change history.
+  appliesToOracleVersions: [11.2]
+  sources: [source.ms-fabric-mirroring-oracle, source.ms-fabric-mirroring-overview]
+
+- _id: mapping.oracle-change-data-capture--azure-sql-mi
+  oracleFeature: feature.oracle-change-data-capture
+  azureTarget: target.azure-sql-mi
+  fidelity: partial
+  effort: M
+  rationale: "After the schema moves to SQL, SQL Server Change Data Capture on Managed Instance provides the same model Oracle CDC offered: log-based capture into per-table change tables with before/after images, operation codes and LSN ordering, read through table-valued functions. It depends on SQL Server Agent capture and cleanup jobs, retains three days of changes by default and allows at most two capture instances per table."
+  steps: |
+    - Enable CDC on the database and on each formerly published table with sys.sp_cdc_enable_db and sys.sp_cdc_enable_table.
+    - Rewrite subscribers to call cdc.fn_cdc_get_all_changes_ or _net_changes_ functions between LSN bounds.
+    - Adjust the cleanup job retention to the consumers' latency.
+    - Watch log truncation, which waits for the capture job.
+  appliesToOracleVersions: [11.2]
+  sources: [source.ms-sql-change-data-capture, source.ms-sqldb-mi-feature-comparison]
+
+- _id: mapping.oracle-change-data-capture--azure-pg-flex
+  oracleFeature: feature.oracle-change-data-capture
+  azureTarget: target.azure-pg-flex
+  fidelity: partial
+  effort: M
+  rationale: "PostgreSQL logical decoding on Flexible Server exposes row changes from the write-ahead log through replication slots and output plugins (pgoutput, wal2json, test_decoding) that consumers such as Debezium read, and native logical replication publishes selected tables to subscribers. This covers Oracle CDC's change-table role for downstream systems, without DDL replication and with the operational duty of dropping unused slots before they fill storage."
+  steps: |
+    - Set wal_level to logical, raise max_worker_processes and restart; grant REPLICATION to the replication role.
+    - Create publications for the tables that had change tables, or a wal2json slot for a change stream.
+    - Attach subscribers or a Debezium-style connector to the slot.
+    - Monitor pg_replication_slots and alert on WAL growth.
+  appliesToOracleVersions: [11.2]
+  sources: [source.ms-pg-flex-logical-replication]
+
+- _id: mapping.advanced-replication--azure-sql-mi
+  oracleFeature: feature.advanced-replication
+  azureTarget: target.azure-sql-mi
+  fidelity: partial
+  effort: L
+  rationale: "Managed Instance supports SQL Server transactional and snapshot replication as publisher, distributor and subscriber, plus bidirectional transactional replication, which covers the read-only and two-site cases Advanced Replication served. Multimaster replication with conflict resolution has no equivalent, because merge, peer-to-peer and updatable subscriptions are not supported on Managed Instance; those topologies must be redesigned around a single writable primary with failover groups or application-level conflict handling."
+  steps: |
+    - Classify each master site and materialized view group as read-only distribution, two-site, or multimaster.
+    - Implement read-only and two-site cases with transactional or bidirectional replication using SQL authentication and an Azure file share for snapshots.
+    - Collapse multimaster groups onto one primary; use failover groups for regional presence.
+    - Keep the number of continuously running distribution agents at or below 30.
+  appliesToOracleVersions: [11.2, 12.1]
+  sources: [source.ms-sqlmi-transactional-replication, source.ms-sqlmi-tsql-differences]
+
+- _id: mapping.advanced-replication--azure-pg-flex
+  oracleFeature: feature.advanced-replication
+  azureTarget: target.azure-pg-flex
+  fidelity: partial
+  effort: L
+  rationale: "Native PostgreSQL logical replication and the pglogical extension provide table-level publish/subscribe between Flexible Servers, including bidirectional setups with pglogical, which replaces Advanced Replication's read-only and updatable snapshot sites. Neither replicates DDL automatically, neither offers Oracle-style conflict resolution methods for multimaster, and sequences and large objects are outside logical replication."
+  steps: |
+    - Set wal_level to logical and, for pglogical, add it to shared_preload_libraries and azure.extensions.
+    - Create publications and subscriptions (or pglogical nodes and replication sets) per site.
+    - Copy schema separately with pg_dump --schema-only and apply DDL on all nodes.
+    - Avoid true multimaster writes or handle conflicts in the application.
+  appliesToOracleVersions: [11.2, 12.1]
+  sources: [source.ms-pg-flex-logical-replication, source.ms-pg-flex-extensions]
+
+- _id: mapping.non-cdb-architecture--oracle-db-at-azure
+  oracleFeature: feature.non-cdb-architecture
+  azureTarget: target.oracle-db-at-azure
+  fidelity: workaround
+  effort: M
+  rationale: "Exadata Database Service, which underpins Oracle Database@Azure, creates databases from the console and APIs only as container databases with an initial pluggable database. A non-CDB can be created only through the dbaascli command line and only for release 19.x and earlier, so a non-CDB estate should be converted to PDBs (AutoUpgrade does this in one step) before or during the move rather than preserved."
+  steps: |
+    - Inventory non-CDB databases and their release.
+    - Create a target CDB on the Exadata VM cluster from the Azure portal and OCI console.
+    - Use AutoUpgrade or Data Pump to upgrade and plug each non-CDB in as a PDB.
+    - Reserve dbaascli non-CDB creation for temporary 19c compatibility only.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c]
+  sources: [source.oracle-exadata-cloud-manage-databases, source.ms-oracle-db-at-azure-exadata]
+
+- _id: mapping.non-cdb-architecture--oracle-on-azure-vm
+  oracleFeature: feature.non-cdb-architecture
+  azureTarget: target.oracle-on-azure-vm
+  fidelity: workaround
+  effort: M
+  rationale: "On a self-managed VM any Oracle release can be installed, so a 19c non-CDB can be lifted as-is, but that only postpones the conversion because later releases are multitenant-only. AutoUpgrade can upgrade and convert a non-CDB into a PDB of a new or existing CDB in a single operation, which is the recommended step when moving to a VM on a newer release."
+  steps: |
+    - Provision the VM with the target Oracle release from the marketplace image or a custom image.
+    - Create an empty CDB on the VM.
+    - Run AutoUpgrade with the non-CDB as source and the CDB as target to upgrade and plug in.
+    - Update connection strings to the PDB service name.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c]
+  sources: [source.oracle-autoupgrade-23, source.ms-oracle-on-azure-vm-overview]
+
+- _id: mapping.em-express--oracle-db-at-azure
+  oracleFeature: feature.em-express
+  azureTarget: target.oracle-db-at-azure
+  fidelity: partial
+  effort: S
+  rationale: "EM Database Express was the in-database web console for a single database. On Oracle Database@Azure, database-level administration happens in the OCI console (CDB and PDB lifecycle) while metrics, audit logs and events surface natively in Azure Monitor, with Microsoft recommending Azure Monitor for VM cluster metrics, Log Analytics for diagnostic logs and Azure Arc for VM-level monitoring, and Enterprise Manager for deeper database monitoring."
+  steps: |
+    - Enable diagnostic settings on the Exadata VM cluster to send database and infrastructure logs to Log Analytics.
+    - Build Azure Monitor dashboards and alerts on the Oracle cluster metrics.
+    - Use the OCI console for PDB operations that EM Express performed.
+    - Deploy Enterprise Manager Cloud Control if performance pages and tuning packs are required.
+  appliesToOracleVersions: [12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.ms-caf-odaa-monitoring, source.ms-oracle-db-at-azure-overview, source.ms-oracle-db-at-azure-exadata]
+
+- _id: mapping.em-express--oracle-on-azure-vm
+  oracleFeature: feature.em-express
+  azureTarget: target.oracle-on-azure-vm
+  fidelity: workaround
+  effort: M
+  rationale: "On an Azure VM nothing replaces EM Express automatically. Microsoft's guidance is to layer Azure Monitor (VM insights, Azure Monitor Agent, disk and NetApp Files metrics, alert rules) for infrastructure health and to run Oracle Enterprise Manager Cloud Control on a separate VM for database monitoring, optionally loading its logs into Log Analytics for a single view. AWR and Statspack remain available inside the database."
+  steps: |
+    - Enable VM insights and data collection rules on the database VMs.
+    - Install Enterprise Manager Cloud Control on a dedicated VM and register the databases.
+    - Ship alert log and Enterprise Manager text logs to Log Analytics with custom log collection.
+    - Configure recommended alert rules for CPU, memory and disk throughput thresholds.
+  appliesToOracleVersions: [12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.ms-caf-oracle-vm-monitoring]
+
+- _id: mapping.dbua--oracle-on-azure-vm
+  oracleFeature: feature.dbua
+  azureTarget: target.oracle-on-azure-vm
+  fidelity: partial
+  effort: S
+  rationale: "Oracle's AutoUpgrade utility is the documented replacement for the Database Upgrade Assistant on any self-managed host, including Azure VMs: it analyzes, applies fixups, deploys and upgrades from a configuration file, and can also convert non-CDBs to PDBs and automate patching. It is command-line driven rather than a GUI, so DBUA runbooks are rewritten as config files and jobs."
+  steps: |
+    - Install the latest autoupgrade.jar on the VM.
+    - Write a config file per database with source and target homes and run the analyze mode.
+    - Apply fixups and run deploy during the maintenance window.
+    - Use Azure Backup or RMAN to take a restore point before the upgrade.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.oracle-autoupgrade-23, source.ms-oracle-on-azure-vm-overview]
+
+- _id: mapping.dbua--oracle-db-at-azure
+  oracleFeature: feature.dbua
+  azureTarget: target.oracle-db-at-azure
+  fidelity: workaround
+  effort: S
+  rationale: "On Oracle Database@Azure the infrastructure and database software are patched by Oracle's operations team through the OCI connection, and database lifecycle operations are performed from the OCI console or dbaascli rather than by running a desktop upgrade assistant. The interactive DBUA workflow therefore disappears in favour of service operations."
+  steps: |
+    - Request or schedule database home and database upgrades through the OCI console for the VM cluster.
+    - Validate applications against the new release in a cloned PDB first.
+    - Track patching events in Azure Monitor logs.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.ms-oracle-db-at-azure-overview, source.ms-oracle-db-at-azure-exadata]
+
+- _id: mapping.data-recovery-advisor--azure-sql-mi
+  oracleFeature: feature.data-recovery-advisor
+  azureTarget: target.azure-sql-mi
+  fidelity: workaround
+  effort: S
+  rationale: "Data Recovery Advisor diagnosed block and file corruption and proposed RMAN repairs. Managed Instance removes most of that workflow: backups are automatic with point-in-time restore, storage redundancy handles media failure, Business Critical replicas repair damaged pages automatically, and DBCC CHECKDB repair options cannot be run because the database cannot enter single-user mode, with Microsoft stating that suspected corruption is handled by Azure support."
+  steps: |
+    - Rely on point-in-time restore or geo-restore to recover from logical corruption.
+    - Run DBCC CHECKDB without repair options on a schedule and back up WITH CHECKSUM.
+    - Open an Azure support case when corruption is detected instead of attempting repairs.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.ms-sqlmi-tsql-differences, source.ms-sqlmi-service-tiers]
+
+- _id: mapping.data-recovery-advisor--oracle-db-at-azure
+  oracleFeature: feature.data-recovery-advisor
+  azureTarget: target.oracle-db-at-azure
+  fidelity: partial
+  effort: S
+  rationale: "RMAN remains fully available on Oracle Database@Azure, and the service adds managed automatic backups to Autonomous Recovery Service or Object Storage with policy-based retention, so recovery scenarios that Data Recovery Advisor scripted are performed with RMAN commands or console restores. The advisor's failure catalog and automated repair advice are simply absent."
+  steps: |
+    - Enable automatic backups (Recovery Service for 19.18 and later, or Object Storage) when creating the database.
+    - Use the console's restore or RMAN directly for block, datafile or point-in-time recovery.
+    - Document manual diagnosis steps (V$DATABASE_BLOCK_CORRUPTION, RMAN VALIDATE) to replace LIST FAILURE / ADVISE FAILURE.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.oracle-exadata-cloud-manage-databases, source.ms-oracle-db-at-azure-bcdr]
+
+- _id: mapping.stored-outlines--azure-sql-db
+  oracleFeature: feature.stored-outlines
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: M
+  rationale: "Stored outlines pinned an execution plan for a SQL text. Query Store, enabled by default on Azure SQL Database and Managed Instance, keeps the history of plans per query and lets you force a retained plan with sp_query_store_force_plan or attach Query Store hints without changing application code, and automatic plan correction can force the last good plan itself. Outlines cannot be imported; each must be re-established by capturing the desired plan in Query Store."
+  steps: |
+    - Export the outline list and the SQL text of each outlined statement.
+    - After migration, run the workload so Query Store captures candidate plans.
+    - Force the plan matching the intended shape with sp_query_store_force_plan, or apply Query Store hints.
+    - Enable automatic plan correction to handle future regressions.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.ms-sql-query-store]
+
+- _id: mapping.stored-outlines--azure-pg-flex
+  oracleFeature: feature.stored-outlines
+  azureTarget: target.azure-pg-flex
+  fidelity: workaround
+  effort: M
+  rationale: "PostgreSQL has no plan store or plan-forcing feature. On Flexible Server the pg_hint_plan extension lets you steer the planner with hint comments (scan and join methods, join order) embedded in the SQL text, which approximates an outline's effect but requires editing the statement or using the extension's hint table, and hints are not versioned or automatically validated."
+  steps: |
+    - Allowlist pg_hint_plan and add it to shared_preload_libraries.
+    - Reproduce the intended plan with hint comments on statements that regress.
+    - Prefer statistics, indexes and planner settings over hints where possible.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.ms-pg-flex-extensions-considerations, source.ms-pg-flex-extensions]
+
+- _id: mapping.utl-file-dir--azure-sql-mi
+  oracleFeature: feature.utl-file-dir
+  azureTarget: target.azure-sql-mi
+  fidelity: workaround
+  effort: M
+  rationale: "The UTL_FILE_DIR parameter whitelisted server directories for PL/SQL file access and was replaced by directory objects in 18c. Managed Instance has no file system exposure at all; the equivalent of a directory object is an external data source of type BLOB_STORAGE with a database-scoped credential, which BULK INSERT and OPENROWSET use to read files from Azure Blob Storage, and CETAS can write query results back to storage."
+  steps: |
+    - Create a storage container per former directory and upload the files.
+    - Create a database-scoped credential (SAS or managed identity) and an external data source pointing at the container.
+    - Rewrite UTL_FILE reads as OPENROWSET(BULK ...) or BULK INSERT, and writes as CETAS or Azure Functions.
+  appliesToOracleVersions: [11.2, 12.1, 12.2]
+  sources: [source.ms-sql-bulk-access-blob, source.ms-sqlmi-tsql-differences]
+
+- _id: mapping.utl-file-dir--blob-adls
+  oracleFeature: feature.utl-file-dir
+  azureTarget: target.blob-adls
+  fidelity: workaround
+  effort: M
+  rationale: "Server directories that UTL_FILE_DIR exposed become containers or directories in Blob Storage or Data Lake Storage Gen2, where Azure RBAC, POSIX ACLs and SAS tokens replace OS permissions and the parameter's whitelist. Files exchanged with other systems land there and are read by Azure SQL, PostgreSQL, Data Factory or Functions instead of by PL/SQL."
+  steps: |
+    - Map each directory path to a container or hierarchical-namespace directory.
+    - Grant the database or function identity Storage Blob Data Reader/Contributor roles.
+    - Update producers and consumers to use the storage endpoint.
+  appliesToOracleVersions: [11.2, 12.1, 12.2]
+  sources: [source.ms-adls-overview, source.ms-sql-bulk-access-blob]
+
+- _id: mapping.utl-file-dir--azure-pg-flex
+  oracleFeature: feature.utl-file-dir
+  azureTarget: target.azure-pg-flex
+  fidelity: workaround
+  effort: M
+  rationale: "Flexible Server gives no access to the server file system, so neither UTL_FILE_DIR nor PostgreSQL's own server-side COPY TO FILE model applies. The azure_storage extension (available for PostgreSQL 12 and later) reads and writes blobs in a storage account directly from SQL, and orafce's utl_file package exists but still needs a filesystem the service does not expose, so blob storage is the practical replacement."
+  steps: |
+    - Allowlist azure_storage, add it to shared_preload_libraries and register the storage account.
+    - Rewrite file reads as azure_storage.blob_get and bulk loads as COPY FROM the blob function output.
+    - Write exports with azure_storage.blob_put or through Data Factory.
+  appliesToOracleVersions: [11.2, 12.1, 12.2]
+  sources: [source.ms-pg-flex-extensions, source.orafce-readme]
+
+- _id: mapping.dbms-xmlquery--azure-sql-db
+  oracleFeature: feature.dbms-xmlquery
+  azureTarget: target.azure-sql-db
+  fidelity: partial
+  effort: M
+  rationale: "DBMS_XMLQUERY turned query results into XML documents and DBMS_XMLSAVE inserted, updated and deleted rows from XML. T-SQL covers both directions: FOR XML (RAW, AUTO, EXPLICIT and PATH modes, with TYPE returning an xml value) generates documents from queries, and OPENXML with sp_xml_preparedocument or the xml type's nodes() and value() methods shred documents into rowsets for DML. Element and attribute naming conventions differ, so consumers of the generated XML usually need adjustment."
+  steps: |
+    - Replace DBMS_XMLQUERY.getXML calls with SELECT ... FOR XML PATH (or RAW/AUTO) with ROOT and ELEMENTS as needed.
+    - Replace DBMS_XMLSAVE insert/update/delete calls with INSERT ... SELECT from OPENXML or nodes()/value().
+    - Compare generated documents against the Oracle output for tag names and NULL handling.
+  appliesToOracleVersions: [11.2, 12.1, 12.2]
+  sources: [source.ms-sql-for-xml, source.ms-sql-openxml]
+
+- _id: mapping.dbms-xmlquery--azure-pg-flex
+  oracleFeature: feature.dbms-xmlquery
+  azureTarget: target.azure-pg-flex
+  fidelity: partial
+  effort: M
+  rationale: "PostgreSQL's SQL/XML functions generate documents from queries (query_to_xml, table_to_xml, cursor_to_xml, xmlelement, xmlforest, xmlagg) and shred them with XMLTABLE, xpath and xpath_exists, matching the two halves of DBMS_XMLQUERY and DBMS_XMLSAVE. Only XPath 1.0 is supported, the default row and column element naming follows the SQL/XML standard rather than Oracle's ROWSET/ROW layout, and the server must be built with libxml (Flexible Server is)."
+  steps: |
+    - Replace DBMS_XMLQUERY.getXML with query_to_xml or explicit xmlelement/xmlagg construction to match the expected shape.
+    - Replace DBMS_XMLSAVE with INSERT ... SELECT FROM XMLTABLE(...).
+    - Validate namespaces and XPath expressions against the 1.0 subset.
+  appliesToOracleVersions: [11.2, 12.1, 12.2]
+  sources: [source.postgres-docs-functions-xml]
+
+- _id: mapping.dotnet-stored-procedures--functions
+  oracleFeature: feature.dotnet-stored-procedures
+  azureTarget: target.functions
+  fidelity: workaround
+  effort: L
+  rationale: "Oracle Database Extensions for .NET ran .NET assemblies inside the database process on Windows. Azure Functions runs the same C# code as HTTP, timer, Service Bus or SQL-triggered functions outside the database, which is Microsoft's general direction for .NET logic on PaaS databases. The code no longer executes inside a transaction with the calling SQL, so procedures that depended on in-transaction behaviour need a T-SQL or PL/pgSQL rewrite instead."
+  steps: |
+    - Extract the .NET assemblies and classify procedures as compute-only, data-access, or transaction-dependent.
+    - Port compute-only and data-access logic to Azure Functions using the Azure SQL or PostgreSQL client libraries.
+    - Rewrite transaction-dependent procedures in T-SQL or PL/pgSQL.
+    - Call functions from the application tier rather than from SQL.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.ms-functions-overview]
+
+- _id: mapping.dotnet-stored-procedures--azure-sql-mi
+  oracleFeature: feature.dotnet-stored-procedures
+  azureTarget: target.azure-sql-mi
+  fidelity: partial
+  effort: M
+  rationale: "SQL CLR integration is the SQL Server counterpart to Oracle's .NET stored procedures and is available on Managed Instance, where assemblies must be created FROM BINARY because there is no file system access; Azure SQL Database does not support CLR at all. The Oracle .NET extension API differs from SqlServer.Server attributes, so assemblies are recompiled against the SQL CLR model, and unsafe or external-access assemblies face the usual restrictions."
+  steps: |
+    - Rebuild each assembly against Microsoft.SqlServer.Server with SqlProcedure/SqlFunction attributes.
+    - Deploy with CREATE ASSEMBLY FROM BINARY (hex literal) and create the wrapping procedures.
+    - Prefer SAFE permission sets; move external access logic to Azure Functions.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.ms-sqlmi-tsql-differences, source.ms-sqldb-mi-feature-comparison]
+
+- _id: mapping.liboramysql--azure-sql-db
+  oracleFeature: feature.liboramysql
+  azureTarget: target.azure-sql-db
+  fidelity: none
+  effort: M
+  rationale: "liboramysql let applications written against the MySQL client library talk to Oracle Database. Azure SQL Database speaks only the SQL Server tabular data stream protocol through the Microsoft drivers and connection libraries (Python, Java, Node.js, PHP, Ruby, .NET), so there is no MySQL-protocol facade to migrate to. Applications must switch driver and SQL dialect, or target Azure Database for MySQL if MySQL compatibility is the real requirement."
+  steps: |
+    - Find applications linking liboramysql and note the MySQL API surface they use.
+    - Replace the client library with the Microsoft driver for the language and update connection strings.
+    - Review SQL for MySQL-dialect constructs that Oracle tolerated.
+  appliesToOracleVersions: [12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.ms-sqldb-overview]
+
+- _id: mapping.oracle-wallet-manager--key-vault
+  oracleFeature: feature.oracle-wallet-manager
+  azureTarget: target.key-vault
+  fidelity: partial
+  effort: M
+  rationale: "Oracle Wallet Manager maintained PKCS#12 wallets holding TDE master keys, TLS certificates and stored credentials. For TDE the Azure equivalent is customer-managed TDE with the protector in Key Vault or Managed HSM, accessed by the server's managed identity; the wallet's other roles (server TLS certificates, client credential store) are handled by the platform's managed certificates and by Key Vault secrets or Microsoft Entra authentication in the application. There is no wallet file to migrate; keys are generated or imported into Key Vault."
+  steps: |
+    - Create a Key Vault with soft-delete and purge protection; import or generate the TDE protector key.
+    - Grant the logical server or managed instance identity get, wrapKey and unwrapKey.
+    - Switch the server to customer-managed TDE and enable automatic rotation.
+    - Replace wallet-based client credentials (mkstore) with Entra managed identities or Key Vault secrets.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  sources: [source.ms-sql-tde-byok]
+
+- _id: mapping.tls-1-0-1-1--azure-sql-db
+  oracleFeature: feature.tls-1-0-1-1
+  azureTarget: target.azure-sql-db
+  fidelity: exact
+  effort: S
+  rationale: "Azure SQL Database and Managed Instance already enforce what Oracle's desupport of TLS 1.0 and 1.1 demands: those versions are retired, the lowest configurable minimum is TLS 1.2, the default accepts TLS 1.2 and above, and TLS 1.3 can be required. The migration task is on the client side, upgrading drivers that cannot negotiate TLS 1.2 or later."
+  steps: |
+    - Audit client TLS versions with SQL auditing (client_tls_version_name) or the portal connection metrics.
+    - Upgrade drivers and runtimes that cannot negotiate TLS 1.2.
+    - Set the server minimum TLS version to 1.2 (or 1.3 after driver testing).
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-sqldb-connectivity-tls]
+
+- _id: mapping.tls-1-0-1-1--azure-pg-flex
+  oracleFeature: feature.tls-1-0-1-1
+  azureTarget: target.azure-pg-flex
+  fidelity: exact
+  effort: S
+  rationale: "Flexible Server requires TLS on every connection by default and accepts only TLS 1.2 and 1.3, denying 1.0 and 1.1, which matches Oracle's desupport of the older versions. It does not offer mutual TLS or custom server certificates, so wallet-based client certificate authentication used with Oracle Net cannot be reproduced and must become password or Entra authentication."
+  steps: |
+    - Keep require_secure_transport on and optionally set ssl_min_protocol_version to TLSv1.3.
+    - Configure clients with sslmode=verify-full or verify-ca and the Azure root CA certificates, not pinned intermediates.
+    - Replace Oracle client-certificate authentication with Entra or password authentication.
+  appliesToOracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-pg-flex-tls]
+- _id: mapping.empty-string-null--oracle-db-at-azure
+  oracleFeature: feature.empty-string-null
+  azureTarget: target.oracle-db-at-azure
+  fidelity: exact
+  effort: S
+  rationale: Oracle Database@Azure runs Oracle Database itself (Exadata Database Service, Base Database Service or Autonomous Database) inside Azure datacenters, so SQL semantics are unchanged and a zero-length VARCHAR2 is still stored and compared as NULL. The behaviour moves with the database; only a later move to a non-Oracle engine reintroduces the difference.
+  steps: |
+    - Keep existing NULL-handling code; no rewrite is needed for this behaviour.
+    - Record the dependency in the migration inventory so a future hop to Azure SQL or PostgreSQL does not miss it.
+    - Note that Oracle's SQL reference warns applications not to rely on this behaviour in future releases.
+  appliesToOracleVersions: ['11.2', '12.1', '12.2', 18c, 19c, 21c, 23ai, 26ai]
+  sources: [source.ms-oracle-db-at-azure-overview, source.oracle-sqlrf-19-nulls]

@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q01",
+    "type": "version-scope",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 24314,
+    "session_id": "417848b5-c086-4bc7-b068-9be407033764",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 16473,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 2425,
+      "output_tokens_details": {
+        "thinking_tokens": 943
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 16473,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2425,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 16473,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 16473
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q01",
+    "type": "version-scope",
+    "q": "We are on Oracle 19c and use DBMS_JOB for nightly batches. Moving to Azure SQL Managed Instance — what happens to those jobs?",
+    "expected": "DBMS_JOB is deprecated (Oracle recommends DBMS_SCHEDULER); on SQL MI the equivalent is SQL Server Agent jobs; schedules and PL/SQL bodies must be rewritten in T-SQL; answer must state the deprecation release.",
+    "required_sources": [
+      "oracle",
+      "microsoft"
+    ]
+  },
+  "result": "**Verdict:** Your DBMS_JOB jobs will not move over automatically. You have to rebuild each one, and on Azure SQL Managed Instance the natural target is **SQL Server Agent**, which Managed Instance supports and keeps running for you. The PL/SQL each job runs goes through normal code conversion. The job definitions themselves (schedule, owner, retry behaviour) need to be rebuilt as a separate piece of work.\n\n**Key facts**\n\n1. **Take an inventory first.** In 19c, Oracle has deprecated DBMS_JOB and runs those jobs through DBMS_SCHEDULER under the hood. So query both views:\n   ```sql\n   SELECT job, log_user, schema_user, what, interval, next_date, broken, failures FROM dba_jobs;\n   SELECT job_name, job_action, repeat_interval FROM dba_scheduler_jobs WHERE job_name LIKE 'DBMS_JOB$%';\n   ```\n   Oracle 19c upgrade notes: https://docs.oracle.com/en/database/oracle/oracle-database/19/upgrd/deprecated-features-oracle-database-19c.html\n\n2. **Map each job to an Agent job with a T-SQL step.** The `WHAT` block becomes a call to the converted stored procedure. SSMA for Oracle (SQL Server Migration Assistant) converts the PL/SQL, but I'm not sure how much of the job setup it rebuilds for you. Plan on scripting the `sp_add_job`, `sp_add_jobstep` and `sp_add_schedule` calls yourself and check them against SSMA's conversion report.\n   https://learn.microsoft.com/sql/ssma/oracle/sql-server-migration-assistant-for-oracle-oracletosql\n\n3. **Schedules need translating by hand.** A DBMS_JOB `INTERVAL` is a date expression, for example `TRUNC(SYSDATE)+1+2/24`. Agent uses fixed daily, weekly or monthly schedules, so simple nightly jobs map easily. Expressions like \"last business day\" or \"next run is X hours after the last one finished\" need either an Agent schedule plus a check inside the procedure, or a different design.\n\n4. **Time zones differ.** Agent schedules run in the Managed Instance's time zone. That zone is chosen when the instance is created, defaults to UTC, and can't be changed later. A job set for \"02:00\" will shift if Oracle `SYSDATE` was on local server time. Decide this before you provision.\n   https://learn.microsoft.com/azure/azure-sql/managed-instance/timezones-overview\n\n5. **Agent on Managed Instance has limits:**\n   - Supported step types include T-SQL and SSIS. **CmdExec and PowerShell steps are not supported**, so any job that ran OS scripts has to move elsewhere (Azure Automation, Data Factory or Logic Apps).\n   - You can't stop or restart Agent. Notifications go by email through Database Mail only.\n   https://learn.microsoft.com/azure/azure-sql/managed-instance/job-automation-managed-instance\n\n6. **Failure handling works differently.** When a DBMS_JOB fails, Oracle retries it with increasing waits (up to 16 attempts) and then marks it BROKEN. Agent has per-step retry attempts and intervals plus on-failure actions. Set these on purpose and add alerting, or failures may go unnoticed.\n\n7. **Security context changes.** A DBMS_JOB runs as `LOG_USER`/`SCHEMA_USER` with that session's NLS settings. In Agent, set the job owner and the step's database or user context. Watch for date and number formats that the procedures relied on implicitly.\n\n8. **Jobs that call application code with DBMS_JOB.SUBMIT at runtime** (fire-and-forget async work) are a separate problem. Rewrite those using Service Broker, a queue table polled by an Agent job, or something outside the database such as Functions or Data Factory.\n\n**Recommended approach:** inventory the jobs and sort them into three groups: simple nightly T-SQL, OS/script-dependent, and dynamically submitted. Script the Agent jobs as code in source control. Run old and new side by side during cutover, and disable the Oracle jobs (`DBMS_JOB.BROKEN`) at the final switchover so nothing runs twice.",
+  "stderr": ""
+}

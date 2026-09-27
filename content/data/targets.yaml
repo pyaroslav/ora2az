@@ -1,0 +1,228 @@
+# Azure targets. One document per slug in content/SLUGS.md.
+
+- _id: target.azure-sql-db
+  name: Azure SQL Database
+  slug: azure-sql-db
+  service: azure-sql-db
+  tierNotes: "vCore tiers: General Purpose (remote premium storage, 1 GB-4 TB, no read replica), Business Critical (local SSD, 4 TB, three replicas with one readable, in-memory OLTP), Hyperscale (decoupled storage up to 128 TB, 0-4 HA replicas plus up to 30 named replicas, no in-memory tables, no SQL license fee). DTU tiers (Basic/Standard/Premium) still exist. Serverless compute is available for General Purpose and Hyperscale on standard-series hardware."
+  summary: |
+    Azure SQL Database is the database-scoped PaaS flavour of the SQL Server engine. Each database (or elastic pool) lives under a logical server, runs the latest stable engine build, and gets automated backups, point-in-time restore, built-in high availability and optional zone redundancy without any instance-level administration. Because the unit of management is a single database, instance-level SQL Server features are missing: there is no SQL Server Agent, no Service Broker, no linked servers, no cross-database three-part-name queries, no CLR, and no FILESTREAM. Scheduling moves to Elastic Jobs, cross-database access to elastic query, and file access to BULK INSERT or OPENROWSET against Azure Blob Storage.
+
+    For an Oracle migration the usual tooling is SQL Server Migration Assistant for Oracle, which can target Azure SQL Database directly. Newer engine features that matter for Oracle 23ai workloads (native json type, vector type and VECTOR_DISTANCE, ledger, temporal tables, row-level security) are available here first because the service is always on the newest engine.
+  sources: [source.ms-sqldb-overview, source.ms-sqldb-service-tiers-vcore, source.ms-sqldb-hyperscale, source.ms-sqldb-mi-feature-comparison]
+
+- _id: target.azure-sql-mi
+  name: Azure SQL Managed Instance
+  slug: azure-sql-mi
+  service: azure-sql-mi
+  tierNotes: "General Purpose: remote storage (5-10 ms latency), up to 80 vCores, 16 TB, 100 databases, no read-only replica, in-memory OLTP not supported. Next-gen General Purpose: Elastic SAN storage, up to 128 vCores, 32 TB, 500 databases, flexible memory. Business Critical: local SSD (1-2 ms), up to 128 vCores, 16 TB, 100 databases, three HA replicas with one free readable replica, in-memory OLTP. Hyperscale is not offered for Managed Instance."
+  summary: |
+    Azure SQL Managed Instance is an instance-scoped PaaS deployment of the SQL Server engine with near-complete compatibility with the latest Enterprise Edition surface area. It is deployed into a customer virtual network, keeps instance-level features that Azure SQL Database lacks (SQL Server Agent with T-SQL job steps, Service Broker, linked servers to SQL targets, cross-database queries and transactions within the instance, CLR from binary, Database Mail, Resource Governor, native COPY_ONLY backups to URL) and supports restoring native SQL Server backups from Azure Blob Storage.
+
+    It is still PaaS, so it cannot see a file system: BULK INSERT and OPENROWSET read only from Blob Storage, FILESTREAM and FileTable are unavailable, extended stored procedures and xp_cmdshell are not supported, and backups are restorable only to SQL Server 2022 or 2025 depending on the instance update policy. For Oracle migrations it is the target that absorbs the most Oracle-isms (jobs, queues, links) with the least re-architecture; SSMA for Oracle targets it directly.
+  sources: [source.ms-sqlmi-overview, source.ms-sqlmi-service-tiers, source.ms-sqlmi-tsql-differences, source.ms-sqldb-mi-feature-comparison]
+
+- _id: target.azure-pg-flex
+  name: Azure Database for PostgreSQL Flexible Server
+  slug: azure-pg-flex
+  service: azure-pg-flex
+  tierNotes: "Burstable (B-series, 1-20 vCores, CPU-credit model; Microsoft describes it as not recommended for production), General Purpose (D-series, 2-192 vCores, 4 GiB per vCore) and Memory Optimized (E-series, 2-192 vCores, 6.75-9.5 GiB per vCore). Storage 32 GiB to 64 TiB in every tier; backup retention 7-35 days plus long-term retention. Zone-redundant HA is a per-server option that provisions a synchronous standby."
+  summary: |
+    Flexible Server runs community PostgreSQL (major versions 11 through 18 at the time of retrieval) on a Linux VM with storage separated from compute, three synchronous local copies of data, automated backups, optional zone-redundant high availability, built-in PgBouncer, a managed maintenance window and stop/start billing. Extensions are the main compatibility surface for Oracle migrations and must be allowlisted per server, with some also added to shared_preload_libraries: pg_cron for scheduling, pgaudit for auditing, orafce for Oracle-flavoured functions and packages, oracle_fdw and postgres_fdw for links, postgis for spatial, vector for embeddings, pg_partman for partition maintenance and pg_ivm for incrementally maintained views.
+
+    There is no superuser access; the azure_pg_admin role is the highest privilege. Schema conversion from Oracle is done with Ora2Pg or Microsoft's Oracle-to-PostgreSQL schema conversion feature in the Visual Studio Code PostgreSQL extension, and data movement with Ora2Pg, Azure Data Factory or oracle_fdw. Azure Database Migration Service does not currently list Oracle as a source for this target.
+  sources: [source.ms-pg-flex-overview, source.ms-pg-flex-compute, source.ms-pg-flex-extensions, source.ms-pg-flex-extensions-considerations]
+
+- _id: target.oracle-db-at-azure
+  name: Oracle Database@Azure
+  slug: oracle-db-at-azure
+  service: oracle-db-at-azure
+  tierNotes: "Offerings visible in Microsoft docs: Exadata Database Service on Dedicated Infrastructure (only Exadata X9M shapes), Exadata Database Service on Exascale Infrastructure, Autonomous Database, Base Database Service and GoldenGate deployments. Infrastructure and VM clusters are managed in the Azure portal; container and pluggable databases are managed from the OCI console."
+  summary: |
+    Oracle Database@Azure places Oracle Cloud Infrastructure database hardware inside Microsoft datacenters. The service is bought through an Azure Marketplace private offer, billed on the Azure invoice (counting toward Azure consumption commitments), supports Oracle BYOL and unlimited license agreements, uses Azure virtual networks and Microsoft Entra ID for identity, and emits metrics and logs to Azure Monitor. Oracle's operations team patches and maintains the infrastructure through a connection to OCI, so an OCI tenancy is still required.
+
+    Because the engine is unmodified Oracle Database on Exadata, this is the only Azure target where Oracle features with no SQL Server or PostgreSQL equivalent (RAC, Data Guard, RMAN, Data Pump, Advanced Queuing, Oracle Text, Spatial, Flashback, Edition-Based Redefinition) keep working unchanged. Microsoft's guidance notes that a single deployment is bound to one availability zone, so multi-zone or multi-region resilience needs a second deployment with Data Guard.
+  sources: [source.ms-oracle-db-at-azure-overview, source.ms-oracle-db-at-azure-exadata, source.ms-oracle-db-at-azure-bcdr]
+
+- _id: target.oracle-on-azure-vm
+  name: Oracle Database on Azure Virtual Machines
+  slug: oracle-on-azure-vm
+  service: oracle-on-azure-vm
+  tierNotes: "IaaS only. Microsoft recommends memory-optimized VM sizes and constrained-vCPU variants for licensing. Storage choices (Premium SSD, Ultra Disk, Azure NetApp Files) and RMAN or Azure Backup strategies are the customer's responsibility."
+  summary: |
+    Running Oracle Database on Azure VMs is a self-managed, bring-your-own-license path. Oracle publishes Oracle Linux images with Database 12.2, 18.3 and 19.3 Standard and Enterprise Edition in the Azure Marketplace, and any supported Oracle release can be installed on a custom image. Azure is an Oracle-authorized cloud environment, so the on-premises core factor table does not apply and two hyper-threaded vCPUs count as one processor license.
+
+    High availability and disaster recovery are built with Oracle's own tools (Data Guard, Active Data Guard, GoldenGate) across VMs in an availability set or across regions; Microsoft documents these, not RAC, as the HA pattern, and states that RAC and RAC One Node are not supported on Azure Bare Metal Infrastructure. Oracle Database@Azure is the Azure route to RAC. Backups can use RMAN to Azure Files, Blob Storage or Azure NetApp Files, or Azure Backup's application-consistent snapshots.
+  sources: [source.ms-oracle-on-azure-vm-overview]
+
+- _id: target.blob-adls
+  name: Azure Blob Storage / Data Lake Storage Gen2
+  slug: blob-adls
+  service: blob-adls
+  summary: |
+    Azure Blob Storage is the object store that every Azure database service leans on: SQL Managed Instance backs up to it and bulk-loads from it, Azure SQL Database reads files from it with OPENROWSET, PostgreSQL Flexible Server reaches it through the azure_storage extension, and Data Factory stages through it. Enabling the hierarchical namespace on a storage account turns it into Data Lake Storage Gen2, which adds directory semantics, atomic renames, the Hadoop-compatible ABFS driver and POSIX access control lists on top of Azure RBAC, while keeping Blob pricing, access tiers and lifecycle management.
+
+    In an Oracle migration it is the natural landing zone for content that lived in BFILEs, Oracle Multimedia columns or UTL_FILE directories, for Data Pump or RMAN files in transit, and for Parquet or CSV extracts consumed by Synapse or Fabric. Data is encrypted at rest with Microsoft-managed or customer-managed keys.
+  sources: [source.ms-adls-overview, source.ms-sql-bulk-access-blob]
+
+- _id: target.data-factory
+  name: Azure Data Factory
+  slug: data-factory
+  service: data-factory
+  summary: |
+    Azure Data Factory is the managed data integration service used to move and transform data between Oracle and Azure stores. Its Oracle connector (version 2.0, Oracle 11g and later) copies to and from Oracle tables, supports parallel copy by physical partition or dynamic range, and runs on the Azure integration runtime for cloud-reachable databases or a self-hosted integration runtime for on-premises networks. Microsoft now positions Data Factory in Microsoft Fabric as the next generation and offers an upgrade path.
+
+    For migrations it is the bulk data mover when Data Pump cannot be used against a non-Oracle target: extract from Oracle, land in Blob or Data Lake Storage, and load into Azure SQL or PostgreSQL. Type handling changed in connector version 2.0, where NUMBER without precision becomes an exact Decimal instead of a Double.
+  sources: [source.ms-adf-oracle-connector]
+
+- _id: target.synapse
+  name: Azure Synapse Analytics
+  slug: synapse
+  service: synapse
+  tierNotes: "Dedicated SQL pools (formerly SQL Data Warehouse) versus serverless SQL pools; Spark pools; pipelines share the Data Factory engine."
+  summary: |
+    Azure Synapse Analytics bundles a distributed T-SQL engine (dedicated and serverless SQL pools), Apache Spark pools, Data Explorer and Data Factory-based pipelines in one workspace. Serverless SQL queries Parquet, CSV and JSON directly in a data lake; dedicated pools reserve capacity for warehouse tables.
+
+    In Oracle migration architectures Synapse is a destination for reporting and warehouse workloads that were running on Oracle, not a replacement for OLTP schemas. Microsoft's newer analytics investments are in Microsoft Fabric, and Synapse content increasingly points there.
+  sources: [source.ms-synapse-overview]
+
+- _id: target.fabric
+  name: Microsoft Fabric
+  slug: fabric
+  service: fabric
+  summary: |
+    Microsoft Fabric is a SaaS analytics platform where Data Factory, Data Engineering (Spark), Data Warehouse, Real-Time Intelligence, Power BI and Databases (including SQL database in Fabric) share one logical lake, OneLake, built on Data Lake Storage Gen2. Mirroring continuously replicates operational stores such as Azure SQL Database, Cosmos DB, Databricks and Snowflake into OneLake, and the Fabric Oracle connector in Data Factory moves Oracle data.
+
+    For an Oracle estate, Fabric is where reporting, warehousing and downstream analytics land after the transactional schema moves to Azure SQL or PostgreSQL; it is not itself an Oracle-compatible engine.
+  sources: [source.ms-fabric-overview]
+
+- _id: target.service-bus
+  name: Azure Service Bus
+  slug: service-bus
+  service: service-bus
+  tierNotes: "Basic, Standard and Premium tiers. Premium is fully JMS 2.0 compliant and supports zone-redundant namespaces; Standard supports the JMS 1.1 queue subset."
+  summary: |
+    Azure Service Bus is a managed enterprise message broker with queues for point-to-point messaging and topics with filtered subscriptions for publish-subscribe. It offers sessions for FIFO and request-response, dead-letter subqueues, scheduled delivery, message deferral, duplicate detection, autoforwarding and transactions that group operations against a single entity. The wire protocol is AMQP 1.0 and Azure Functions, Logic Apps and Event Grid integrate natively.
+
+    It is the closest Azure equivalent to Oracle Advanced Queuing for application-level messaging, with the important difference that the broker lives outside the database, so enqueue and dequeue are not part of a database transaction.
+  sources: [source.ms-service-bus-overview]
+
+- _id: target.functions
+  name: Azure Functions
+  slug: functions
+  service: functions
+  tierNotes: "Hosting: Flex Consumption (recommended), Premium (always-warm, unlimited duration), Dedicated (App Service plan), Container Apps, and the legacy Windows-only Consumption plan."
+  summary: |
+    Azure Functions is event-driven serverless compute with triggers and bindings for timers, HTTP, Service Bus, Blob Storage, Azure SQL and other services, written in C#, Java, JavaScript, PowerShell, Python or Go. Durable Functions add stateful orchestrations.
+
+    In Oracle migrations Functions replace database-hosted glue code that has no PaaS equivalent: DBMS_SCHEDULER jobs that call out to the OS or network, UTL_FILE or UTL_HTTP style file and web access, and Advanced Queuing consumers that reacted to messages. A timer trigger plus a T-SQL call is a common stand-in for a scheduler job on Azure SQL Database.
+  sources: [source.ms-functions-overview]
+
+- _id: target.elastic-jobs
+  name: Azure SQL Elastic Jobs
+  slug: elastic-jobs
+  service: elastic-jobs
+  tierNotes: "Job agent tiers JA100, JA200, JA400 and JA800 set the number of concurrent target connections (100 to 800). The job database cannot be Hyperscale or an auto-pausing serverless database."
+  summary: |
+    Elastic Jobs is the scheduling service for Azure SQL Database. A job agent resource stores job definitions and history in a dedicated job database and runs T-SQL job steps, on a schedule or on demand, against target groups that can be single databases, all databases on a logical server or all databases in an elastic pool, enumerated dynamically at run time across servers and subscriptions. Authentication uses a user-assigned managed identity or database-scoped credentials, all schedule times are UTC, scripts must be idempotent because failed steps are retried, and history is purged after 45 days.
+
+    It is the Microsoft-recommended replacement for SQL Server Agent on Azure SQL Database. It only runs T-SQL, so anything an Oracle job did outside SQL (OS commands, file moves, email) needs Azure Functions, Logic Apps or Data Factory instead.
+  sources: [source.ms-sqldb-elastic-jobs, source.ms-sql-job-automation-overview]
+
+- _id: target.sql-agent-mi
+  name: SQL Server Agent (on SQL Managed Instance)
+  slug: sql-agent-mi
+  service: azure-sql-mi
+  tierNotes: "Available in every Managed Instance tier and always running; it cannot be disabled and its settings are read-only."
+  summary: |
+    SQL Managed Instance includes SQL Server Agent, the same msdb-based scheduler used on SQL Server, so jobs, schedules, T-SQL and SSIS job steps, operators and email notifications carry over with familiar tooling. Microsoft documents PaaS limits: CmdExec, PowerShell, Analysis Services, merge replication and queue reader steps are not supported, proxies, alerts, pager and NetSend notifications are unavailable, only one Database Mail profile with a fixed name can be used, idle-CPU schedules do not exist, and multi-server (MSX/TSX) administration is not supported.
+
+    For Oracle migrations this is where DBMS_JOB and DBMS_SCHEDULER jobs that run SQL land with the least change; external-program jobs need Azure Functions or Data Factory.
+  sources: [source.ms-sqlmi-tsql-differences, source.ms-sql-job-automation-overview]
+
+- _id: target.pg-cron
+  name: pg_cron extension (PostgreSQL Flexible Server)
+  slug: pg-cron
+  service: azure-pg-flex
+  tierNotes: "Available for PostgreSQL 11 through 18 on Flexible Server (version 1.6); must be allowlisted and present in shared_preload_libraries, which requires a restart."
+  summary: |
+    pg_cron is a cron-style job scheduler that runs inside PostgreSQL as an extension. Jobs are defined with cron.schedule or cron.schedule_in_database, stored in the database named by cron.database_name (postgres by default), executed by a background worker or a local libpq connection, and logged in cron.job_run_details. Times are in GMT unless cron.timezone is changed, one instance of a job runs at a time, and there is no notion of job chains or dependencies.
+
+    On Flexible Server the extension must be loaded at server start and allowlisted, and jobs targeting other databases must use cron.schedule_in_database without the superuser-only username argument. It is the standard replacement for DBMS_SCHEDULER and DBMS_JOB jobs that execute SQL or PL/pgSQL.
+  sources: [source.ms-pg-flex-extensions, source.ms-pg-flex-extensions-considerations, source.pg-cron-readme]
+
+- _id: target.ai-search
+  name: Azure AI Search
+  slug: ai-search
+  service: ai-search
+  summary: |
+    Azure AI Search is a managed search service offering full-text search with linguistic analyzers, vector and hybrid search, semantic reranking and multimodal queries over JSON documents in an index. Content is pushed through the REST API or SDKs, or pulled by indexers from Blob Storage, Cosmos DB, SharePoint, OneLake and other supported sources, optionally enriched by skillsets that chunk, vectorize or extract text from documents.
+
+    It is an external alternative to Oracle Text when the search workload can live outside the database and needs features such as faceting, autocomplete, relevance tuning or retrieval-augmented generation, at the cost of a separate index that must be kept in sync with the relational data.
+  sources: [source.ms-ai-search-overview]
+
+- _id: target.azure-sql-auditing
+  name: Azure SQL Auditing
+  slug: azure-sql-auditing
+  service: azure-sql-db
+  tierNotes: "Azure SQL Database: server-level (all databases, single master folder since the July 2025 re-architecture) or database-level auditing configured through the Azure resource. SQL Managed Instance: SQL Server Audit syntax (CREATE SERVER AUDIT ... TO URL or TO EXTERNAL_MONITOR) with server and database audit specifications."
+  summary: |
+    Azure SQL Auditing records database events as extended-event .xel files in a storage account, or streams them to Log Analytics or Event Hubs, using audit action groups such as batch completed, successful login and failed login. On Azure SQL Database it is enabled per logical server or per database from the portal, CLI or PowerShell; on Managed Instance it is the classic SQL Server Audit engine with Blob URL or external-monitor targets.
+
+    Microsoft states that capture is optimized for availability, so under very heavy load events can be dropped, statement text is truncated at 4,000 characters, tempdb is not audited, and Microsoft Entra failed logins appear in Entra logs rather than the SQL audit. It replaces Oracle traditional and unified auditing at the level of statement and login events, not at the level of Oracle's fine-grained auditing policies.
+  sources: [source.ms-sqldb-auditing, source.ms-sqlmi-auditing-configure]
+
+- _id: target.pgaudit
+  name: pgAudit extension (PostgreSQL Flexible Server)
+  slug: pgaudit
+  service: azure-pg-flex
+  tierNotes: "Available for PostgreSQL 11-18 on Flexible Server; requires allowlisting and shared_preload_libraries. Version numbers track the PostgreSQL major version from 16 onward."
+  summary: |
+    pgAudit adds detailed audit logging to PostgreSQL. Session audit logging records statements by class (READ, WRITE, FUNCTION, ROLE, DDL, MISC, MISC_SET or ALL) through pgaudit.log; object audit logging records access to specific relations granted to the role named in pgaudit.role. Entries are written to the PostgreSQL server log prefixed with AUDIT: and, on Flexible Server, flow through diagnostic settings to Azure Monitor Logs, Storage or Event Hubs.
+
+    Logging is best-effort and can be voluminous, superusers cannot be reliably audited, and Flexible Server does not accept the minus-sign shorthand for excluding classes. After an in-place major version upgrade the extension is recreated but its parameter settings are not preserved.
+  sources: [source.ms-pg-flex-audit, source.pgaudit-readme, source.ms-pg-flex-extensions]
+
+- _id: target.key-vault
+  name: Azure Key Vault (customer-managed TDE keys)
+  slug: key-vault
+  service: key-vault
+  tierNotes: "Standard and Premium Key Vault, or Managed HSM for FIPS 140-2 Level 3 hardware isolation. Soft-delete and purge protection must be enabled on the vault used for TDE protectors."
+  summary: |
+    Azure Key Vault is the key management service that Azure SQL Database and Managed Instance use for customer-managed transparent data encryption. The TDE protector (an RSA key or, in preview, an AES key) stays in the vault or in Managed HSM, and the server's managed identity is granted get, wrapKey and unwrapKey permissions so it can wrap each database encryption key. Rotation is an online operation that re-wraps only the database encryption key, and automated rotation can follow Key Vault's own rotation policy.
+
+    This replaces the Oracle wallet or external keystore that protected TDE master keys. Revoking the server's access or deleting the key makes the databases inaccessible, and old key versions must be kept for as long as backups encrypted with them need to be restorable.
+  sources: [source.ms-sql-tde-byok]
+
+- _id: target.ssma
+  name: SQL Server Migration Assistant for Oracle
+  slug: ssma
+  service: migration-tool
+  tierNotes: "Targets SQL Server 2019 and later, Azure SQL Database and Azure SQL Managed Instance. The optional extension pack installs the ssma_oracle helper schema and enables server-side data migration."
+  summary: |
+    SSMA for Oracle is Microsoft's free desktop tool that connects to a live Oracle database, assesses schemas and produces an HTML report, converts PL/SQL and DDL into T-SQL using configurable type mappings and conversion modes, synchronizes the converted objects to the target and then migrates data client-side or, with the extension pack, server-side. SSMA Tester compares object behaviour between source and target.
+
+    Its defaults decide many datatype outcomes in this dataset: NUMBER becomes float(53), varchar2(n) becomes varchar(n), ROWID becomes uniqueidentifier, BOOLEAN becomes bit and DATE becomes datetime2(0). Autonomous transactions are emulated with an extended stored procedure and packages are flattened into procedures and functions. Azure Database Migration Service's Oracle scenarios are documented as running through SSMA.
+  sources: [source.ms-ssma-overview, source.ms-ssma-type-mapping, source.ms-ssma-converting-schemas, source.ms-oracle-to-sqldb-guide]
+
+- _id: target.azure-dms
+  name: Azure Database Migration Service
+  slug: azure-dms
+  service: migration-tool
+  tierNotes: "Oracle appears only as an offline source for Azure SQL Database, Managed Instance and SQL Server on Azure VMs, marked 'using DMS via SSMA' and Preview. No Oracle source is listed for online migrations or for Azure Database for PostgreSQL."
+  summary: |
+    Azure Database Migration Service orchestrates migrations to Azure data platforms, with generally available scenarios for SQL Server, MySQL, PostgreSQL and MongoDB sources. Its supported-scenario table lists Oracle to Azure SQL targets as offline-only preview scenarios that rely on SSMA for schema conversion and data movement, and it has no Oracle to PostgreSQL scenario; the separate migration service inside Azure Database for PostgreSQL also accepts only PostgreSQL sources.
+
+    In practice, an Oracle migration uses DMS as a wrapper around SSMA for SQL targets and uses Ora2Pg, the VS Code schema conversion feature or Data Factory for PostgreSQL targets. Dump-file based tooling such as Data Pump or the original Export utility cannot be consumed by DMS.
+  sources: [source.ms-azure-dms-overview, source.ms-azure-dms-oracle, source.ms-pg-migration-service]
+
+- _id: target.ora2pg
+  name: Ora2Pg
+  slug: ora2pg
+  service: migration-tool
+  tierNotes: "Version 25.0 (2025-04-20) at retrieval. Needs Perl with DBD::Oracle and an Oracle client; can also read MySQL and SQL Server sources."
+  summary: |
+    Ora2Pg is the open-source Perl tool that connects to Oracle, extracts schema and data and emits PostgreSQL DDL, PL/pgSQL and COPY or INSERT data files, or loads them directly. Export types cover tables, views, materialized views, sequences, triggers, functions, procedures, packages, partitions, types, grants, synonyms, FDW definitions and data, plus assessment reports with migration cost estimates. Microsoft's own Oracle-to-PostgreSQL guidance points at it.
+
+    Its configuration determines datatype outcomes that matter for this dataset: the built-in map sends NUMBER to numeric, but the shipped defaults (PG_INTEGER_TYPE on with DEFAULT_NUMERIC bigint) turn unconstrained NUMBER into bigint unless changed; DATE becomes timestamp(0); ROWID becomes oid, which fails on data import; NULL_EQUAL_EMPTY rewrites null tests to mimic Oracle's empty-string behaviour; and autonomous transactions are wrapped with dblink or pg_background.
+  sources: [source.ora2pg-docs, source.ora2pg-source]

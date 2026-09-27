@@ -1,0 +1,86 @@
+[
+  {
+    "id": "q04",
+    "type": "fact",
+    "cond": "bm25",
+    "label": "W",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Correct: only DB@Azure keeps it; SQL/PG workarounds, grounded",
+    "citations": 0,
+    "cited": {
+      "oracle": false,
+      "microsoft": false,
+      "community": true,
+      "firsthand": false
+    },
+    "urls": 1,
+    "turns": 1,
+    "ms": 12329,
+    "out_tokens": 1191
+  },
+  {
+    "id": "q04",
+    "type": "fact",
+    "cond": "groq+kb",
+    "label": "X",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Correct verdict, flags code review; MI gap noted honestly",
+    "citations": 1,
+    "cited": {
+      "oracle": true,
+      "microsoft": true,
+      "community": true,
+      "firsthand": false
+    },
+    "urls": 6,
+    "turns": 5,
+    "ms": 27839,
+    "out_tokens": 2459
+  },
+  {
+    "id": "q04",
+    "type": "fact",
+    "cond": "none",
+    "label": "Y",
+    "verdict": 1,
+    "grounded": 0,
+    "refusal": null,
+    "note": "Correct verdict; EDB, LENGTH, 23ai and VM claims unsupported",
+    "citations": 0,
+    "cited": {
+      "oracle": false,
+      "microsoft": true,
+      "community": true,
+      "firsthand": false
+    },
+    "urls": 3,
+    "turns": 1,
+    "ms": 21407,
+    "out_tokens": 2045
+  },
+  {
+    "id": "q04",
+    "type": "fact",
+    "cond": "groq",
+    "label": "Z",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Correct verdict with workarounds; grounded; code review only implied",
+    "citations": 1,
+    "cited": {
+      "oracle": true,
+      "microsoft": true,
+      "community": true,
+      "firsthand": false
+    },
+    "urls": 7,
+    "turns": 4,
+    "ms": 29128,
+    "out_tokens": 1726
+  }
+]

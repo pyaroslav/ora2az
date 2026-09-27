@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q18",
+    "type": "version-scope",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 30448,
+    "session_id": "40f0815b-bd11-4f50-b694-7a229f91a361",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 9987,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 2876,
+      "output_tokens_details": {
+        "thinking_tokens": 1533
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 9987,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2876,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 9987,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 9987
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q18",
+    "type": "version-scope",
+    "q": "We are on Oracle 12.2 and use Oracle Multimedia for images. What are our options on Azure?",
+    "expected": "Oracle Multimedia deprecated in 18c, desupported in 19c; images should move to Blob Storage with metadata in the database; note that any lift to 19c+ loses the feature.",
+    "required_sources": [
+      "oracle",
+      "microsoft"
+    ]
+  },
+  "result": "**Verdict:** On Azure, whichever route you pick, plan to move the images out of Oracle Multimedia. Oracle deprecated Multimedia and removed it by 21c/23ai. Your 12.2 release is also past its support dates, so you'd need to upgrade anyway. The only option that keeps `ORDImage` working unchanged is running Oracle yourself on Azure VMs, and that only buys time.\n\n**Key facts**\n\n- **Multimedia's status.** Oracle deprecated it in 18c/19c. In 19c, parts of it (DICOM, the Java client APIs) are already desupported, and it's fully desupported and removed in 21c and 23ai. Oracle's advice is to store media as SecureFiles BLOBs and do image processing with other tools. See the Oracle Database Upgrade Guide, section \"Deprecated and Desupported Features\": https://docs.oracle.com/en/database/oracle/oracle-database/21/upgrd/\n- **12.2's status.** 12.2.0.1 is out of Premier and Extended support. Check Oracle's Lifetime Support Policy: https://www.oracle.com/us/support/library/lifetime-support-technology-069183.pdf\n\n**Your options on Azure**\n\n| Option | Does Multimedia keep working? | Notes |\n|---|---|---|\n| **1. Oracle on Azure VMs (lift and shift)** | Yes, on 12.2 or 19c | Fastest move, but you stay on an unsupported release or a deprecated feature. You bring your own licence: on Azure, 2 vCPUs count as 1 processor licence. https://learn.microsoft.com/en-us/azure/virtual-machines/workloads/oracle/oracle-overview |\n| **2. Oracle Database@Azure, Exadata service on 19c** | Deprecated and only partly there | Works only as a stopgap. On 23ai it's gone. |\n| **3. Oracle Database@Azure, Autonomous** | No | Autonomous Database doesn't support Multimedia, so you must convert to BLOBs first. https://learn.microsoft.com/en-us/azure/oracle/oracle-db/database-overview |\n| **4. Move to Azure SQL, SQL MI, or PostgreSQL Flexible Server** | No | There's no equivalent type. Microsoft's SSMA and the open-source ora2pg tool won't translate `ORDSYS` types, so you rework that part yourself. |\n\n**Recommended target design (works with options 2–4)**\n\n1. **Pull out the image bytes:** read `t.img.source.localData` (a BLOB) or call `getContent()`.\n2. **Move the attributes into plain columns:** `height`, `width`, `mimeType`, `contentLength` and `fileFormat`.\n3. **Put the images in Azure Blob Storage.** Keep only the blob URL or key and the metadata in the database. This is usually cheaper and faster than keeping BLOBs in the database, and you can serve images through a CDN.\n4. **Move the processing into the application.** Replace `process()` and `processCopy()` (thumbnails, format conversion) and `setProperties()` (reading image metadata such as EXIF). You can use a library like ImageMagick, Pillow or SkiaSharp, or an Azure Function triggered when a blob is uploaded. Azure AI Vision can add tagging and OCR if you need them.\n5. **Find everything that uses `ORDSYS`** before you pick a tool. Search `DBA_TAB_COLUMNS` and `DBA_DEPENDENCIES` for `ORDSYS` types, and cover PL/SQL, triggers and application code. This usually decides how much effort the migration takes.\n\n**Practical sequence:** convert `ORDImage` to BLOB plus metadata columns while you're still on 12.2 on-premises, then check that nothing still calls `ORDSYS`. After that, any Azure target works, and you choose the platform on licensing and features rather than being forced by Multimedia.",
+  "stderr": ""
+}

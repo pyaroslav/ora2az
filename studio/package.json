@@ -1,0 +1,24 @@
+{
+  "name": "ora2az-studio",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "sanity dev",
+    "build": "sanity build",
+    "deploy": "sanity deploy",
+    "schema:deploy": "sanity schema deploy",
+    "schema:validate": "sanity schema validate"
+  },
+  "dependencies": {
+    "@sanity/vision": "^5",
+    "react": "^19",
+    "react-dom": "^19",
+    "sanity": "^5",
+    "styled-components": "^6"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "typescript": "^5"
+  }
+}

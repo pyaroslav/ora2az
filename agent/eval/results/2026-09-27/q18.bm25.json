@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "id": "q18",
+    "type": "version-scope",
+    "cond": "bm25",
+    "num_turns": 1,
+    "duration_ms": 14892,
+    "session_id": "52e2a3e3-7f5a-4e31-abc0-bff8a426fc9c",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 12890,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 1422,
+      "output_tokens_details": {
+        "thinking_tokens": 437
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12890,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1422,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 12890,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 12890
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q18",
+    "type": "version-scope",
+    "q": "We are on Oracle 12.2 and use Oracle Multimedia for images. What are our options on Azure?",
+    "expected": "Oracle Multimedia deprecated in 18c, desupported in 19c; images should move to Blob Storage with metadata in the database; note that any lift to 19c+ loses the feature.",
+    "required_sources": [
+      "oracle",
+      "microsoft"
+    ]
+  },
+  "passages": [
+    {
+      "id": "mapping_traditional-auditing--azure-sql-auditing",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai | M | partial | Oracle AUDIT statements on objects, privileges and sessions map to Azure SQL audit action groups (batch completed, logins, schema changes, permission changes) written to Blob Storage, Log Analytics or Event Hubs. The granularity differs: Azure SQL audits statement and login events with optional predicate filters, whereas Oracle traditional auditing records per-object success or failure with BY ACCESS / BY SESSION options, and Azure SQL explicitly warns that capture is best-effort under heavy load. | Export DBA_STMT_AUDIT_OPTS, DBA_PRIV_AUDIT_OPTS and DBA_OBJ_AUDIT_OPTS to see what is actually audited. Choose server-level or database-level auditing (database-level for busy multi-database servers). Map each Oracle audit option to action groups; on Managed Instance create server and database audit specifications with T-SQL. Send logs to Log Analytics for querying and to immutable Blob Storage for retention. Validate that failed Entra logins are reviewed in Entra sign-in logs, not the SQL audit.",
+      "score": 13.487
+    },
+    {
+      "id": "target_oracle-on-azure-vm",
+      "type": "azureTarget",
+      "text": "Oracle Database on Azure Virtual Machines | oracle-on-azure-vm | Running Oracle Database on Azure VMs is a self-managed, bring-your-own-license path. Oracle publishes Oracle Linux images with Database 12.2, 18.3 and 19.3 Standard and Enterprise Edition in the Azure Marketplace, and any supported Oracle release can be installed on a custom image. Azure is an Oracle-authorized cloud environment, so the on-premises core factor table does not apply and two hyper-threaded vCPUs count as one processor license. High availability and disaster recovery are built with Oracle's own tools (Data Guard, Active Data Guard, GoldenGate) across VMs in an availability set or across regions; Microsoft documents these, not RAC, as the HA pattern, and states that RAC and RAC One Node are not supported on Azure Bare Metal Infrastructure. Oracle Database@Azure is the Azure route to RAC. Backups can use RMAN to Azure Files, Blob Storage or Azure NetApp Files, or Azure Backup's application-consistent snapshots. | IaaS only. Microsoft recommends memory-optimized VM sizes and constrained-vCPU variants for licensing. Storage choices (Premium SSD, Ultra Disk, Azure NetApp Files) and RMAN or Azure Backup strateg",
+      "score": 12.466
+    },
+    {
+      "id": "mapping_em-express--oracle-db-at-azure",
+      "type": "mapping",
+      "text": "12.1, 12.2, 18c, 19c, 21c, 23ai | S | partial | EM Database Express was the in-database web console for a single database. On Oracle Database@Azure, database-level administration happens in the OCI console (CDB and PDB lifecycle) while metrics, audit logs and events surface natively in Azure Monitor, with Microsoft recommending Azure Monitor for VM cluster metrics, Log Analytics for diagnostic logs and Azure Arc for VM-level monitoring, and Enterprise Manager for deeper database monitoring. | Enable diagnostic settings on the Exadata VM cluster to send database and infrastructure logs to Log Analytics. Build Azure Monitor dashboards and alerts on the Oracle cluster metrics. Use the OCI console for PDB operations that EM Express performed. Deploy Enterprise Manager Cloud Control if performance pages and tuning packs are required.",
+      "score": 11.735
+    },
+    {
+      "id": "feature_oracle-multimedia",
+      "type": "oracleFeature",
+      "text": "datatype | 18c | 19c | pre-11.2 | Oracle Multimedia | SecureFiles LOBs plus external media processing | Oracle Multimedia, earlier called interMedia, supplied object types such as ORDImage, ORDAudio, ORDVideo and ORDDoc together with PL/SQL and Java APIs for storing, describing and processing media inside the database. It was installed as the ORDIM component under the ORDSYS schema and included medical imaging (DICOM) support. Migrations care because tables with these object-typed columns cannot be moved as they are. The payloads are LOBs wrapped in object types, and the processing methods (thumbnails, format conversion, metadata extraction) must be rebuilt outside the database. Oracle's own guidance, even before any Azure move, is to store media in plain SecureFiles LOBs and process it with external tools. The 12.1 and 12.2 Upgrade Guides deprecate parts of the feature (DICOM support, the Java APIs). The 18c Upgrade Guide deprecates Oracle Multimedia as a whole and the 19c guide desupports it (notice dated April 2019): the implementation is removed, the objects and packages remain but raise errors when used, and Oracle Locator is not affected. The 26ai guide adds that the ORDIM co",
+      "score": 11.55
+    },
+    {
+      "id": "source_ms-oracle-on-azure-vm-overview",
+      "type": "source",
+      "text": "page updated 2026-02-05 | BYOL Oracle Linux marketplace images, Data Guard / GoldenGate for HA and DR, RMAN and Azure Backup options, Azure is an authorized cloud environment for Oracle licensing. | microsoft | 2026-09-26 | Overview of Oracle applications and solutions on Azure (Oracle Database on Azure VMs) | https://learn.microsoft.com/en-us/azure/virtual-machines/workloads/oracle/oracle-overview",
+      "score": 11.528
+    },
+    {
+      "id": "mapping_varchar2-byte-semantics--azure-pg-flex",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | S | partial | PostgreSQL varchar(n) counts characters, not bytes, and databases are normally UTF-8, so Oracle columns declared with CHAR semantics map one-to-one. Columns declared in BYTE semantics on a multibyte database are looser in PostgreSQL, which is harmless, but applications that depended on byte-length overflow errors will no longer get them; orafce ships a varchar2 type with byte semantics for that case. | Let Ora2Pg map VARCHAR2 to varchar; consider text where lengths were arbitrary. Where byte-exact behaviour is required, install orafce and use its varchar2 type. Remember trailing spaces are significant in varchar and text but ignored for char(n) comparisons.",
+      "score": 11.354
+    },
+    {
+      "id": "mapping_data-recovery-advisor--azure-sql-mi",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai | S | workaround | Data Recovery Advisor diagnosed block and file corruption and proposed RMAN repairs. Managed Instance removes most of that workflow: backups are automatic with point-in-time restore, storage redundancy handles media failure, Business Critical replicas repair damaged pages automatically, and DBCC CHECKDB repair options cannot be run because the database cannot enter single-user mode, with Microsoft stating that suspected corruption is handled by Azure support. | Rely on point-in-time restore or geo-restore to recover from logical corruption. Run DBCC CHECKDB without repair options on a schedule and back up WITH CHECKSUM. Open an Azure support case when corruption is detected instead of attempting repairs.",
+      "score": 11.275
+    },
+    {
+      "id": "feature_data-recovery-advisor",
+      "type": "oracleFeature",
+      "text": "ha | 19c | 26ai | pre-11.2 | RMAN Data Recovery Advisor | Data Recovery Advisor is the Recovery Manager component that diagnoses data failures such as missing or corrupt files and corrupt blocks, proposes repair options and can run them. It is driven through the RMAN commands LIST FAILURE, ADVISE FAILURE, REPAIR FAILURE and CHANGE FAILURE. Migrations care mainly for estates that stay on Oracle in Azure, on virtual machines or Oracle Database@Azure, where RMAN remains the backup tool and operational runbooks referencing these commands have to be rewritten. For the PaaS targets the topic disappears, because backup and repair are platform-managed. Oracle's 19c Upgrade Guide lists the advisor as deprecated starting with 19c (notice dated July 2023), and the 26ai guide desupports it (also July 2023). The four RMAN commands are removed and Oracle names no replacement feature.",
+      "score": 11.265
+    }
+  ],
+  "result": "# Oracle Multimedia on Azure: your options from Oracle 12.2\n\n**Short answer:** You can keep Oracle Multimedia running on Azure only by staying on 12.2 on an Azure VM, and that's a dead end. Any upgrade to 19c or move to a non-Oracle target means first converting the ORD* columns to plain SecureFiles LOBs and moving the image processing outside the database.\n\n**Where Oracle Multimedia stands** [4]\n- Your image columns use object types (ORDImage, and possibly ORDAudio, ORDVideo or ORDDoc) under ORDSYS. The images are LOBs wrapped in those types, so tables with these columns can't be moved as they are.\n- **12.1 and 12.2:** DICOM support and the Java APIs are deprecated. The rest still works.\n- **18c:** the whole feature is deprecated.\n- **19c:** the feature is desupported (April 2019 notice). The objects and packages still exist, but they raise errors when used.\n- Oracle's own advice, before any Azure move, is to store media in plain SecureFiles LOBs and process it with external tools.\n\n**Option 1: Move 12.2 as-is to an Azure VM** [2][5]\n- Oracle publishes Oracle Linux Marketplace images with Database 12.2 (and 18.3 and 19.3), Standard and Enterprise Edition. You bring your own license and run it yourself.\n- Multimedia keeps working as it does today, but only while you stay on 12.2. It's a stopgap, not a destination.\n- For high availability and disaster recovery you use Data Guard or GoldenGate, not RAC. Backups use RMAN or Azure Backup.\n\n**Option 2: Refactor, then move (required for 19c or any non-Oracle target)** [4]\n1. Convert ORDImage columns to SecureFiles BLOBs and keep any metadata you need in normal columns.\n2. Rebuild thumbnails, format conversion and metadata extraction outside the database.\n3. The result can then run on Oracle 19c, either on an Azure VM or on Oracle Database@Azure (which is also the Azure route to RAC [2]).\n\n**What the passages don't cover**\n- Any Azure SQL or PostgreSQL mapping for ORDImage.\n- Storing images in Azure Blob Storage instead of LOBs.\n- Which Azure service should do the external image processing.\n- Support dates for 12.2 itself.\n- Which database versions Oracle Database@Azure offers.\n\nThe 26ai part of passage [4] is cut off, so I can't say what it adds about the ORDIM component.\n\n**Next step:** Run a query on DBA_TAB_COLUMNS for columns whose type owner is ORDSYS, and search your code for ORD* method calls. That shows how big the refactor is.\n\nSource: https://learn.microsoft.com/en-us/azure/virtual-machines/workloads/oracle/oracle-overview",
+  "stderr": ""
+}

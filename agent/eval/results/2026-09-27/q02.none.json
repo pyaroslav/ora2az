@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q02",
+    "type": "dispute",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 28874,
+    "session_id": "779dba93-9d5c-4ae0-ba57-ba000d5582d6",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 9999,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 2897,
+      "output_tokens_details": {
+        "thinking_tokens": 1165
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 9999,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2897,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 9999,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 9999
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q02",
+    "type": "dispute",
+    "q": "How should an unconstrained NUMBER column be mapped when migrating to Azure SQL Database versus Azure Database for PostgreSQL?",
+    "expected": "SSMA maps unconstrained NUMBER to float(53) by default (lossy for exact decimals); Ora2Pg's type table says numeric but its shipped defaults (PG_INTEGER_TYPE, DEFAULT_NUMERIC) emit bigint. Answer must present the disagreement and the recorded resolution (profile values, pin decimal/numeric explicitly). [expected corrected 2026-09-26 after research; question unchanged]",
+    "required_sources": [
+      "microsoft",
+      "community"
+    ]
+  },
+  "result": "# Mapping an unconstrained Oracle `NUMBER` to Azure SQL Database vs. Azure Database for PostgreSQL\n\n**Short answer:** PostgreSQL has an exact equivalent, unconstrained `NUMERIC`, so you can map the column safely without knowing what's in it. Azure SQL Database has no equivalent. There you need to profile the data and pick `INT`/`BIGINT` or a fixed `DECIMAL(p,s)`. Neither default tool mapping should be accepted without checking: SSMA's default is `float(53)`, and Ora2Pg's is `bigint`.\n\n## Why this column is hard to map\n- An Oracle `NUMBER` with no precision or scale is an exact decimal with up to 38 significant digits and a floating scale (-84 to 127). The same column can hold `42`, `3.14159` and `1E-30`.\n- Unconstrained `NUMBER` is very common in legacy schemas. It is often used for IDs filled from sequences, and just as often for money or ratios.\n\n## Azure SQL Database (T-SQL)\n- **SSMA default is `float(53)`.** That holds only about 15–17 significant digits and is an approximate binary type. Large IDs and financial values can lose precision without any error, and equality joins and comparisons can behave differently. Treat this default as a placeholder, not a decision.\n- **`DECIMAL`/`NUMERIC` is capped at 38 digits with a fixed scale.** `DECIMAL(38,10)` gives you 28 integer digits and 10 fractional digits. No single `DECIMAL(p,s)` covers the full Oracle range.\n- **What to do:** profile each column, then map it:\n  - Integers only (for example, sequence-populated PKs and FKs): use `BIGINT` (or `INT`). This is the most common result and the best for performance and indexing.\n  - Fractional values with a known maximum precision and scale: use `DECIMAL(p,s)` sized to what you observed plus some headroom.\n  - Genuinely scientific or approximate data: `float(53)` is acceptable, as a deliberate choice.\n- You can override the mapping per column or type in SSMA (Project Settings → Type Mapping) and in the Azure migration tooling.\n- Quick profiling query in Oracle:\n  ```sql\n  SELECT MIN(col), MAX(col),\n         SUM(CASE WHEN col <> TRUNC(col) THEN 1 ELSE 0 END) AS non_integers,\n         MAX(LENGTH(TO_CHAR(ABS(col)))) AS max_chars\n  FROM   t;\n  ```\n\n## Azure Database for PostgreSQL\n- **Unconstrained `NUMERIC` is a faithful, lossless match.** It supports up to 131,072 digits before the decimal point and 16,383 after, so every Oracle value converts exactly.\n- **Ora2Pg default trap:** with `PG_INTEGER_TYPE=1`, an unconstrained `NUMBER` becomes `DEFAULT_NUMERIC`, which defaults to `bigint`. Fractional values then get rounded silently: `1.5` is stored as `2`. Set `DEFAULT_NUMERIC numeric` unless you have confirmed the column is integer-only.\n- **Performance trade-off:** `numeric` is slower and larger than `bigint`. For integer-only key columns, still map to `bigint`, and do the same on the matching FK columns so join types stay consistent. Use `numeric` everywhere else.\n\n## Recommended rule\n| Profiled content | Azure SQL DB | Azure PostgreSQL |\n|---|---|---|\n| Integers only (IDs, counts) | `BIGINT` / `INT` | `bigint` / `integer` |\n| Fixed-scale decimals (money, quantities) | `DECIMAL(p,s)` sized from profiling | `numeric(p,s)` or unconstrained `numeric` |\n| Unknown or mixed scale | Profile it; `DECIMAL(38,s)` best fit; `float(53)` only if approximate values are acceptable | Unconstrained `numeric` (safe default) |\n\nAfter the load, validate row-level checksums or `SUM`/`MIN`/`MAX` per numeric column to catch any rounding.\n\n## Sources\n- Oracle `NUMBER` semantics: https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Data-Types.html\n- SSMA for Oracle type mapping: https://learn.microsoft.com/en-us/sql/ssma/oracle/project-settings-type-mapping-oracletosql\n- T-SQL `decimal`/`numeric`: https://learn.microsoft.com/en-us/sql/t-sql/data-types/decimal-and-numeric-transact-sql\n- PostgreSQL numeric types: https://www.postgresql.org/docs/current/datatype-numeric.html\n- Ora2Pg `PG_INTEGER_TYPE` / `DEFAULT_NUMERIC`: https://ora2pg.darold.net/documentation.html",
+  "stderr": ""
+}

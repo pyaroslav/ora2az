@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "id": "q17",
+    "type": "fact",
+    "cond": "groq",
+    "num_turns": 4,
+    "duration_ms": 19380,
+    "session_id": "d974bc7a-f618-4510-a402-026f6640ee0e",
+    "usage": {
+      "input_tokens": 8,
+      "cache_creation_input_tokens": 5341,
+      "cache_read_input_tokens": 26652,
+      "output_tokens": 1431,
+      "output_tokens_details": {
+        "thinking_tokens": 34
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 5341,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1010,
+          "cache_read_input_tokens": 8154,
+          "cache_creation_input_tokens": 2285,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 2285
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q17",
+    "type": "fact",
+    "q": "Is ROWID usable after migration to Azure SQL?",
+    "expected": "SSMA maps ROWID to uniqueidentifier but semantics differ (no physical row address); code using ROWID for dedupe/pagination must be refactored to keys.",
+    "required_sources": [
+      "microsoft"
+    ]
+  },
+  "result": "**Verdict: No — not as a physical row identifier. ROWID has only a \"workaround\" fidelity mapping to Azure SQL Database, via a surrogate GUID column that behaves differently from Oracle's ROWID.**\n\n**Scope**: Oracle ROWID/UROWID (introduced pre-11.2, no deprecation recorded) → Azure SQL Database, applies across all tracked versions (11.2–26ai). [ROWID / UROWID feature record]\n\n**Facts:**\n- Fidelity is **workaround**, effort **M**. SQL Server has no equivalent to a physical row address, so Microsoft's SSMA for Oracle maps ROWID/UROWID to `uniqueidentifier` (a 16-byte GUID from `NEWID()`) — this is *not* a physical row address and cannot be used to locate or order rows by storage position. — [SSMA for Oracle: Project Settings (Type Mapping)](https://learn.microsoft.com/en-us/sql/ssma/oracle/project-settings-type-mapping-oracletosql)\n- SSMA's \"Generate ROWID column\" setting (severity: minor) adds a `ROWID uniqueidentifier` surrogate column with a unique index — by default only to tables with triggers (Default/Optimistic modes), or to all tables in Full mode; the SSMA Tester requires it on all tables. — [SSMA for Oracle: Project Settings (Conversion)](https://learn.microsoft.com/en-us/sql/ssma/oracle/project-settings-conversion-oracletosql)\n- Rationale recorded: this surrogate gives applications a row identity but **not** the physical addressing, fast-access, or duplicate-elimination behavior Oracle code relied on ROWID for. Recommendation: rewrite queries that used ROWID to locate the current row to use the primary key instead.\n\n**Related note (different target, in case it's relevant to you)**: If migrating instead to Azure Database for PostgreSQL Flexible Server, the mapping is also \"workaround\" (effort M) — Postgres's `ctid` is physically similar to ROWID but changes on every UPDATE and after VACUUM FULL, so PostgreSQL's own docs say it must not be used as a row identifier. Ora2Pg by default maps ROWID/UROWID to `oid`, which its own documentation warns causes an import error since there's no true equivalent type; it recommends `bigserial`, `text`, or `uuid` instead. — [PostgreSQL documentation: System columns (ctid)](https://www.postgresql.org/docs/current/ddl-system-columns.html), [Ora2Pg documentation (configuration directives)](https://ora2pg.darold.net/documentation.html)\n\n**Gaps/disputes**: No dispute record exists for ROWID in the dataset, and no caveat is scoped to a specific Oracle edition or Azure SQL tier (e.g., Managed Instance) — the caveats above apply generically across all listed Oracle versions.",
+  "stderr": ""
+}

@@ -1,0 +1,242 @@
+# Glossary: terms a migration agent must keep apart. Definitions are paraphrased in our own
+# words; each entry cites at least one source from sources.*.yaml.
+
+- _id: glossary.deprecated
+  term: Deprecated
+  definition: >-
+    Oracle's status for a feature that is no longer being enhanced but is still fully supported
+    for the life of the release in which it was deprecated. Deprecation is a warning, not a
+    removal: the feature keeps working on the source version, so for a migration it is a
+    mapping candidate to plan away from rather than a blocker. A deprecated feature may become
+    desupported in a later major release, which is why this dataset records both dates
+    separately.
+  alsoKnownAs: [deprecation notice, planned for removal]
+  sources: [source.oracle-upgrd-26-desupports]
+
+- _id: glossary.desupported
+  term: Desupported
+  definition: >-
+    Oracle's status for a feature it no longer fixes bugs for and whose code it may have removed
+    from the product. A desupported feature can fail or vanish after an upgrade, so any target
+    that runs a newer Oracle release (for example Oracle Database@Azure on 26ai) forces a
+    replacement before or during the move, and a non-Oracle target needs a functional
+    equivalent regardless. Contrast with deprecated, where the feature still works and is
+    still supported.
+  alsoKnownAs: [removed, discontinued]
+  sources: [source.oracle-upgrd-26-desupports]
+
+- _id: glossary.cdb-pdb-non-cdb
+  term: "CDB / PDB / non-CDB"
+  definition: >-
+    A container database (CDB) is one Oracle database that hosts a root container (CDB$ROOT)
+    holding Oracle-supplied metadata and common users, a seed template (PDB$SEED) used to
+    stamp out new containers, and zero or more pluggable databases. A pluggable database (PDB)
+    is a portable set of schemas and objects that looks like a standalone database to
+    applications and can be unplugged and plugged into another CDB. A non-CDB is the
+    pre-multitenant single-database architecture, deprecated in 12.1 and desupported in 21c,
+    so every current Oracle target is a CDB and a migrated non-CDB has to land as a PDB.
+    On Oracle Database@Azure some CDB and PDB management tasks are done in the OCI console
+    rather than the Azure portal.
+  alsoKnownAs: [multitenant architecture, container database, pluggable database]
+  sources: [source.oracle-glossary-multitenant-intro, source.oracle-glossary-non-cdb-desupported, source.ms-oracle-db-at-azure-overview]
+
+- _id: glossary.azure-sql-database-vs-managed-instance
+  term: "Azure SQL Database vs Azure SQL Managed Instance"
+  definition: >-
+    Both are Microsoft's managed SQL Server engine, but at different scopes. Azure SQL Database
+    is database-scoped (a single database or an elastic pool on a logical server) and omits
+    instance-level features: no SQL Server Agent, no cross-database three-part-name queries, no
+    linked servers, no CLR, no Service Broker, no Database Mail; Microsoft points to Elastic Jobs
+    and Elastic Query instead. Azure SQL Managed Instance is instance-scoped, injected into your
+    virtual network, and keeps most of the SQL Server surface, including SQL Agent, cross-database
+    queries and transactions within the instance, linked servers to SQL Server and SQL Database,
+    CLR (without file-system access), Service Broker and a configurable time zone. For an Oracle
+    estate, instance-level features such as DBMS_SCHEDULER, database links and in-database
+    queuing map more directly to Managed Instance, while SQL Database usually needs a
+    platform-service substitute.
+  alsoKnownAs: [Azure SQL DB, SQL MI]
+  sources: [source.ms-sqldb-mi-feature-comparison]
+
+- _id: glossary.oracle-database-at-azure
+  term: "Oracle Database@Azure"
+  definition: >-
+    Oracle Cloud Infrastructure database services running on Oracle-owned and Oracle-operated
+    hardware placed inside Microsoft Azure datacenters, attached to your Azure virtual network,
+    provisioned from the Azure portal and APIs, purchased through an Azure Marketplace private
+    offer, and billed on the Azure invoice with spend counting toward a Microsoft Azure
+    Consumption Commitment; bring-your-own-license applies. The services are Exadata Database
+    Service on Dedicated Infrastructure and on Exascale Infrastructure, Base Database Service,
+    Autonomous Database (Serverless and on Dedicated Exadata Infrastructure) and GoldenGate.
+    Because the engine is the same as in OCI, RAC, Data Guard, RMAN and Zero Downtime Migration
+    all apply to the Exadata and Base services, whereas the Autonomous flavour is fully managed
+    with no SYSDBA or file access and accepts logical methods only. Day-two operations span two
+    control planes (Azure portal for infrastructure, OCI console for some database tasks). It is
+    not the older Oracle Database Service for Azure or the OCI-Azure Interconnect, where the
+    database stays in an OCI region and Azure applications reach it over a private link.
+  alsoKnownAs: [Oracle AI Database@Azure, ODAA, Exadata in Azure]
+  sources: [source.ms-oracle-db-at-azure-overview, source.oracle-kb-db-at-azure-overview, source.ua-blog-database-at-azure-vs-oci]
+
+- _id: glossary.data-pump-vs-original-export
+  term: "Data Pump vs original Export/Import"
+  definition: >-
+    Data Pump is Oracle's server-side export and import engine: the expdp and impdp clients only
+    start and monitor a job run by the DBMS_DATAPUMP and DBMS_METADATA packages on the database
+    server, which read and write dump files through a DIRECTORY object on the server's file
+    system, run in parallel, restart after failure, and can remap schemas, tablespaces and
+    datafiles or skip the dump file altogether over a database link. The original Export and
+    Import utilities (exp and imp) stream data through the client, are single-threaded, and
+    are legacy tools that Oracle steers new work away from; their dump files are not readable
+    by Data Pump and vice versa. Data Pump is also the only supported load path into
+    Autonomous Database.
+  alsoKnownAs: [expdp/impdp, exp/imp]
+  sources: [source.oracle-sutil-19-data-pump-overview, source.ua-blog-data-pump-done-right]
+
+- _id: glossary.logical-vs-physical-migration
+  term: "Logical vs physical migration"
+  definition: >-
+    A logical migration recreates each object and row on the target through SQL and metadata
+    (Data Pump, GoldenGate, and for non-Oracle targets schema conversion plus data loading), so
+    it crosses any boundary: version, platform, endianness, character set, even database engine.
+    Its cost is either downtime proportional to data volume or the licensing and complexity of
+    change replication. A physical migration copies Oracle data blocks as they are (RMAN restore
+    or duplicate, transportable tablespaces, a Data Guard standby that is switched over), so it
+    is fast and exact but requires the same endian format, an Oracle target you can mount and
+    recover with SYSDBA and file access, and for Data Guard the same database version and
+    Enterprise Edition. Azure SQL, PostgreSQL Flexible Server and Autonomous Database therefore
+    only ever receive logical migrations; Oracle on Azure VMs and the Exadata and Base services
+    of Oracle Database@Azure accept both.
+  sources: [source.ua-blog-cloud-migration-methods, source.ua-lab-migration-methods, source.oracle-glossary-transporting-data]
+
+- _id: glossary.xtts-cross-endian
+  term: "XTTS / cross-endian transport"
+  definition: >-
+    Endianness is the byte order a platform uses, and Oracle datafiles carry it, so a physical
+    move from a big-endian platform (AIX, Solaris SPARC, HP-UX) to little-endian Linux x86-64,
+    which is what every Azure target runs, is a cross-endian move that a plain RMAN restore or
+    a Data Guard standby cannot do. V$TRANSPORTABLE_PLATFORM lists each platform's endian
+    format. Cross-platform transportable tablespaces (XTTS) copy the datafiles and a small Data
+    Pump metadata export and use RMAN CONVERT (or DBMS_FILE_TRANSFER) to flip byte order on the
+    destination; the incremental-backup variant rolls the target copy forward with RMAN
+    incrementals while the source stays online, so only the final increment needs the tablespaces
+    read-only. Enterprise Edition only; undo-bearing datafiles cannot be converted, and objects
+    that live outside datafiles (external tables, directories, BFILEs) must be recreated.
+  alsoKnownAs: [cross-platform transportable tablespaces, TTS, endianness conversion]
+  sources: [source.oracle-glossary-transporting-data, source.ua-blog-cloud-migration-methods]
+
+- _id: glossary.scn
+  term: "SCN (system change number)"
+  definition: >-
+    Oracle's internal logical clock: a monotonically increasing number that the database
+    assigns to every commit and stamps into redo, undo and data blocks, so that any two events
+    can be ordered without reference to wall-clock time. Migration work leans on it constantly:
+    FLASHBACK_SCN gives a Data Pump export a single consistent snapshot, SET UNTIL SCN drives
+    point-in-time recovery, and change-capture tools start replicating from a known SCN. It is
+    database-specific and has no equivalent value on SQL Server or PostgreSQL, so an SCN is a
+    cutover bookmark on the Oracle side, not something that travels to the target.
+  alsoKnownAs: [system change number, commit SCN]
+  sources: [source.oracle-cncpt-19-transactions, source.ua-blog-data-pump-done-right, source.ua-blog-rman-recovery-runbook]
+
+- _id: glossary.supplemental-logging
+  term: Supplemental logging
+  definition: >-
+    Extra column values that Oracle writes into the redo log beyond what crash recovery needs,
+    so that redo-reading tools (LogMiner, GoldenGate and other log-based change capture) can
+    identify which row changed and rebuild the change as SQL. Minimal supplemental logging is
+    the baseline that any redo-based tool requires; identification-key logging adds primary or
+    unique key columns at the database level, and table-level supplemental log groups add
+    specific columns. It is enabled with ALTER DATABASE ADD SUPPLEMENTAL LOG DATA and checked in
+    V$DATABASE.SUPPLEMENTAL_LOG_DATA_MIN. Every online, near-zero-downtime logical migration
+    that replicates changes from the source depends on it being enabled before the initial load.
+  alsoKnownAs: [supplemental log groups, identification key logging]
+  sources: [source.oracle-glossary-logminer-supplemental-logging, source.ua-blog-cloud-migration-methods]
+
+- _id: glossary.character-set-vs-national-character-set
+  term: "Database character set vs national character set"
+  definition: >-
+    The database character set (NLS_CHARACTERSET) is the encoding used for CHAR, VARCHAR2, CLOB
+    and LONG columns and for identifiers and stored source code; Oracle recommends AL32UTF8
+    (Unicode) for all new databases, and legacy sets such as US7ASCII or WE8MSWIN1252 can only
+    represent a subset of characters. The national character set (NLS_NCHAR_CHARACTERSET) is a
+    second, always-Unicode encoding (AL16UTF16 or UTF8) used only for NCHAR, NVARCHAR2 and NCLOB
+    columns, intended for storing Unicode in a database whose main character set is not Unicode.
+    A third setting, the client's NLS_LANG, is not a database property at all: it declares what
+    the bytes arriving from a client mean, and a wrong declaration corrupts data even when both
+    databases are Unicode. Migration agents must map all three, not just the first.
+  alsoKnownAs: [NLS_CHARACTERSET, NLS_NCHAR_CHARACTERSET, NLS_LANG]
+  sources: [source.oracle-nlspg-19-choosing-character-set, source.ua-blog-charset-migration-data-loss]
+
+- _id: glossary.unified-auditing
+  term: Unified Auditing
+  definition: >-
+    Oracle's single audit facility (12c onward) in which named audit policies, created with
+    CREATE AUDIT POLICY and switched on with AUDIT, write consistently formatted records from
+    all audit sources into one view, UNIFIED_AUDIT_TRAIL, managed through DBMS_AUDIT_MGMT.
+    New databases ship with predefined policies such as ORA_SECURECONFIG (privileged and
+    security-relevant actions) and ORA_LOGON_FAILURES already enabled. Records are written in a
+    queued mode, so the newest entries sit in memory until DBMS_AUDIT_MGMT.FLUSH_UNIFIED_AUDIT_TRAIL
+    is called; the author's lab shows that an apparently empty trail during an investigation is
+    often just an unflushed buffer. It replaces traditional auditing (the AUDIT_TRAIL parameter,
+    SYS.AUD$ and FGA_LOG$), which is deprecated in 21c and desupported in 26ai.
+  alsoKnownAs: [unified audit trail, audit policies]
+  sources: [source.oracle-glossary-intro-auditing, source.ua-lab-unified-auditing, source.oracle-upgrd-26-desupports]
+
+- _id: glossary.tde
+  term: "TDE (Transparent Data Encryption)"
+  definition: >-
+    Oracle's encryption of data at rest: either whole tablespaces (the common choice) or
+    individual columns are encrypted in the datafiles and in backups, transparently to SQL.
+    A two-tier key design has table or tablespace keys encrypted by a master key held in a
+    keystore (a wallet file, Oracle Key Vault or OCI KMS); if the keystore is closed the database
+    itself cannot read the encrypted data (ORA-28365). The threat it addresses is theft of the
+    storage medium: the author's lab shows a canary string readable in a plaintext datafile and
+    absent from an AES256 tablespace's datafile. TDE does not hide data from authenticated
+    users, the buffer cache or query results, and column encryption requires the Advanced
+    Security option on Enterprise Edition. Azure targets have their own at-rest encryption with
+    service-managed or customer-managed keys, so the mapping is about key custody, not ciphertext.
+  alsoKnownAs: [tablespace encryption, column encryption, keystore, wallet]
+  sources: [source.oracle-glossary-intro-tde, source.ua-lab-tde]
+
+- _id: glossary.se2-vs-ee
+  term: "SE2 vs EE (Standard Edition 2 vs Enterprise Edition)"
+  definition: >-
+    Oracle Database Standard Edition 2 is the lower-cost edition limited to servers with at
+    most two sockets and to a fixed feature set; from 19c it no longer includes RAC, and it
+    never included Data Guard, Partitioning, Active Data Guard or the other separately licensed
+    Enterprise Edition options. Enterprise Edition has no socket limit, includes physical Data
+    Guard, and is the base for extra-cost options such as RAC, Partitioning and Advanced
+    Security. Edition gates the migration method: an SE2 source cannot be moved with a Data
+    Guard standby or the physical-online path of Zero Downtime Migration and is limited to
+    outage methods (Data Pump, offline RMAN restore) unless GoldenGate is licensed. It also
+    shapes fidelity: an SE2 estate rarely uses the EE-only features that are hardest to map to
+    Azure SQL or PostgreSQL.
+  alsoKnownAs: [Standard Edition 2, Enterprise Edition, edition gating]
+  sources: [source.oracle-glossary-licensing-editions, source.ua-lab-migration-methods, source.ua-blog-ha-decision-tree]
+
+- _id: glossary.switchover-vs-failover
+  term: "Switchover vs failover (Data Guard)"
+  definition: >-
+    Two Data Guard role transitions that both end with a standby acting as primary. A switchover
+    is planned: the healthy primary ships its final redo, the roles reverse with zero data loss,
+    and the old primary is left as a valid standby, so the operation is reversible; it is the
+    cutover move of a Data Guard based migration and the rehearsal that proves a standby works.
+    A failover is a response to a lost primary: the standby is promoted with whatever redo it
+    has, data loss depends on the protection mode (none in a synchronized synchronous mode,
+    seconds in Maximum Performance), and the old primary drops out of the configuration until
+    it is reinstated with Flashback Database or rebuilt. Fast-Start Failover automates the
+    failover through a Broker observer that must run on a host independent of the primary.
+  alsoKnownAs: [role transition, FSFO, reinstate]
+  sources: [source.ua-blog-dg-switchover-vs-failover]
+
+- _id: glossary.fidelity-levels
+  term: "Fidelity levels (exact / partial / workaround / none)"
+  definition: >-
+    This dataset's own four-step scale for how faithfully an Azure target reproduces an Oracle
+    feature; it is a project convention, not an Oracle or Microsoft term. Exact means the target
+    offers the same semantics and the change is syntax only. Partial means the core behaviour is
+    preserved but documented gaps (recorded as caveats) require code, configuration or process
+    changes. Workaround means there is no native equivalent and the behaviour is rebuilt by
+    composing other services or rewriting logic. None means no reasonable equivalent exists and
+    the feature must be dropped or the design changed. Fidelity is independent of the effort
+    scale (S / M / L), which estimates the work rather than the outcome.
+  alsoKnownAs: [mapping fidelity, exact, partial, workaround, none]
+  sources: [source.ora2az-readme]

@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "id": "q06",
+    "type": "version-scope",
+    "cond": "groq",
+    "num_turns": 5,
+    "duration_ms": 27818,
+    "session_id": "7381d182-93fa-45c0-b601-d3d3140bf0e5",
+    "usage": {
+      "input_tokens": 10,
+      "cache_creation_input_tokens": 6656,
+      "cache_read_input_tokens": 37945,
+      "output_tokens": 2214,
+      "output_tokens_details": {
+        "thinking_tokens": 270
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 6656,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1201,
+          "cache_read_input_tokens": 11131,
+          "cache_creation_input_tokens": 623,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 623
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q06",
+    "type": "version-scope",
+    "q": "We still run a non-CDB 19c database. Does that matter for the Azure move?",
+    "expected": "Non-CDB architecture is desupported in 21c (deprecated 12.1); any lift to 21c/23ai on Azure VMs or Oracle Database@Azure requires converting to a PDB first; irrelevant for SQL MI/PostgreSQL targets except as an upgrade prerequisite.",
+    "required_sources": [
+      "oracle"
+    ]
+  },
+  "result": "No disputes recorded on this. Here's what the dataset shows.\n\n**Verdict:** Yes, it matters. Non-CDB is deprecated (not yet desupported) for Oracle 19c, but neither major Azure target lets you keep it as-is without a plan to convert to a pluggable database (PDB).\n\n**Scoped facts**\n\n- **Feature status:** Non-CDB architecture was deprecated in Oracle 12.1 and desupported in 21c, with Oracle's replacement being the Multitenant architecture (CDB with pluggable databases). Since you're on 19c, it's still deprecated-but-supported, not desupported — but the clock is ticking toward 21c-class desupport. [Deprecated and Desupported Features for Oracle Database 12c (12.1)](https://docs.oracle.com/database/121/UPGRD/deprecated.htm), [Oracle Database Changes, Desupports, and Deprecations (Upgrade Guide 21c)](https://docs.oracle.com/en/database/oracle/oracle-database/21/upgrd/oracle-database-changes-deprecations-desupports.html)\n\n- **Oracle Database@Azure (Exadata Database Service on Dedicated Infrastructure)** — fidelity: **workaround**, effort: **M**, applies to 19c:\n  On this service, the console and OCI APIs create *only* container databases with an initial PDB. A non-CDB can be created only via the `dbaascli` command line, and **only for release 19.x and earlier** — so this door is closing for you already. TDE encryption is also mandatory for all cloud databases here. Oracle's guidance implied by the rationale: convert your non-CDB estate to PDBs (AutoUpgrade can do this in one step) before or during the move rather than trying to preserve it. Severity: **major**. [Exadata Database Service on Dedicated Infrastructure: Manage databases](https://docs.oracle.com/en/engineered-systems/exadata-cloud-service/ecscm/manage-databases.html), [Oracle Database@Azure: Exadata services](https://learn.microsoft.com/en-us/azure/oracle/oracle-db/exadata-manage-services)\n\n- **Oracle Database on Azure Virtual Machines** — fidelity: **workaround**, effort: **M**, applies to 19c:\n  On a self-managed VM, any Oracle release (including your 19c non-CDB) can be lifted as-is — but this only postpones the issue, since later Oracle releases are multitenant-only. AutoUpgrade can upgrade a non-CDB and convert it into a PDB (new or existing CDB) in a single operation, or perform unplug-plug upgrades between CDBs of different releases. This is the recommended step if/when you move to a newer release on the VM. Severity: **minor**. [Oracle Database 23ai Upgrade Guide: Using AutoUpgrade](https://docs.oracle.com/en/database/oracle/oracle-database/23/upgrd/using-autoupgrade-oracle-database-upgrades.html), [Overview of Oracle applications and solutions on Azure](https://learn.microsoft.com/en-us/azure/virtual-machines/workloads/oracle/oracle-overview)\n\n**Gaps:** No dispute is recorded on this topic in the dataset. No mapping/caveat exists for other Azure targets (e.g., Azure SQL, Azure PostgreSQL Flexible) regarding non-CDB — the dataset only covers Oracle Database@Azure and Oracle on Azure VM for this feature.",
+  "stderr": ""
+}

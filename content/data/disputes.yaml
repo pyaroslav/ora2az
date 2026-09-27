@@ -1,0 +1,36 @@
+# Disputes: two recorded caveats whose sources disagree. Each names both claims and the resolution the dataset adopts.
+- _id: dispute.number-unconstrained-float-vs-numeric
+  title: "Unconstrained NUMBER: float(53), bigint, or numeric?"
+  claimA: caveat.number-ssma-float53
+  claimB: caveat.number-ora2pg-bigint-default
+  whatDisagrees: "Microsoft's SSMA default converts a NUMBER declared without precision or scale to float(53), a binary floating-point type that cannot hold most decimal fractions exactly. Ora2Pg's documented type table says the same column becomes numeric, yet its shipped defaults (PG_INTEGER_TYPE on, DEFAULT_NUMERIC bigint) make an out-of-the-box run emit bigint, which drops the fractional part entirely. Three tools' worth of guidance, three different answers for one declaration."
+  resolution: "Trust none of the defaults. Profile the real values (unconstrained NUMBER has no dictionary bound, so sample the maximum precision and scale in the data), then pin an exact type explicitly: decimal(p,s) on Azure SQL, numeric(p,s) on PostgreSQL, or a true integer type only when the sample shows no fractions. In Ora2Pg that means overriding DEFAULT_NUMERIC or disabling PG_INTEGER_TYPE; in SSMA it means editing the Type Mapping page before Convert Schema."
+  resolvedBy: source.ora2pg-docs
+- _id: dispute.dbms-job-deprecated-vs-removed
+  title: "Did DBMS_JOB stop working in 19c?"
+  claimA: caveat.dbms-job-still-works
+  claimB: caveat.dbms-job-community-removed
+  whatDisagrees: "Oracle documents DBMS_JOB as deprecated since 12.2 with existing jobs converted to Scheduler jobs and the legacy interface still functional. An Ask TOM thread reports that DBMS_JOB.SUBMIT 'stopped working' after a 12.1 to 19.8 upgrade, and that framing circulates as 'DBMS_JOB was removed in 19c'."
+  resolution: "Both observations are true and compatible. From 19c a schema calling DBMS_JOB.SUBMIT needs the CREATE JOB privilege, otherwise it fails with ORA-27486; that privilege change, not removal, is behind most 'not working anymore' reports. The package is deprecated and functional through 26ai. For an Azure move the consequence is unchanged: job bodies are PL/SQL and must be re-homed to SQL Server Agent (Managed Instance), Elastic Jobs (Azure SQL Database) or pg_cron (PostgreSQL), but the timeline is not forced by removal."
+  resolvedBy: source.oracle-plsql-ref-19-dbms-job
+- _id: dispute.ssma-autonomous-transaction-emulation-on-mi
+  title: "Does SSMA's autonomous-transaction emulation run on Managed Instance?"
+  claimA: caveat.ssma-autonomous-tx-extended-proc
+  claimB: caveat.sqlmi-no-extended-procs-for-ssma-emulator
+  whatDisagrees: "SSMA reports PRAGMA AUTONOMOUS_TRANSACTION in procedures and functions as converted, because it emulates the pragma with an extended stored procedure that opens a second connection. Microsoft's own list of T-SQL differences says Azure SQL Managed Instance does not support extended stored procedures at all. One Microsoft tool marks as done what another Microsoft platform cannot host."
+  resolution: "Treat every 'converted' autonomous transaction as a manual rewrite when the target is Managed Instance or Azure SQL Database. Typical replacements: write audit rows through a separate connection from the application tier, use table variables (which survive a rollback) to carry log data out of the failing transaction, or move the side effect to a Service Broker activation procedure on Managed Instance. Verify by searching the converted T-SQL for xp_ora2ms_exec2_ex before deploying."
+  resolvedBy: source.ms-sqlmi-tsql-differences
+- _id: dispute.rowid-uniqueidentifier-vs-oid
+  title: "What does ROWID become: uniqueidentifier or oid?"
+  claimA: caveat.rowid-ssma-uniqueidentifier
+  claimB: caveat.ora2pg-rowid-oid-import-error
+  whatDisagrees: "SSMA turns ROWID into uniqueidentifier, a random 16-byte GUID. Ora2Pg turns it into oid and its own documentation warns the data import will then fail. The two converters do not merely differ; neither produces something with ROWID's meaning, because ROWID is a physical row address that no other engine exposes."
+  resolution: "Do not map ROWID as a type at all. Find every use (dedupe by ROWID, MIN(ROWID) tricks, pagination, trigger correlation, ROWID-based batching) and rewrite it against the primary key or a surrogate key. Only when a table genuinely has no key add an explicit surrogate: uniqueidentifier with a unique index on Azure SQL, or bigserial or uuid on PostgreSQL, and override the converter's default so the column is created deliberately rather than by accident."
+  resolvedBy: source.oracle-sqlrf-19-data-types
+- _id: dispute.varchar2-varchar-default-vs-unicode
+  title: "Is varchar(n) a safe default for VARCHAR2 columns?"
+  claimA: caveat.varchar2-ssma-varchar-default
+  claimB: caveat.sqlserver-utf8-collation-for-varchar
+  whatDisagrees: "SSMA's default maps VARCHAR2(n) to varchar(n) without checking the target's collation. Microsoft's collation documentation says varchar stores Unicode only under a UTF-8 collation, and that even then characters outside the basic plane need extra bytes. The tool's default is correct only under a precondition the tool never verifies, and Oracle's AL32UTF8 data carries no guarantee that the precondition holds."
+  resolution: "Decide the Unicode strategy before conversion, not after. Either create the target database with a _UTF8 collation and keep varchar, sizing n in bytes with headroom for multi-byte characters, or switch the SSMA type mapping to nvarchar and accept twice the storage for Latin-heavy data. In both cases re-derive column lengths from Oracle's actual byte or character semantics (NLS_LENGTH_SEMANTICS) rather than copying the declared n."
+  resolvedBy: source.ms-sql-collation-unicode

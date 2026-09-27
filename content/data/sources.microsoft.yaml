@@ -1,0 +1,548 @@
+# Microsoft Learn sources used by targets.yaml, mappings.yaml and caveats.yaml.
+# All pages were retrieved on 2026-09-26; docVersion records the page's own "updated" stamp.
+
+- _id: source.ms-ssma-type-mapping
+  title: "SSMA for Oracle: Project Settings (Type Mapping)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/ssma/oracle/project-settings-type-mapping-oracletosql
+  docVersion: "SSMA for Oracle, page updated 2026-08-27"
+  retrievedAt: 2026-09-26
+  note: "Default argument, column and local-variable type mapping tables (number -> float[53], varchar2[*..*] -> varchar[*], rowid -> uniqueidentifier, boolean -> bit, date -> datetime2[0], xmltype -> xml)."
+
+- _id: source.ms-ssma-project-settings-conversion
+  title: "SSMA for Oracle: Project Settings (Conversion)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/ssma/oracle/project-settings-conversion-oracletosql
+  docVersion: "SSMA for Oracle, page updated 2026-08-27"
+  retrievedAt: 2026-09-26
+  note: "ROWID generation, sequence conversion (no CURRVAL), ISNULL in concatenation, ORDER BY null emulation, autonomous transaction wrapper procedures."
+
+- _id: source.ms-ssma-converting-schemas
+  title: "SSMA for Oracle: Converting Oracle Schemas"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/ssma/oracle/converting-oracle-schemas-oracletosql
+  docVersion: "SSMA for Oracle, page updated 2026-08-24"
+  retrievedAt: 2026-09-26
+  note: "Object conversion table: packages become sets of procedures and functions, materialized views become indexed views with exceptions, BEFORE triggers become INSTEAD OF triggers, user-defined types become varchar(8000)."
+
+- _id: source.ms-ssma-o2ss0205
+  title: "SSMA for Oracle: O2SS0205 Unable to convert PRAGMA AUTONOMOUS_TRANSACTION"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/ssma/oracle/messages/o2ss0205
+  docVersion: "page updated 2025-05-27"
+  retrievedAt: 2026-09-26
+  note: "Block-level pragma not converted; routine-level autonomous transactions emulated with the xp_ora2ms_exec2_ex extended stored procedure over a loopback connection."
+
+- _id: source.ms-ssma-overview
+  title: "SQL Server Migration Assistant for Oracle (OracleToSQL)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/ssma/oracle/sql-server-migration-assistant-for-oracle-oracletosql
+  docVersion: "page updated 2026-04-24"
+  retrievedAt: 2026-09-26
+  note: "Supported targets: SQL Server 2019 and later, Azure SQL Database, Azure SQL Managed Instance."
+
+- _id: source.ms-sqldb-mi-feature-comparison
+  title: "Compare SQL Database Engine features: Azure SQL Database vs Azure SQL Managed Instance"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-sql/database/features-comparison
+  docVersion: "page updated 2026-09-09"
+  retrievedAt: 2026-09-26
+  note: "Feature matrix: SQL Server Agent, Service Broker, linked servers, cross-database queries, CLR, FILESTREAM, full-text search, elastic jobs, elastic query, BACKUP/RESTORE."
+
+- _id: source.ms-sqlmi-tsql-differences
+  title: "T-SQL differences between SQL Server and Azure SQL Managed Instance"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/transact-sql-tsql-differences-sql-server
+  docVersion: "page updated 2026-09-09"
+  retrievedAt: 2026-09-26
+  note: "Agent job step limits, Service Broker routing limits, linked server targets, BULK INSERT/OPENROWSET from Blob only, no FILESTREAM, no extended stored procedures, backup COPY_ONLY to URL, default collation."
+
+- _id: source.ms-sqlmi-overview
+  title: "What is Azure SQL Managed Instance?"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/sql-managed-instance-paas-overview
+  docVersion: "page updated 2026-08-18"
+  retrievedAt: 2026-09-26
+  note: "Near-100% SQL Server surface compatibility, VNet deployment, Agent, linked servers, Service Broker, CDC, failover groups, Managed Instance link."
+
+- _id: source.ms-sqlmi-service-tiers
+  title: "vCore purchasing model: Azure SQL Managed Instance service tiers"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/service-tiers-managed-instance-vcore
+  docVersion: "page updated 2026-08-27"
+  retrievedAt: 2026-09-26
+  note: "General Purpose, Next-gen General Purpose and Business Critical limits (vCores, storage, databases per instance, read-only replicas)."
+
+- _id: source.ms-sqlmi-auditing-configure
+  title: "Configure auditing for Azure SQL Managed Instance"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/auditing-configure
+  docVersion: "page updated 2026-07-28"
+  retrievedAt: 2026-09-26
+  note: "CREATE SERVER AUDIT ... TO URL or TO EXTERNAL_MONITOR; server and database audit specifications; Event Hubs and Log Analytics destinations."
+
+- _id: source.ms-sqldb-overview
+  title: "What is the Azure SQL Database service?"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-sql/database/sql-database-paas-overview
+  docVersion: "page updated 2026-07-28"
+  retrievedAt: 2026-09-26
+  note: "Purchasing models, service tiers, serverless, elastic pools, logical server concept."
+
+- _id: source.ms-sqldb-service-tiers-vcore
+  title: "vCore purchasing model: Azure SQL Database service tiers"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-sql/database/service-tiers-sql-database-vcore
+  docVersion: "page updated 2026-08-24"
+  retrievedAt: 2026-09-26
+  note: "General Purpose vs Business Critical vs Hyperscale comparison table (storage type, 4 TB vs 128 TB, replicas, in-memory OLTP)."
+
+- _id: source.ms-sqldb-hyperscale
+  title: "What is the Hyperscale service tier?"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-sql/database/service-tier-hyperscale
+  docVersion: "page updated 2026-08-24"
+  retrievedAt: 2026-09-26
+  note: "Hyperscale architecture, 128 TB, named replicas, limitations; Hyperscale is not available for SQL Managed Instance."
+
+- _id: source.ms-sqldb-elastic-jobs
+  title: "Elastic jobs in Azure SQL Database"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-sql/database/elastic-jobs-overview
+  docVersion: "page updated 2026-02-26"
+  retrievedAt: 2026-09-26
+  note: "Job agent, job database, target groups, UTC schedules, T-SQL job steps, managed identity or database-scoped credentials, JA100-JA800 concurrency tiers."
+
+- _id: source.ms-sqldb-elastic-query
+  title: "Elastic query overview (Azure SQL Database)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-sql/database/elastic-query-overview
+  docVersion: "page updated 2026-09-01"
+  retrievedAt: 2026-09-26
+  note: "Cross-database queries through external tables; preview; read-only access to external tables; shard-map mode reaching end of support 2027-03-31."
+
+- _id: source.ms-sqldb-auditing
+  title: "Auditing for Azure SQL Database and Azure Synapse Analytics"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-sql/database/auditing-overview
+  docVersion: "page updated 2026-09-17"
+  retrievedAt: 2026-09-26
+  note: "Server-level vs database-level auditing, destinations, best-effort capture under load, 4,000 character statement truncation."
+
+- _id: source.ms-sql-job-automation-overview
+  title: "Automation in Azure SQL overview (Elastic jobs vs SQL Agent)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-sql/database/job-automation-overview
+  docVersion: "page updated 2025-11-18"
+  retrievedAt: 2026-09-26
+  note: "States that SQL Agent is not available in Azure SQL Database and is included with SQL Managed Instance."
+
+- _id: source.ms-sql-tde-byok
+  title: "Customer-managed transparent data encryption (TDE) with Azure Key Vault"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-sql/database/transparent-data-encryption-byok-overview
+  docVersion: "page updated 2026-09-15"
+  retrievedAt: 2026-09-26
+  note: "TDE protector in Key Vault or Managed HSM, soft-delete and purge protection required, key revocation makes databases inaccessible, rotation."
+
+- _id: source.ms-sql-null-and-unknown
+  title: "NULL and UNKNOWN (Transact-SQL)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/null-and-unknown-transact-sql
+  docVersion: "page updated 2026-09-21"
+  retrievedAt: 2026-09-26
+  note: "A null value is distinct from an empty or zero value; three-valued logic."
+
+- _id: source.ms-sql-collation-unicode
+  title: "Collation and Unicode support (SQL Server, Azure SQL)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/relational-databases/collations/collation-and-unicode-support
+  docVersion: "page updated 2026-09-21"
+  retrievedAt: 2026-09-26
+  note: "varchar/nvarchar length semantics, UTF-8 collations, supplementary characters."
+
+- _id: source.ms-sql-row-level-security
+  title: "Row-Level Security (SQL Server, Azure SQL)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security
+  docVersion: "page updated 2026-07-20"
+  retrievedAt: 2026-09-26
+  note: "Security policies, filter and block predicates, inline table-valued functions, policies apply to dbo and table owners, side-channel notes."
+
+- _id: source.ms-sql-create-sequence
+  title: "CREATE SEQUENCE (Transact-SQL)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-sequence-transact-sql
+  docVersion: "page updated 2026-08-24"
+  retrievedAt: 2026-09-26
+  note: "Sequence options, integer and decimal(scale 0) types, CACHE behaviour and gaps, NEXT VALUE FOR, sp_sequence_get_range."
+
+- _id: source.ms-sql-indexed-views
+  title: "Create indexed views (SQL Server, Azure SQL)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/relational-databases/views/create-indexed-views
+  docVersion: "page updated 2026-08-24"
+  retrievedAt: 2026-09-26
+  note: "Unique clustered index materializes the view; maintained synchronously on DML; long list of disallowed constructs; Azure SQL uses indexed views without NOEXPAND."
+
+- _id: source.ms-sql-temporal-tables
+  title: "Temporal tables (SQL Server, Azure SQL)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/relational-databases/tables/temporal-tables
+  docVersion: "page updated 2026-08-18"
+  retrievedAt: 2026-09-26
+  note: "System-versioned tables, history table, FOR SYSTEM_TIME AS OF / FROM TO / BETWEEN / CONTAINED IN / ALL, UTC period columns."
+
+- _id: source.ms-sql-full-text-search
+  title: "Full-Text Search (SQL Server, Azure SQL)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/relational-databases/search/full-text-search
+  docVersion: "page updated 2026-07-21"
+  retrievedAt: 2026-09-26
+  note: "CONTAINS/FREETEXT, word breakers, stemmers, thesaurus, stoplists, one full-text index per table, SQL Server 2025 breaking changes."
+
+- _id: source.ms-sql-spatial-data
+  title: "Spatial data (SQL Server, Azure SQL)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/relational-databases/spatial/spatial-data-sql-server
+  docVersion: "page updated 2026-07-20"
+  retrievedAt: 2026-09-26
+  note: "geometry (planar) and geography (round-earth) CLR types, spatial indexes."
+
+- _id: source.ms-sql-xml-type
+  title: "xml (Transact-SQL)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/t-sql/xml/xml-transact-sql
+  docVersion: "page updated 2026-08-24"
+  retrievedAt: 2026-09-26
+  note: "xml type, CONTENT vs DOCUMENT, schema collections, 2 GB limit."
+
+- _id: source.ms-sql-json-type
+  title: "JSON data type (SQL Server 2025, Azure SQL)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/t-sql/data-types/json-data-type
+  docVersion: "page updated 2026-09-16"
+  retrievedAt: 2026-09-26
+  note: "Native binary json type, modify method, availability by platform and MI update policy, no dedicated index type."
+
+- _id: source.ms-sql-vector-type
+  title: "Vector data type (SQL Server 2025, Azure SQL)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type
+  docVersion: "page updated 2026-04-30"
+  retrievedAt: 2026-09-26
+  note: "vector(n) up to 1998 dimensions, float32 default and float16 preview, no B-tree or columnstore indexes on vector columns, MI requires Always-up-to-date policy."
+
+- _id: source.ms-sql-partitioned-tables
+  title: "Partitioned tables and indexes (SQL Server, Azure SQL)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes
+  docVersion: "page updated 2026-08-12"
+  retrievedAt: 2026-09-26
+  note: "Partition function and scheme, single partitioning column, RANGE LEFT/RIGHT, 15,000 partition limit, PRIMARY filegroup only in Azure SQL Database."
+
+- _id: source.ms-sql-recursive-cte
+  title: "WITH common_table_expression (Transact-SQL)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql
+  docVersion: "page updated 2026-09-21"
+  retrievedAt: 2026-09-26
+  note: "Recursive CTE rules, anchor and recursive members, MAXRECURSION default 100, disallowed constructs in the recursive member."
+
+- _id: source.ms-sql-create-trigger
+  title: "CREATE TRIGGER (Transact-SQL)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-trigger-transact-sql
+  docVersion: "page updated 2026-08-24"
+  retrievedAt: 2026-09-26
+  note: "DML triggers are FOR/AFTER or INSTEAD OF only and fire once per statement using the inserted and deleted tables."
+
+- _id: source.ms-sql-bulk-access-blob
+  title: "Bulk access to data in Azure Blob Storage (BULK INSERT and OPENROWSET)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/relational-databases/import-export/examples-of-bulk-access-to-data-in-azure-blob-storage
+  docVersion: "page updated 2025-02-27"
+  retrievedAt: 2026-09-26
+  note: "External data source of TYPE = BLOB_STORAGE with a SAS-based database scoped credential; applies to Azure SQL Database and Managed Instance."
+
+- _id: source.ms-pg-flex-overview
+  title: "What is Azure Database for PostgreSQL flexible server?"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/overview
+  docVersion: "page updated 2026-09-05"
+  retrievedAt: 2026-09-26
+  note: "Community PostgreSQL engine, Burstable / General Purpose / Memory Optimized tiers, zone-redundant HA, backups, PgBouncer, stop/start."
+
+- _id: source.ms-pg-flex-compute
+  title: "Compute options in Azure Database for PostgreSQL flexible server"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/concepts-compute
+  docVersion: "page updated 2026-07-09"
+  retrievedAt: 2026-09-26
+  note: "Tier table (vCores, memory per vCore, 32 GiB to 64 TiB storage); Burstable credit model and not-for-production guidance."
+
+- _id: source.ms-pg-flex-extensions
+  title: "Extensions and modules by name in Azure Database for PostgreSQL flexible server"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/postgresql/extensions/concepts-extensions-versions
+  docVersion: "page updated 2026-07-13"
+  retrievedAt: 2026-09-26
+  note: "Per-major-version availability of pg_cron, pgaudit, orafce, oracle_fdw, postgres_fdw, dblink, postgis, vector, pg_partman, pg_ivm, plpgsql_check and others."
+
+- _id: source.ms-pg-flex-extensions-considerations
+  title: "Considerations when using extensions in Azure Database for PostgreSQL flexible server"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/postgresql/extensions/concepts-extensions-considerations
+  docVersion: "page updated 2026-08-12"
+  retrievedAt: 2026-09-26
+  note: "Allowlisting, shared_preload_libraries, pg_cron specifics (schedule_in_database, no superuser user parameter), postgres_fdw and dblink networking, extensions unsupported by in-place major version upgrade."
+
+- _id: source.ms-pg-flex-audit
+  title: "Audit logging in Azure Database for PostgreSQL flexible server (pgaudit)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/concepts-audit
+  docVersion: "page updated 2026-07-16"
+  retrievedAt: 2026-09-26
+  note: "pgaudit session and object logging, parameters, logs flow to Azure Monitor via diagnostic settings, configuration lost on major version upgrade."
+
+- _id: source.ms-pg-oracle-schema-conversion
+  title: "Oracle to Azure Database for PostgreSQL schema conversion (VS Code PostgreSQL extension)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/postgresql/migrate/oracle-conversions-schema/schema-conversions-overview
+  docVersion: "page updated 2026-08-04"
+  retrievedAt: 2026-09-26
+  note: "Package conversion rules, CONNECT BY to WITH RECURSIVE, autonomous transactions via dblink, plpgsql_check validation, supported Oracle 12.1-21c."
+
+- _id: source.ms-pg-migration-service
+  title: "Migration service in Azure Database for PostgreSQL flexible server"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/postgresql/migrate/migration-service/overview-migration-service-postgresql
+  docVersion: "page updated 2026-06-24"
+  retrievedAt: 2026-09-26
+  note: "Supported sources are PostgreSQL only (RDS, Aurora, Cloud SQL, on-premises, Azure VM); uses pgcopydb; offline and online."
+
+- _id: source.ms-azure-dms-overview
+  title: "Azure Database Migration Service documentation"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/dms/
+  docVersion: "landing page updated 2026-08-18"
+  retrievedAt: 2026-09-26
+  note: "Landing page listing SQL Server, PostgreSQL, MySQL and MongoDB migration tutorials; Oracle appears only via SSMA and the tools matrix."
+
+- _id: source.ms-azure-dms-oracle
+  title: "Azure Database Migration Service: supported migration scenarios"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/dms/resource-scenario-status
+  docVersion: "page updated 2026-02-20"
+  retrievedAt: 2026-09-26
+  note: "Oracle to Azure SQL Database / Managed Instance / SQL VM listed as offline only, 'using DMS via SSMA', status Preview; no Oracle to PostgreSQL scenario."
+
+- _id: source.ms-oracle-db-at-azure-overview
+  title: "Overview: Oracle Database@Azure"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/oracle/oracle-db/database-overview
+  docVersion: "page updated 2026-09-15"
+  retrievedAt: 2026-09-26
+  note: "OCI-operated Oracle database services colocated in Azure datacenters, purchased through Azure Marketplace private offers, BYOL, Azure Monitor integration for Exadata, Exascale, Autonomous, Base Database and GoldenGate."
+
+- _id: source.ms-oracle-db-at-azure-exadata
+  title: "Oracle Database@Azure: Exadata services"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/oracle/oracle-db/exadata-manage-services
+  docVersion: "page updated 2026-04-15"
+  retrievedAt: 2026-09-26
+  note: "Exadata infrastructure and VM clusters managed in the Azure portal; CDBs and PDBs managed in the OCI console; only Exadata X9M shapes."
+
+- _id: source.ms-oracle-db-at-azure-bcdr
+  title: "Business continuity and disaster recovery for Oracle Database@Azure (Exadata Database Service)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/scenarios/oracle-on-azure/oracle-disaster-recovery-oracle-database-azure
+  docVersion: "page updated 2026-08-27; carries a deprecation notice (removal planned 2026-10-30)"
+  retrievedAt: 2026-09-26
+  note: "RAC for HA and Data Guard / Active Data Guard for DR are native; single-zone by default; OCI-managed, self-managed (RMAN to Azure storage) and third-party backups."
+
+- _id: source.ms-oracle-on-azure-vm-overview
+  title: "Overview of Oracle applications and solutions on Azure (Oracle Database on Azure VMs)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/virtual-machines/workloads/oracle/oracle-overview
+  docVersion: "page updated 2026-02-05"
+  retrievedAt: 2026-09-26
+  note: "BYOL Oracle Linux marketplace images, Data Guard / GoldenGate for HA and DR, RMAN and Azure Backup options, Azure is an authorized cloud environment for Oracle licensing."
+
+- _id: source.ms-oracle-to-sqldb-guide
+  title: "Oracle to Azure SQL Database: migration guide"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-sql/migration-guides/database/oracle-to-sql-database-guide
+  docVersion: "page updated 2025-11-25"
+  retrievedAt: 2026-09-26
+  note: "Assess, validate type mappings, convert schema, synchronize, migrate data with SSMA; SSIS alternative; SSMA Tester."
+
+- _id: source.ms-oracle-to-sqlmi-guide
+  title: "Oracle to Azure SQL Managed Instance: migration guide"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-sql/migration-guides/managed-instance/oracle-to-managed-instance-guide
+  docVersion: "page updated 2026-08-27"
+  retrievedAt: 2026-09-26
+  note: "Same SSMA-driven workflow targeting Managed Instance."
+
+- _id: source.ms-adf-oracle-connector
+  title: "Copy data to and from Oracle with Azure Data Factory"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/data-factory/connector-oracle
+  docVersion: "page updated 2026-08-05"
+  retrievedAt: 2026-09-26
+  note: "Connector version 2.0, Oracle 11g and later, partitioned parallel copy, NUMBER without precision mapped to Decimal(256,130) in v2.0 and Double in v1.0."
+
+- _id: source.ms-adls-overview
+  title: "Azure Data Lake Storage overview (built on Blob Storage)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-introduction
+  docVersion: "page updated 2026-07-03"
+  retrievedAt: 2026-09-26
+  note: "Hierarchical namespace on Blob Storage, ABFS driver, RBAC plus POSIX ACLs, encryption at rest, no account or file size limits imposed."
+
+- _id: source.ms-service-bus-overview
+  title: "Introduction to Azure Service Bus messaging"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview
+  docVersion: "page updated 2026-08-31"
+  retrievedAt: 2026-09-26
+  note: "Queues, topics and subscriptions, sessions for FIFO, dead-lettering, scheduled delivery, deferral, transactions within a single entity, AMQP 1.0, JMS 2.0 on Premium."
+
+- _id: source.ms-functions-overview
+  title: "Azure Functions overview"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-functions/functions-overview
+  docVersion: "page updated 2026-09-21"
+  retrievedAt: 2026-09-26
+  note: "Event-driven serverless compute with timer, HTTP, Service Bus, Blob and other triggers; Flex Consumption, Premium, Dedicated and Container Apps hosting."
+
+- _id: source.ms-ai-search-overview
+  title: "Introduction to Azure AI Search"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/search/search-what-is-azure-search
+  docVersion: "page updated 2026-09-17"
+  retrievedAt: 2026-09-26
+  note: "Full-text, vector, hybrid and multimodal search; indexers pull from Blob Storage, Cosmos DB, SharePoint and OneLake; push API for other sources."
+
+- _id: source.ms-synapse-overview
+  title: "What is Azure Synapse Analytics?"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/synapse-analytics/overview-what-is
+  docVersion: "page updated 2025-09-09"
+  retrievedAt: 2026-09-26
+  note: "Dedicated and serverless SQL pools, Spark pools, pipelines sharing the Data Factory engine, Data Explorer."
+
+- _id: source.ms-fabric-overview
+  title: "What is Microsoft Fabric?"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/fabric/fundamentals/microsoft-fabric-overview
+  docVersion: "page updated 2026-09-02"
+  retrievedAt: 2026-09-26
+  note: "SaaS analytics platform over OneLake; Data Factory, Data Engineering, Data Warehouse, Real-Time Intelligence, Power BI, SQL database and mirroring workloads."
+
+# ---- added for the obituary-roster follow-up (retrieved 2026-09-26)
+
+- _id: source.ms-adf-change-data-capture
+  title: "Change data capture in Azure Data Factory and Azure Synapse"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/data-factory/concepts-change-data-capture
+  docVersion: "page updated 2026-08-05"
+  retrievedAt: 2026-09-26
+  note: "Native CDC connectors (SAP, Azure SQL Database, SQL Server, SQL MI, Cosmos DB, Snowflake) and auto-incremental connectors; Oracle is absent from both lists, so Oracle deltas need customer-managed watermark pipelines; pipelines are batch, only the CDC factory resource runs continuously."
+
+- _id: source.ms-fabric-mirroring-overview
+  title: "Mirroring in Microsoft Fabric"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/fabric/mirroring/overview
+  docVersion: "page updated 2026-08-28"
+  retrievedAt: 2026-09-26
+  note: "Database, metadata and open mirroring; source table includes Oracle, SQL Server, Azure SQL Database and MI, Azure Database for PostgreSQL, Snowflake, BigQuery; changes published as fast as every 15 seconds into Delta tables in OneLake."
+
+- _id: source.ms-fabric-mirroring-oracle
+  title: "Mirror Oracle databases in Microsoft Fabric"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/fabric/mirroring/oracle
+  docVersion: "page updated 2026-05-21"
+  retrievedAt: 2026-09-26
+  note: "Supports Oracle 10 and later with LogMiner, on-premises or Azure VMs, OCI, Oracle Database@Azure and Exadata; requires archive log mode, supplemental logging and the on-premises data gateway."
+
+- _id: source.ms-sql-query-store
+  title: "Monitor performance by using the Query Store"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store
+  docVersion: "page updated 2026-08-27"
+  retrievedAt: 2026-09-26
+  note: "Plan forcing (sp_query_store_force_plan), Query Store hints, enabled by default on Azure SQL Database and Managed Instance, collects DML plans only, can force only plans it retained."
+
+- _id: source.ms-sql-for-xml
+  title: "FOR XML (SQL Server)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/relational-databases/xml/for-xml-sql-server
+  docVersion: "page updated 2026-06-23"
+  retrievedAt: 2026-09-26
+  note: "RAW, AUTO, EXPLICIT and PATH modes, nested FOR XML and the TYPE directive; applies to Azure SQL Database and Managed Instance."
+
+- _id: source.ms-sql-openxml
+  title: "OPENXML (Transact-SQL)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/t-sql/functions/openxml-transact-sql
+  docVersion: "page updated 2026-08-24"
+  retrievedAt: 2026-09-26
+  note: "Rowset view over an XML document prepared with sp_xml_preparedocument, WITH schema declaration or edge-table output, sp_xml_removedocument."
+
+- _id: source.ms-sqldb-connectivity-tls
+  title: "Connectivity settings for Azure SQL Database (minimum TLS version)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-sql/database/connectivity-settings
+  docVersion: "page updated 2026-07-28"
+  retrievedAt: 2026-09-26
+  note: "TLS 1.0 and 1.1 retired; lowest configurable minimum is TLS 1.2; default accepts 1.2 and above; since November 2024 the minimum cannot be set below 1.2 for SQL Database or Managed Instance."
+
+- _id: source.ms-pg-flex-tls
+  title: "Transport Layer Security in Azure Database for PostgreSQL Flexible Server"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/postgresql/security/security-tls
+  docVersion: "page updated 2026-07-16"
+  retrievedAt: 2026-09-26
+  note: "Only TLS 1.2 and 1.3 accepted, TLS 1.0/1.1 denied by default, require_secure_transport, ssl_min_protocol_version, no mutual TLS, no custom server certificates."
+
+- _id: source.ms-sql-change-data-capture
+  title: "What is change data capture (CDC)? (SQL Server and Azure SQL Managed Instance)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/about-change-data-capture-sql-server
+  docVersion: "page updated 2026-08-25"
+  retrievedAt: 2026-09-26
+  note: "Log-based capture into change tables through Agent capture and cleanup jobs, cdc.fn_cdc_get_all_changes functions, 3-day default retention, at most two capture instances per table."
+
+- _id: source.ms-sqlmi-transactional-replication
+  title: "Transactional replication with Azure SQL Managed Instance"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/replication-transactional-overview
+  docVersion: "page updated 2026-08-27"
+  retrievedAt: 2026-09-26
+  note: "MI can be publisher, distributor and subscriber; transactional, snapshot and bidirectional supported; merge, peer-to-peer and updatable subscriptions not supported; SQL authentication and an Azure file share required; 30 continuous distribution agents."
+
+- _id: source.ms-pg-flex-logical-replication
+  title: "Logical replication and logical decoding in Azure Database for PostgreSQL Flexible Server"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/postgresql/configure-maintain/concepts-logical
+  docVersion: "page updated 2026-07-20"
+  retrievedAt: 2026-09-26
+  note: "Native publication/subscription, pglogical, wal2json logical decoding; wal_level logical and restart; DDL not replicated; unused slots retain WAL and can fill storage; slot failover handling."
+
+- _id: source.ms-caf-oracle-vm-monitoring
+  title: "Manage and monitor Oracle workloads on Azure Virtual Machines (Cloud Adoption Framework)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/scenarios/oracle-on-azure/oracle-manage-monitor-iaas
+  docVersion: "page updated 2026-08-27; carries a deprecation notice (removal planned 2026-10-30)"
+  retrievedAt: 2026-09-26
+  note: "VM insights, Azure Monitor Agent, disk and NetApp Files metrics, Oracle Enterprise Manager Cloud Control on a separate VM with logs loaded into Log Analytics, AWR and Statspack."
+
+- _id: source.ms-caf-odaa-monitoring
+  title: "Manage and monitor Oracle Database@Azure (Cloud Adoption Framework)"
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/scenarios/oracle-on-azure/oracle-manage-monitor-oracle-database-azure
+  docVersion: "page updated 2026-08-27; carries a deprecation notice (removal planned 2026-10-30)"
+  retrievedAt: 2026-09-26
+  note: "Three-tier monitoring: Azure Monitor VM cluster metrics, diagnostic logs to Log Analytics, Azure Arc-enabled servers; database-level operations stay in the OCI console; Enterprise Manager and Defender for Cloud in unified workbooks."

@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q14",
+    "type": "fact",
+    "cond": "groq+kb",
+    "num_turns": 9,
+    "duration_ms": 42846,
+    "session_id": "52efafee-9cd5-4a05-b59a-99c0378fa760",
+    "usage": {
+      "input_tokens": 14,
+      "cache_creation_input_tokens": 15173,
+      "cache_read_input_tokens": 94623,
+      "output_tokens": 3649,
+      "output_tokens_details": {
+        "thinking_tokens": 732
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 15173,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1737,
+          "cache_read_input_tokens": 20321,
+          "cache_creation_input_tokens": 666,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 666
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q14",
+    "type": "fact",
+    "q": "Our VARCHAR2(100) columns hold multibyte text. Anything to watch on Azure SQL?",
+    "expected": "Oracle length semantics may be BYTE; SQL Server varchar(n) is bytes in a single-byte collation, nvarchar(n) is characters (UTF-16) — choose nvarchar or UTF-8 collation; SSMA maps varchar2 to varchar by default.",
+    "required_sources": [
+      "microsoft",
+      "oracle"
+    ]
+  },
+  "result": "**Verdict:** VARCHAR2(100) with multibyte data maps to Azure SQL Database with **partial fidelity** (effort M) — the length-semantics mismatch and a tool-default that silently drops Unicode are the two things to watch. [VARCHAR2 byte vs char length semantics mapping to Azure SQL Database — dataset]\n\n**Scoped facts** (Oracle 11.2–26ai → Azure SQL Database, per [`mapping_varchar2-byte-semantics--azure-sql-db`](https://learn.microsoft.com/en-us/sql/ssma/oracle/project-settings-type-mapping-oracletosql)):\n\n1. **Length semantics differ, not just storage.** Oracle VARCHAR2 length is declared in BYTE or CHAR semantics (session default is BYTE; column cap is 4000 bytes, or 32767 with `MAX_STRING_SIZE=EXTENDED`). SQL Server's `varchar(n)` counts *bytes*, `nvarchar(n)` counts UTF-16 code-pairs — neither matches Oracle CHAR semantics directly, so re-derive `n` from Oracle's actual `NLS_LENGTH_SEMANTICS`, don't copy the declared number. — [VARCHAR2 byte vs char length semantics](Sanity dataset, oracleFeature summary)\n\n2. **Major caveat — SSMA's default silently drops multibyte data.** SQL Server Migration Assistant (SSMA) for Oracle converts `varchar2(n)` → `varchar(n)` by default. If your Oracle DB is AL32UTF8 (multibyte) and the Azure SQL target database isn't using a UTF-8 collation, that Unicode data is preserved only if you change the mapping to `nvarchar` or set the target to a `_UTF8` collation. — [SSMA for Oracle: Project Settings (Type Mapping)](https://learn.microsoft.com/en-us/sql/ssma/oracle/project-settings-type-mapping-oracletosql) (Microsoft, severity: major)\n\n3. **Minor caveat — even with UTF-8 collation, widen your lengths.** With a `_UTF8`-enabled collation (SQL Server 2019+, available on Azure SQL), `char`/`varchar` store UTF-8 (characters outside the basic plane need 2–4 bytes) while `nchar`/`nvarchar` stay UTF-16 (2 code units for those characters). Declared lengths may need to be wider than a straight copy of the Oracle CHAR-semantics length. — [Collation and Unicode support (SQL Server, Azure SQL)](https://learn.microsoft.com/en-us/sql/relational-databases/collations/collation-and-unicode-support) (Microsoft, severity: minor)\n\n4. **Root cause (why silent loss happens at all).** Oracle does not error on a lossy character-set conversion — it transliterates or substitutes a replacement character, and row counts/\"success\" status won't reveal it. Run a value-level round-trip scan (or Oracle's DMU/csscan) against the source before cutover, and size target columns in characters, not bytes. — [\"The Migration Completed Successfully. Half the Names Are Now Question Marks.\"](https://uptimearchitect.com/blog/oracle-character-set-migration-data-loss/) (firsthand) and [Choosing a Character Set (Globalization Support Guide 19c)](https://docs.oracle.com/en/database/oracle/oracle-database/19/nlspg/choosing-character-set.html) (Oracle)\n\n**Recorded dispute:** *\"Is varchar(n) a safe default for VARCHAR2 columns?\"*\n- **Claim A** (Microsoft, SSMA docs, major): the default `varchar2→varchar` mapping only preserves Unicode if the target uses a UTF-8 collation or you switch to `nvarchar`.\n- **Claim B** (Microsoft, Collation docs, minor): even under a UTF-8 collation, supplementary characters need extra bytes/code-units, so lengths may need widening.\n- **Resolution:** Decide your Unicode strategy *before* conversion — either create the target with a `_UTF8` collation and keep `varchar` (sizing `n` in bytes with headroom for multibyte characters), or switch SSMA's mapping to `nvarchar` (accepting ~2x storage for Latin-heavy data). Either way, re-derive column lengths from Oracle's real `NLS_LENGTH_SEMANTICS`, not the declared number. — resolved by [Collation and Unicode support (SQL Server, Azure SQL)](https://learn.microsoft.com/en-us/sql/relational-databases/collations/collation-and-unicode-support)\n\n**Gaps:** The dataset's mapping/caveats above are scoped to **Azure SQL Database**; I found no separate mapping entry specifically for **Azure SQL Managed Instance** for this feature — if you're targeting MI, I don't have MI-specific evidence beyond what's shown here for the underlying SQL Server engine's collation behavior.",
+  "stderr": ""
+}

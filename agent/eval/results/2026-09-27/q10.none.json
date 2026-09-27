@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q10",
+    "type": "version-scope",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 28085,
+    "session_id": "98d4a987-eb89-4462-8deb-bd3cf61403f1",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 10008,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 2758,
+      "output_tokens_details": {
+        "thinking_tokens": 1276
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 10008,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2758,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 10008,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 10008
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q10",
+    "type": "version-scope",
+    "q": "We plan to move to Oracle 23ai on Azure VMs and use the new SQL BOOLEAN type. Anything to watch in a later hop to Azure SQL?",
+    "expected": "BOOLEAN maps to bit in SQL Server (SSMA); also note LogMiner/CDC tooling limits for BOOLEAN if recorded; scoped to 23ai+.",
+    "required_sources": [
+      "oracle",
+      "microsoft"
+    ]
+  },
+  "result": "**Verdict:** Using BOOLEAN on 23ai is fine, but Azure SQL (Database and Managed Instance) has no native BOOLEAN column type. As far as I know that is still true for SQL Server 2025, but check before you commit. Every BOOLEAN column becomes `BIT`, and any SQL that treats boolean expressions as values will need rewriting. Write your 23ai code in a portable style now so the later move is a simple type mapping and not a code refactor.\n\n**What breaks or changes on the Azure SQL side**\n\n1. **Type mapping.** `BOOLEAN` → `BIT` (0/1/NULL). The data converts cleanly, and T-SQL also accepts the strings `'TRUE'`/`'FALSE'` as BIT values. Oracle's other accepted inputs (`'yes'/'no'`, `'on'/'off'`, `'t'/'f'`) don't convert, so fix any loaders that rely on them.\n2. **Bare predicates.** 23ai lets you write `WHERE is_active`, `WHERE NOT is_active` and `CASE WHEN flag THEN`. T-SQL requires `WHERE is_active = 1`.\n3. **Booleans as values.** 23ai lets you write `SELECT a > b AS flag` or `SET flag = (x IS NULL)`. T-SQL doesn't; you need `CASE WHEN a > b THEN 1 ELSE 0 END`.\n4. **`IS [NOT] TRUE/FALSE` tests and the `TRUE`/`FALSE` literals.** T-SQL supports neither, so rewrite them as `= 1`, `= 0` or `IS NULL` logic.\n5. **Aggregates.** Oracle's `BOOLEAN_AND_AGG` and `BOOLEAN_OR_AGG` have no T-SQL equivalent. `MIN`, `MAX` and `SUM` also reject BIT directly, so you need `MAX(CAST(flag AS int))`.\n6. **Text output.** `TO_CHAR(bool)` and concatenation produce `'TRUE'`/`'FALSE'` in Oracle, but `'1'`/`'0'` from BIT in T-SQL. Check reports, CSV exports and string comparisons.\n7. **NULL sort order.** Oracle puts NULLs last in ascending order; SQL Server puts them first. This affects nullable flag columns used in `ORDER BY`.\n8. **Tools and connectors.** Confirm that your SSMA for Oracle version supports 23ai as a source and maps SQL BOOLEAN (PL/SQL BOOLEAN has long been supported). Do the same for your ADF, DMS or Oracle connector version. Don't assume 23ai-only types pass through; test with a sample table early.\n9. **Clients.** Usually low risk: JDBC `getBoolean()` and .NET `bool` both work with BIT. The exceptions are raw SQL strings with Oracle literals and ORM dialect settings.\n\n**Recommendations for the 23ai phase**\n\n- Always compare explicitly (`flag = TRUE`). Don't select predicates as values or use the boolean aggregates. That keeps the later rewrite mechanical (`TRUE` → `1`).\n- If a quick Azure SQL move is likely, consider `NUMBER(1)` with `CHECK (col IN (0,1))` for new tables. It maps 1:1 to BIT and needs no code changes.\n- SQL BOOLEAN needs `COMPATIBLE` set to 23 or higher on the Oracle side, and that setting can't be reversed.\n- Add a lint or grep rule to find the patterns above so the conversion work stays measurable.\n\n**Sources**\n- Oracle 23ai data types (BOOLEAN): https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/Data-Types.html\n- T-SQL `bit`: https://learn.microsoft.com/en-us/sql/t-sql/data-types/bit-transact-sql\n- SSMA for Oracle: https://learn.microsoft.com/en-us/sql/ssma/oracle/sql-server-migration-assistant-for-oracle-oracletosql\n\nI wrote this from memory without looking anything up, so check the SSMA/ADF support for 23ai and the current Azure SQL type list before you plan around them.",
+  "stderr": ""
+}

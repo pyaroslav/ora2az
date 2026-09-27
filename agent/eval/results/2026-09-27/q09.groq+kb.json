@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q09",
+    "type": "fact",
+    "cond": "groq+kb",
+    "num_turns": 7,
+    "duration_ms": 29850,
+    "session_id": "67eb096e-a897-48c9-a013-a9843b387083",
+    "usage": {
+      "input_tokens": 10,
+      "cache_creation_input_tokens": 10857,
+      "cache_read_input_tokens": 51666,
+      "output_tokens": 2529,
+      "output_tokens_details": {
+        "thinking_tokens": 237
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 10857,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1570,
+          "cache_read_input_tokens": 15689,
+          "cache_creation_input_tokens": 982,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 982
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q09",
+    "type": "fact",
+    "q": "Can we keep using PRAGMA AUTONOMOUS_TRANSACTION logic after moving to Azure SQL Managed Instance?",
+    "expected": "No direct equivalent in T-SQL; converters lose the semantics; workarounds (separate connection/loopback, table variables for logging) with the recorded caveats.",
+    "required_sources": [
+      "microsoft",
+      "community"
+    ]
+  },
+  "result": "**Verdict: No — not natively, and not even via SSMA's usual emulation.** `PRAGMA AUTONOMOUS_TRANSACTION` has no equivalent on Azure SQL Managed Instance, and the standard automated-conversion path is documented to be blocked on that specific target.\n\n**Scoped facts** (Oracle 11.2–23ai, target: Azure SQL Managed Instance):\n\n- Fidelity is **workaround**, effort **L** — \"SQL Server has no autonomous transaction: nested BEGIN TRAN calls join the outer transaction.\" Logging-style uses are recommended to be replaced with table variables (which survive rollback) or an external log sink, rather than mechanically converted. [SSMA for Oracle: O2SS0205 Unable to convert PRAGMA AUTONOMOUS_TRANSACTION](https://learn.microsoft.com/en-us/sql/ssma/oracle/messages/o2ss0205), [T-SQL differences between SQL Server and Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/transact-sql-tsql-differences-sql-server)\n\n- **Caveat (blocker, applies to General Purpose, Next-gen General Purpose, and Business Critical tiers of Azure SQL MI):** Managed Instance does not support extended stored procedures (`sp_addextendedproc`/`sp_dropextendedproc` are unavailable), so SSMA's autonomous-transaction emulator — which relies on an extended stored procedure — cannot be installed there; converted routines depending on it must be rewritten. [T-SQL differences between SQL Server and Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/transact-sql-tsql-differences-sql-server)\n\n- **Caveat (major, Oracle 11.2–23ai):** SSMA doesn't even convert the pragma inside anonymous blocks at all (error O2SS0205). For procedures/functions it emulates the pragma via extended stored procedure `xp_ora2ms_exec2_ex`, opening a second connection to run a split-out implementation procedure — documented by Microsoft as slow compared with Oracle, and this is exactly the mechanism blocked on Managed Instance per the caveat above. [SSMA for Oracle: O2SS0205](https://learn.microsoft.com/en-us/sql/ssma/oracle/messages/o2ss0205)\n\n**Recorded dispute:** *\"Does SSMA's autonomous-transaction emulation run on Managed Instance?\"* — SSMA reports `PRAGMA AUTONOMOUS_TRANSACTION` in procedures/functions as successfully converted (via the extended-proc emulation), while Microsoft's own T-SQL differences documentation states Azure SQL Managed Instance doesn't support extended stored procedures at all — i.e., one Microsoft tool marks as done what another Microsoft platform cannot host. **Resolution:** Treat every \"converted\" autonomous transaction as a manual rewrite when targeting Managed Instance (or Azure SQL Database). Typical replacements: write audit rows through a separate application-tier connection, use table variables to carry log data out of a failing transaction, or move the side effect to a Service Broker activation procedure on Managed Instance. Verify by searching converted T-SQL for `xp_ora2ms_exec2_ex` before deploying. [SSMA for Oracle: O2SS0205](https://learn.microsoft.com/en-us/sql/ssma/oracle/messages/o2ss0205) / [T-SQL differences](https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/transact-sql-tsql-differences-sql-server)\n\n**Background:** the feature itself is a core, non-deprecated part of PL/SQL (introduced pre-11.2) — Oracle's Concepts guide covers it under transactions — so this is purely a target-platform gap, not an Oracle-side deprecation. Neither Transact-SQL nor PL/pgSQL has an equivalent construct.\n\n*(Note: if PostgreSQL Flexible Server is also a candidate target, that mapping exists too — workaround via dblink/pg_background emulation with its own caveats — but you asked specifically about SQL MI, so I've scoped to that.)*",
+  "stderr": ""
+}

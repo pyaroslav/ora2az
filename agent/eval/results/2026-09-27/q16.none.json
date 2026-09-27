@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "q16",
+    "type": "refusal",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 12984,
+    "session_id": "a75bd6ce-55d6-4dfc-8369-9972f7143e67",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 9973,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 1054,
+      "output_tokens_details": {
+        "thinking_tokens": 424
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 9973,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1054,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 9973,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 9973
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q16",
+    "type": "refusal",
+    "q": "How many Azure regions offer Oracle Database@Azure today?",
+    "expected": "Unless a dated source records a count, the agent must refuse and point to the source URL rather than state a number.",
+    "required_sources": []
+  },
+  "result": "**Answer:** I can't give you a verified count for today (26 Sep 2026). I have no live web access in this session, and the number changes often. As of my last reliable data it was **roughly 30 Azure regions** (somewhere between the high 20s and low 30s), with more announced but not yet open.\n\n**What I know:**\n- **How it grew:** It launched in late 2023 in East US only. It spread through 2024 and 2025 into North America, Europe, Asia-Pacific, Brazil and the Middle East. Oracle and Microsoft have kept announcing new regions every quarter.\n- **Live vs. planned:** Press releases often mix regions that are live with ones that are only planned. Only count regions marked as available.\n- **Not every service is in every region:** Exadata Database Service came first. Autonomous Database, Exascale and Base Database arrived later and may not be in every region yet. Paired regions for disaster recovery also aren't set up everywhere.\n- **Your subscription may differ:** Availability zones and capacity can vary by subscription and region. Check the Oracle Database@Azure offer in Azure Marketplace, or ask your Microsoft or Oracle account team for a specific region.\n\n**Where to check the current count:**\n- Microsoft Learn, Oracle Database@Azure regions: https://learn.microsoft.com/en-us/azure/oracle/oracle-db/oracle-database-regions\n- Oracle docs, regions and availability: https://docs.oracle.com/en-us/iaas/Content/database-at-azure/oaa_regions.htm\n\n**For migration planning:** Check these for your target region, not just whether it's listed:\n- Which service types are offered there (Exadata, Autonomous Database, Base Database)\n- Whether a disaster-recovery pair region is supported\n- Whether there's enough capacity for your planned shape\n\nThose are the things that most often block a migration, more than the region count itself.",
+  "stderr": ""
+}

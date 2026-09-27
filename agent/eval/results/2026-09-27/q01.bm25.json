@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "id": "q01",
+    "type": "version-scope",
+    "cond": "bm25",
+    "num_turns": 1,
+    "duration_ms": 11712,
+    "session_id": "aa1a84d0-6cb0-4bfe-a095-475fdb1367dd",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 12945,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 1170,
+      "output_tokens_details": {
+        "thinking_tokens": 74
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12945,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1170,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 12945,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 12945
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q01",
+    "type": "version-scope",
+    "q": "We are on Oracle 19c and use DBMS_JOB for nightly batches. Moving to Azure SQL Managed Instance — what happens to those jobs?",
+    "expected": "DBMS_JOB is deprecated (Oracle recommends DBMS_SCHEDULER); on SQL MI the equivalent is SQL Server Agent jobs; schedules and PL/SQL bodies must be rewritten in T-SQL; answer must state the deprecation release.",
+    "required_sources": [
+      "oracle",
+      "microsoft"
+    ]
+  },
+  "passages": [
+    {
+      "id": "mapping_dbms-job--sql-agent-mi",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai | M | partial | DBMS_JOB jobs are anonymous PL/SQL blocks or procedure calls on an interval; SQL Server Agent on Managed Instance runs T-SQL job steps on schedules, which covers the same ground once the PL/SQL is converted. What does not carry over is the transactional submit semantics of DBMS_JOB (a job submitted inside a rolled-back transaction disappears) and the interval expression syntax, which becomes an Agent schedule. Agent on Managed Instance also lacks CmdExec steps, proxies and alerts. | Inventory jobs in DBA_JOBS and note that from 19c each one is also visible as a DBMS_JOB$_n row in DBA_SCHEDULER_JOBS. Convert the WHAT block with SSMA into a stored procedure. Create an Agent job with a T-SQL step calling the procedure and a schedule equivalent to the INTERVAL expression. Replace failure handling that relied on BROKEN flags with Agent job step retry and notification settings. Re-test any job that assumed the submit was rolled back with the caller's transaction.",
+      "score": 19.974
+    },
+    {
+      "id": "dispute_dbms-job-deprecated-vs-removed",
+      "type": "dispute",
+      "text": "Both observations are true and compatible. From 19c a schema calling DBMS_JOB.SUBMIT needs the CREATE JOB privilege, otherwise it fails with ORA-27486; that privilege change, not removal, is behind most 'not working anymore' reports. The package is deprecated and functional through 26ai. For an Azure move the consequence is unchanged: job bodies are PL/SQL and must be re-homed to SQL Server Agent (Managed Instance), Elastic Jobs (Azure SQL Database) or pg_cron (PostgreSQL), but the timeline is not forced by removal. | Did DBMS_JOB stop working in 19c? | Oracle documents DBMS_JOB as deprecated since 12.2 with existing jobs converted to Scheduler jobs and the legacy interface still functional. An Ask TOM thread reports that DBMS_JOB.SUBMIT 'stopped working' after a 12.1 to 19.8 upgrade, and that framing circulates as 'DBMS_JOB was removed in 19c'.",
+      "score": 19.209
+    },
+    {
+      "id": "feature_dbms-scheduler",
+      "type": "oracleFeature",
+      "text": "scheduler | pre-11.2 | DBMS_SCHEDULER | Oracle Scheduler, exposed through the DBMS_SCHEDULER package, is a full job scheduler inside the database. A job combines a program (PL/SQL block, stored procedure, operating-system executable, SQL script or backup script), a schedule expressed in calendaring syntax or triggered by an event, and optional destinations and credentials. Around jobs sit job classes tied to the Resource Manager, maintenance windows, dependency chains with branching rules, file watchers, and remote or multi-destination execution through Scheduler agents. Migrations care because no Azure target offers this breadth in one place. Simple recurring PL/SQL jobs map to SQL Server Agent on Managed Instance, Elastic Jobs for Azure SQL Database or the pg_cron extension on PostgreSQL, but chains, windows, resource plans, external executables and event-driven jobs spread across orchestration services such as Data Factory, Functions or Logic Apps. Job logging and run history views also have no direct counterpart. The feature is fully supported and not deprecated. Since 19c it is also the engine behind legacy DBMS_JOB jobs, which are converted into Scheduler jobs at upgrade, so ",
+      "score": 18.977
+    },
+    {
+      "id": "pattern_scheduler-jobs-to-azure",
+      "type": "pattern",
+      "text": "Inventory first. Pull DBA_SCHEDULER_JOBS and DBA_JOBS and classify each job by type (PL/SQL block, stored procedure, executable or external script, chain), by schedule (a simple repeat interval versus a calendar with BYDAY or exclusion rules), by dependencies (chains, windows, event queues) and by what it actually does. Many jobs turn out to be data refreshes or purges that belong in a pipeline tool rather than in a database scheduler, and the DBMS_JOB entries are almost always simple intervals that map to any target. Record time zones explicitly; Oracle jobs can carry a session time zone, while two of the three Azure schedulers run in UTC. Azure SQL Managed Instance: SQL Server Agent. Microsoft documents that Agent runs inside the instance and executes Transact-SQL job steps, operating-system and PowerShell steps, SSIS package steps and transactional-replication steps, with schedules that can be recurring, one time, or triggered at Agent start (which also fires after every failover). Notifications are email only through Database Mail, and the mail profile has to carry a specific name for Agent to use it. The limitations matter for a port: Agent settings are read-only and Agent is ",
+      "score": 17.717
+    },
+    {
+      "id": "target_sql-agent-mi",
+      "type": "azureTarget",
+      "text": "SQL Server Agent (on SQL Managed Instance) | azure-sql-mi | SQL Managed Instance includes SQL Server Agent, the same msdb-based scheduler used on SQL Server, so jobs, schedules, T-SQL and SSIS job steps, operators and email notifications carry over with familiar tooling. Microsoft documents PaaS limits: CmdExec, PowerShell, Analysis Services, merge replication and queue reader steps are not supported, proxies, alerts, pager and NetSend notifications are unavailable, only one Database Mail profile with a fixed name can be used, idle-CPU schedules do not exist, and multi-server (MSX/TSX) administration is not supported. For Oracle migrations this is where DBMS_JOB and DBMS_SCHEDULER jobs that run SQL land with the least change; external-program jobs need Azure Functions or Data Factory. | Available in every Managed Instance tier and always running; it cannot be disabled and its settings are read-only.",
+      "score": 17.068
+    },
+    {
+      "id": "mapping_tls-1-0-1-1--azure-sql-db",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | S | exact | Azure SQL Database and Managed Instance already enforce what Oracle's desupport of TLS 1.0 and 1.1 demands: those versions are retired, the lowest configurable minimum is TLS 1.2, the default accepts TLS 1.2 and above, and TLS 1.3 can be required. The migration task is on the client side, upgrading drivers that cannot negotiate TLS 1.2 or later. | Audit client TLS versions with SQL auditing (client_tls_version_name) or the portal connection metrics. Upgrade drivers and runtimes that cannot negotiate TLS 1.2. Set the server minimum TLS version to 1.2 (or 1.3 after driver testing).",
+      "score": 16.489
+    },
+    {
+      "id": "mapping_dbms-scheduler--pg-cron",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | M | partial | pg_cron covers time-based SQL jobs with cron syntax, second-level intervals and per-database scheduling, and logs runs in a table. It has no programs, chains, windows, event triggers, external jobs or resource classes, and it runs jobs as the scheduling user, so PL/SQL that relied on those scheduler objects needs an external orchestrator. | Enable pg_cron (allowlist, shared_preload_libraries, restart) on the Flexible Server. Convert job bodies to PL/pgSQL procedures and schedule them with cron.schedule_in_database. Approximate calendaring strings with cron expressions; jobs that need last-day-of-month can use the dollar sign syntax. Move EXECUTABLE and file-watcher jobs to Azure Functions or Data Factory. Query cron.job_run_details for history and set cron.timezone to match the old server time zone.",
+      "score": 15.811
+    },
+    {
+      "id": "source_oracle-base-dbms-job-19c",
+      "type": "source",
+      "text": "article created 2019-08-27, updated 2020-11-14 | DBMS_JOB submissions create DBMS_JOB$_n scheduler jobs, the legacy interface keeps working, CREATE JOB privilege is now required, job submission stays transactional. | community | 2026-09-26 | ORACLE-BASE: DBMS_JOB jobs converted to DBMS_SCHEDULER jobs in Oracle Database 19c | https://oracle-base.com/articles/19c/dbms_job-jobs-converted-to-dbms_scheduler-jobs-19c",
+      "score": 15.7
+    }
+  ],
+  "result": "**Verdict:** The jobs don't migrate automatically. Each one has to be rebuilt as a SQL Server Agent job on Managed Instance: convert its PL/SQL body to a T-SQL stored procedure, then run it from an Agent job step on a schedule. Most nightly batches are simple interval jobs, so this is usually a partial but manageable conversion [1][4].\n\n**How the pieces map**\n- **Job body (the `WHAT` block):** Use SSMA to convert it into a T-SQL stored procedure. Then create an Agent job with a T-SQL step that calls the procedure [1].\n- **`INTERVAL` expression:** The syntax doesn't carry over. Rewrite each interval as an equivalent Agent schedule [1].\n- **Failure handling:** Replace logic that depended on `BROKEN` flags with Agent step retry and notification settings [1]. Notifications are email only, through Database Mail. Only one mail profile is allowed, and it must have a fixed name [4][5].\n- **Transactional submit:** In Oracle, a job submitted inside a transaction that rolls back disappears. Agent doesn't work that way, so re-test any job that relies on this [1][8].\n- **Time zones:** Record each job's time zone explicitly. Oracle jobs can carry a session time zone [4].\n\n**Limits of Agent on Managed Instance** [1][5]\n- It doesn't support CmdExec, PowerShell, Analysis Services, merge replication or queue reader steps.\n- It has no proxies, alerts, pager or NetSend notifications, idle-CPU schedules, or multi-server (MSX/TSX) administration.\n- Agent is always on, and you can't change its settings.\n- Any job that runs external programs needs Azure Functions or Data Factory instead [5].\n- Schedules set to fire when Agent starts also fire after every failover [4].\n\n**Conflict in the sources:** Passage [4] says Agent on Managed Instance can run operating-system and PowerShell steps. Passages [1] and [5] say CmdExec and PowerShell steps aren't supported. Treat them as unsupported until you've checked this against current Microsoft documentation.\n\n**Steps**\n1. Inventory `DBA_JOBS`. On 19c, each DBMS_JOB job also appears in `DBA_SCHEDULER_JOBS` as a `DBMS_JOB$_n` row, so don't count those twice [1][8]. Check whether any of these jobs are really data refreshes or purges; those may belong in a pipeline tool instead [4].\n2. Convert each job body with SSMA.\n3. Create the Agent job and its schedule.\n4. Set up retry and email alerts.\n5. Re-test anything that depends on transactional submit.\n\n**Timing:** DBMS_JOB isn't removed in 19c. It's deprecated but still works through 26ai. If `DBMS_JOB.SUBMIT` fails with ORA-27486, the cause is the new requirement for the `CREATE JOB` privilege. So the migration drives the timeline, not an Oracle removal [2][8].\n\nSource: ORACLE-BASE, https://oracle-base.com/articles/19c/dbms_job-jobs-converted-to-dbms_scheduler-jobs-19c",
+  "stderr": ""
+}

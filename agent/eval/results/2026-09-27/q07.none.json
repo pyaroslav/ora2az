@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q07",
+    "type": "howto",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 22321,
+    "session_id": "1378a42e-d3da-45f1-8906-b689cf225b80",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 9985,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 2180,
+      "output_tokens_details": {
+        "thinking_tokens": 605
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 9985,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2180,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 9985,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 9985
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q07",
+    "type": "howto",
+    "q": "How do we replace fast-refresh materialized views when moving to Azure Database for PostgreSQL?",
+    "expected": "PostgreSQL has no incremental (fast) refresh; options: REFRESH MATERIALIZED VIEW (full, optionally CONCURRENTLY), trigger-maintained summary tables, or pg_cron scheduling; effort and caveats cited.",
+    "required_sources": [
+      "community",
+      "microsoft"
+    ]
+  },
+  "result": "**Short answer:** PostgreSQL has no equivalent of Oracle's `REFRESH FAST` (incremental refresh from MV logs). On Azure Database for PostgreSQL Flexible Server, choose a replacement for each MV based on how fresh its data needs to be:\n\n1. **Default: full refresh on a schedule.** Use `REFRESH MATERIALIZED VIEW CONCURRENTLY` and schedule it with `pg_cron`.\n2. **Near-real-time: trigger-maintained summary tables.** Use these in place of `ON COMMIT` or fast-refresh MVs.\n3. **Large or high-change data: your own change log plus a merge.** Build it yourself, or push the aggregation outside the database.\n\n## Key facts\n\n**No native incremental refresh.** Community PostgreSQL only supports a full re-run of the MV query. `CONCURRENTLY` keeps the MV readable during the refresh, but it needs a unique index on the MV. It is still a full recompute, plus a diff, so it is often slower than a plain refresh. It costs I/O and WAL, and you can't use it for the MV's first population.\nhttps://www.postgresql.org/docs/current/sql-refreshmaterializedview.html\n\n**Scheduling.** `pg_cron` is supported on Flexible Server. Add it to `shared_preload_libraries` and `azure.extensions`, then restart. It replaces `START WITH … NEXT` and DBMS_JOB/DBMS_SCHEDULER refresh groups. Wrap related refreshes in one procedure so they run in the right order.\nhttps://learn.microsoft.com/azure/postgresql/flexible-server/concepts-extensions\n\n**pg_ivm (incremental view maintenance).** This third-party extension is the closest thing to fast refresh. As far as I know it is **not** on Azure's list of allowed extensions, and you can't install unsupported extensions on a managed service. Check the current list for your PG version before you plan around it. If you must have it, you'd have to run PostgreSQL on an IaaS VM.\nhttps://github.com/sraoss/pg_ivm\n\n**Trigger-maintained summary tables (replaces ON COMMIT or fast refresh):**\n- Replace the MV with a regular table.\n- Put `AFTER INSERT/UPDATE/DELETE` triggers on the base tables. Statement-level triggers with transition tables (`REFERENCING NEW TABLE`) work best.\n- The triggers apply changes to the summary with `INSERT … ON CONFLICT DO UPDATE`.\n- Downsides: extra write overhead and lock contention on hot aggregate rows. This works well for SUM and COUNT, but MIN and MAX need care on deletes.\n\n**Rebuilding Oracle's MV logs yourself.** Triggers write changed keys into a delta table. A `pg_cron` job then recomputes only the affected groups and `MERGE`s them into the summary table (`MERGE` needs PG 15+). This is the closest behavior to fast refresh and scales better than triggers that update the summary on every change.\n\n**Partition-scoped refresh.** For time-series aggregates, keep the summary in a partitioned table and rebuild only the current or recent partitions. This replaces Oracle's partition change tracking (PCT) refresh.\n\n**Offload the aggregation.** For heavy reporting MVs, you can move the work elsewhere instead:\n- Logical replication or CDC (Debezium, or Azure Data Factory / Fabric mirroring) feeding an analytics store.\n- Azure Cosmos DB for PostgreSQL (Citus) for distributed rollups.\n\n**No query rewrite.** PostgreSQL doesn't redirect queries to MVs automatically (Oracle's `ENABLE QUERY REWRITE`). Any SQL that relied on that has to be changed to query the MV or summary table explicitly. People often miss this during migration.\n\n**Tooling.** Ora2Pg converts MVs to native PG MVs but drops the `REFRESH FAST/ON COMMIT` settings. Its report flags them, so use that list to decide which option each MV gets.\n\n## Practical triage\n- **Refresh interval of an hour or more, and the full query runs in minutes:** `pg_cron` + `CONCURRENTLY`.\n- **`ON COMMIT` or needs to be current within seconds:** trigger-maintained table.\n- **Big base tables with fast refresh every few minutes:** delta table + scheduled `MERGE`, or partition-scoped rebuild.\n\nBenchmark refresh times on production-sized data before you commit to an option for each MV. Fast refresh often hid how expensive the full query really is.",
+  "stderr": ""
+}

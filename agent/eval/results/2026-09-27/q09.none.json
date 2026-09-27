@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q09",
+    "type": "fact",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 20664,
+    "session_id": "6b80957d-74eb-41b0-a5bb-eedf9c5b0769",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 10000,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 1733,
+      "output_tokens_details": {
+        "thinking_tokens": 553
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 10000,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1733,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 10000,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 10000
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q09",
+    "type": "fact",
+    "q": "Can we keep using PRAGMA AUTONOMOUS_TRANSACTION logic after moving to Azure SQL Managed Instance?",
+    "expected": "No direct equivalent in T-SQL; converters lose the semantics; workarounds (separate connection/loopback, table variables for logging) with the recorded caveats.",
+    "required_sources": [
+      "microsoft",
+      "community"
+    ]
+  },
+  "result": "**No, not as-is.** T-SQL on Azure SQL Managed Instance has no `PRAGMA AUTONOMOUS_TRANSACTION` or any equivalent. A nested `BEGIN TRAN` only increments `@@TRANCOUNT`, and an outer `ROLLBACK` undoes everything, including the \"inner\" commit. You can get the same behaviour through workarounds, and which one fits depends on what the autonomous block was doing.\n\n**Why it doesn't carry over**\n- SQL Server nested transactions aren't real: an inner `COMMIT` only decrements `@@TRANCOUNT`, and the outermost `ROLLBACK` undoes all of it. Savepoints (`SAVE TRAN`) let you roll back part of a transaction, but they can't make part of it survive when the outer one rolls back. https://learn.microsoft.com/sql/t-sql/language-elements/commit-transaction-transact-sql\n- SSMA for Oracle flags autonomous transactions as needing attention. On on-prem SQL Server it has emulated them with helper extended procedures, but extended procs don't run on MI, so plan to rewrite these by hand. https://learn.microsoft.com/sql/ssma/oracle/sql-server-migration-assistant-for-oracle-oracletosql\n\n**Workarounds, most common first**\n1. **Table-variable capture (best for error or audit logging, which is about 80% of autonomous-transaction use).** Table variables aren't affected by a rollback. Write log rows into a `@log` table variable, `ROLLBACK` in the `CATCH` block, then `INSERT` from `@log` into the real log table. It's simple, fast and needs no extra infrastructure. The limit is that the rows only persist if your code reaches the post-rollback insert.\n2. **Loopback linked server.** Create a linked server that points at the MI itself and set `remote proc transaction promotion = false`. Calls through it (`EXEC LOOPBACK.db.dbo.usp_log ...`) then run and commit in their own session, which is the closest match to real autonomous semantics. MI supports linked servers. The costs:\n   - each call opens a separate connection, which adds overhead;\n   - you need to manage the credentials for the loopback login;\n   - it can self-deadlock if the called code touches rows the caller has locked. Oracle has the same risk with autonomous transactions.\n   https://learn.microsoft.com/sql/relational-databases/system-stored-procedures/sp-serveroption-transact-sql\n3. **Service Broker.** Send a message and let an activation procedure do the write. This works because Service Broker is supported within a single MI. It's asynchronous and decoupled, which suits audit trails, but the message send itself is transactional. So either send outside the outer transaction, or accept that a rollback also removes the message.\n4. **Move it to the app tier.** Have the application write the log or sequence row on its own connection. This is often the cleanest option long term.\n\n**Migration checklist**\n- Inventory: `SELECT owner, name, type FROM dba_source WHERE UPPER(text) LIKE '%AUTONOMOUS_TRANSACTION%';`\n- Sort each hit by what it does: logging (use option 1), a custom sequence or ID generator (replace with a `SEQUENCE` object, since sequence values aren't rolled back), a commit inside a trigger (redesign it), or something else (option 2 or 4).\n- Retest error paths specifically. That's where the behaviour will differ quietly.",
+  "stderr": ""
+}

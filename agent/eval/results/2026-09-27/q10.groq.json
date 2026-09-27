@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q10",
+    "type": "version-scope",
+    "cond": "groq",
+    "num_turns": 5,
+    "duration_ms": 28206,
+    "session_id": "922f1aef-2b14-4c5b-b78c-53f6c7f100af",
+    "usage": {
+      "input_tokens": 10,
+      "cache_creation_input_tokens": 6241,
+      "cache_read_input_tokens": 37342,
+      "output_tokens": 1908,
+      "output_tokens_details": {
+        "thinking_tokens": 521
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 6241,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 794,
+          "cache_read_input_tokens": 10482,
+          "cache_creation_input_tokens": 857,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 857
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q10",
+    "type": "version-scope",
+    "q": "We plan to move to Oracle 23ai on Azure VMs and use the new SQL BOOLEAN type. Anything to watch in a later hop to Azure SQL?",
+    "expected": "BOOLEAN maps to bit in SQL Server (SSMA); also note LogMiner/CDC tooling limits for BOOLEAN if recorded; scoped to 23ai+.",
+    "required_sources": [
+      "oracle",
+      "microsoft"
+    ]
+  },
+  "result": "No dispute on this. Here's the answer:\n\n**Verdict:** Yes — the SQL BOOLEAN type (23ai) does **not** survive a later hop to Azure SQL Database with `exact` fidelity; it degrades to a `bit` column, and boolean expressions used as predicates will need rewriting.\n\n**On Azure VMs today (23ai):** No mapping is recorded in the dataset for \"Oracle on Azure VM\" specifically for this feature — since you'd still be running native Oracle 23ai, the BOOLEAN type behaves as documented by Oracle, and no caveat/mapping entry exists for that target in this dataset.\n\n**Later hop to Azure SQL Database (fidelity: `partial`, effort: S, applies to Oracle 23ai/26ai):**\n- SQL Server has no native boolean column type. Microsoft's SSMA for Oracle maps Oracle `BOOLEAN` to `bit` (stores 0, 1, or NULL) for arguments, return values, and local variables. Storage is equivalent, and three-valued NULL logic mirrors Oracle's UNKNOWN, but **every `WHERE is_active` style predicate must be rewritten as an explicit comparison** (e.g., `= 1`), since `bit` cannot be used as a standalone predicate. — [SSMA for Oracle: Project Settings (Type Mapping)](https://learn.microsoft.com/en-us/sql/ssma/oracle/project-settings-type-mapping-oracletosql) (Microsoft), severity: minor.\n\n**Note:** No mapping specific to Azure SQL Managed Instance was found for this feature in the dataset — only Azure SQL Database is covered.\n\n**Aside (if a PostgreSQL hop is ever on the table instead):** the dataset shows Azure Database for PostgreSQL Flexible Server gives `exact` fidelity — Postgres has a native boolean type usable directly as a predicate, and Ora2Pg can even promote legacy `NUMBER(1)`/`CHAR(1)` flags to boolean. — [PostgreSQL documentation: Boolean type](https://www.postgresql.org/docs/current/datatype-boolean.html), [Ora2Pg documentation](https://ora2pg.darold.net/documentation.html) (community).\n\nNo disputes are recorded on this point in the dataset.",
+  "stderr": ""
+}

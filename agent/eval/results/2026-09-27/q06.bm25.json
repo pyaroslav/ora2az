@@ -1,0 +1,106 @@
+{
+  "meta": {
+    "id": "q06",
+    "type": "version-scope",
+    "cond": "bm25",
+    "num_turns": 1,
+    "duration_ms": 9412,
+    "session_id": "79fd4ce0-8f6a-4fe2-b16c-8870225b0f15",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 12347,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 876,
+      "output_tokens_details": {
+        "thinking_tokens": 66
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12347,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 876,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 12347,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 12347
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q06",
+    "type": "version-scope",
+    "q": "We still run a non-CDB 19c database. Does that matter for the Azure move?",
+    "expected": "Non-CDB architecture is desupported in 21c (deprecated 12.1); any lift to 21c/23ai on Azure VMs or Oracle Database@Azure requires converting to a PDB first; irrelevant for SQL MI/PostgreSQL targets except as an upgrade prerequisite.",
+    "required_sources": [
+      "oracle"
+    ]
+  },
+  "passages": [
+    {
+      "id": "mapping_non-cdb-architecture--oracle-db-at-azure",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c | M | workaround | Exadata Database Service, which underpins Oracle Database@Azure, creates databases from the console and APIs only as container databases with an initial pluggable database. A non-CDB can be created only through the dbaascli command line and only for release 19.x and earlier, so a non-CDB estate should be converted to PDBs (AutoUpgrade does this in one step) before or during the move rather than preserved. | Inventory non-CDB databases and their release. Create a target CDB on the Exadata VM cluster from the Azure portal and OCI console. Use AutoUpgrade or Data Pump to upgrade and plug each non-CDB in as a PDB. Reserve dbaascli non-CDB creation for temporary 19c compatibility only.",
+      "score": 22.611
+    },
+    {
+      "id": "mapping_non-cdb-architecture--oracle-on-azure-vm",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c | M | workaround | On a self-managed VM any Oracle release can be installed, so a 19c non-CDB can be lifted as-is, but that only postpones the conversion because later releases are multitenant-only. AutoUpgrade can upgrade and convert a non-CDB into a PDB of a new or existing CDB in a single operation, which is the recommended step when moving to a VM on a newer release. | Provision the VM with the target Oracle release from the marketplace image or a custom image. Create an empty CDB on the VM. Run AutoUpgrade with the non-CDB as source and the CDB as target to upgrade and plug in. Update connection strings to the PDB service name.",
+      "score": 16.326
+    },
+    {
+      "id": "source_oracle-glossary-non-cdb-desupported",
+      "type": "source",
+      "text": "Oracle Database 21c Upgrade Guide | States that the non-CDB architecture is desupported from 21c, that a CDB is the only supported architecture, and that a non-CDB must be upgraded by plugging it into a CDB as a PDB. | oracle | 2026-09-26 | Oracle Database Upgrade Guide 21c: Manual Non-CDB Oracle Database Release Upgrades to Multitenant Architecture | https://docs.oracle.com/en/database/oracle/oracle-database/21/upgrd/upgrade-scenarios-non-cdb-oracle-databases.html",
+      "score": 14.435
+    },
+    {
+      "id": "mapping_dbms-job--elastic-jobs",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai | M | partial | Azure SQL Database has no Agent, so legacy DBMS_JOB submissions become Elastic Jobs: T-SQL steps run by a separate job agent against one or more databases on a UTC schedule. Simple interval jobs map cleanly; jobs that expected to run inside the same database engine with the submitter's transaction semantics, or that called OS-level code, do not. | Provision an elastic job agent with a dedicated, non-Hyperscale job database. Convert each job's PL/SQL body to a stored procedure in the target database. Define a target group for the database(s) and a job with a T-SQL step that executes the procedure. Translate the Oracle INTERVAL expression to a schedule, remembering all times are UTC. Make the step idempotent, because the agent retries failed executions.",
+      "score": 13.949
+    },
+    {
+      "id": "glossary_desupported",
+      "type": "glossary",
+      "text": "removed, discontinued | Oracle's status for a feature it no longer fixes bugs for and whose code it may have removed from the product. A desupported feature can fail or vanish after an upgrade, so any target that runs a newer Oracle release (for example Oracle Database@Azure on 26ai) forces a replacement before or during the move, and a non-Oracle target needs a functional equivalent regardless. Contrast with deprecated, where the feature still works and is still supported. | Desupported",
+      "score": 13.866
+    },
+    {
+      "id": "glossary_cdb-pdb-non-cdb",
+      "type": "glossary",
+      "text": "multitenant architecture, container database, pluggable database | A container database (CDB) is one Oracle database that hosts a root container (CDB$ROOT) holding Oracle-supplied metadata and common users, a seed template (PDB$SEED) used to stamp out new containers, and zero or more pluggable databases. A pluggable database (PDB) is a portable set of schemas and objects that looks like a standalone database to applications and can be unplugged and plugged into another CDB. A non-CDB is the pre-multitenant single-database architecture, deprecated in 12.1 and desupported in 21c, so every current Oracle target is a CDB and a migrated non-CDB has to land as a PDB. On Oracle Database@Azure some CDB and PDB management tasks are done in the OCI console rather than the Azure portal. | CDB / PDB / non-CDB",
+      "score": 13.531
+    },
+    {
+      "id": "dispute_ssma-autonomous-transaction-emulation-on-mi",
+      "type": "dispute",
+      "text": "Treat every 'converted' autonomous transaction as a manual rewrite when the target is Managed Instance or Azure SQL Database. Typical replacements: write audit rows through a separate connection from the application tier, use table variables (which survive a rollback) to carry log data out of the failing transaction, or move the side effect to a Service Broker activation procedure on Managed Instance. Verify by searching the converted T-SQL for xp_ora2ms_exec2_ex before deploying. | Does SSMA's autonomous-transaction emulation run on Managed Instance? | SSMA reports PRAGMA AUTONOMOUS_TRANSACTION in procedures and functions as converted, because it emulates the pragma with an extended stored procedure that opens a second connection. Microsoft's own list of T-SQL differences says Azure SQL Managed Instance does not support extended stored procedures at all. One Microsoft tool marks as done what another Microsoft platform cannot host.",
+      "score": 13.118
+    },
+    {
+      "id": "feature_non-cdb-architecture",
+      "type": "oracleFeature",
+      "text": "platform | 12.1 | 21c | pre-11.2 | Non-CDB architecture | Multitenant architecture (CDB with pluggable databases) | A non-CDB is a database created in the classic single-database layout, where one instance owns one data dictionary and one set of user schemas with no container root and no pluggable databases. The multitenant architecture, introduced in 12.1, adds a root container and pluggable databases (PDBs) that can be unplugged, cloned and moved. Migrations care because a large share of the estates being moved to Azure are 11.2 and 12.x non-CDBs. The architecture changes what assessment tools see (there is no PDB scoping), how users and services are structured (no common users or per-PDB services), and whether the source can be upgraded in place to a release that current migration tooling supports before the move. Oracle's 12.1 Upgrade Guide lists the non-CDB architecture as deprecated, and the 12.2 guide repeats the deprecation. The 21c Upgrade Guide desupports it (notice dated May 2021): the installer can no longer create a non-CDB, and upgrading to 21c or later requires converting the database into a PDB.",
+      "score": 12.612
+    }
+  ],
+  "result": "**Yes, it matters.** The non-CDB layout is desupported from 21c onward, so if you move to Oracle Database@Azure you'll have to convert it to a pluggable database (PDB). On an Azure VM you can keep it for now, but that only puts the conversion off.\n\n**Why it matters**\n- Oracle deprecated the non-CDB architecture in 12.1 and desupported it in 21c. From 21c the installer can't create a non-CDB, and upgrading to 21c or later means converting it into a PDB. [3][6][8]\n- Every current Oracle target is a container database (CDB), so a migrated non-CDB has to become a PDB. [6]\n\n**If the target is Oracle Database@Azure (Exadata Database Service)**\n- The console and APIs only create CDBs with an initial PDB. You can create a non-CDB only through the `dbaascli` command line, and only for 19.x and earlier. [1]\n- Recommendation: create a target CDB on the Exadata VM cluster, then use AutoUpgrade or Data Pump to upgrade and plug each non-CDB in as a PDB. Use `dbaascli` to create a non-CDB only if you need temporary 19c compatibility. [1]\n- Some CDB and PDB management tasks are done in the OCI console rather than the Azure portal. [6]\n\n**If the target is a self-managed Azure VM**\n- You can install any release there, so you can move the 19c non-CDB as it is. Later releases are multitenant-only, though, so you'll still have to convert eventually. [2]\n- If you're moving to a newer release on the VM, the recommended route is:\n  1. Create an empty CDB on the VM.\n  2. Run AutoUpgrade with the non-CDB as the source and the CDB as the target. It upgrades and plugs in the database in one operation.\n  3. Change connection strings to the PDB service name. [2]\n\n**Also plan for:** the non-CDB layout changes what assessment tools see (no PDB scoping) and how users and services are set up (no common users or per-PDB services). [8]\n\n**Source:** Oracle Database 21c Upgrade Guide, non-CDB to multitenant upgrades: https://docs.oracle.com/en/database/oracle/oracle-database/21/upgrd/upgrade-scenarios-non-cdb-oracle-databases.html\n\nPassages [4] and [7] are about Azure SQL targets and aren't relevant to this question.",
+  "stderr": ""
+}

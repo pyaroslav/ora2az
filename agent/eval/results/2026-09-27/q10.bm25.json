@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "id": "q10",
+    "type": "version-scope",
+    "cond": "bm25",
+    "num_turns": 1,
+    "duration_ms": 12054,
+    "session_id": "3621cd2e-90f4-414c-a42e-6cdcfedfe963",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 12458,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 1154,
+      "output_tokens_details": {
+        "thinking_tokens": 304
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12458,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1154,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 12458,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 12458
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q10",
+    "type": "version-scope",
+    "q": "We plan to move to Oracle 23ai on Azure VMs and use the new SQL BOOLEAN type. Anything to watch in a later hop to Azure SQL?",
+    "expected": "BOOLEAN maps to bit in SQL Server (SSMA); also note LogMiner/CDC tooling limits for BOOLEAN if recorded; scoped to 23ai+.",
+    "required_sources": [
+      "oracle",
+      "microsoft"
+    ]
+  },
+  "passages": [
+    {
+      "id": "feature_boolean-23ai",
+      "type": "oracleFeature",
+      "text": "datatype | 23ai | SQL BOOLEAN datatype (23ai) | Oracle Database 23ai added a native SQL BOOLEAN column type after decades in which PL/SQL had booleans but tables did not. Columns accept TRUE, FALSE and NULL, plus a set of string spellings such as yes and no, on and off, t and f, y and n, and 1 and 0; numeric inputs map zero to FALSE and anything else to TRUE. Constraints, comparisons, and IS TRUE and IS FALSE tests all work on the type. Migrations care in the reverse direction from most features: this is a convergence, since SQL Server's bit and PostgreSQL's boolean have long existed. The real work is in older schemas that emulate booleans with CHAR(1) flags or NUMBER(1) columns and check constraints, where the migration has to decide which columns become true booleans and translate the string conventions the application relied on. The type is new and fully supported. Oracle's 23ai documentation URLs now redirect to the 26ai reference pages, which is where the current description lives.",
+      "score": 25.893
+    },
+    {
+      "id": "mapping_data-pump--azure-dms",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai | M | partial | Azure Database Migration Service lists Oracle only as an offline, preview source for Azure SQL Database, Managed Instance and SQL Server on Azure VMs, and the scenario is documented as running through SSMA. It offers no Oracle online (continuous sync) scenario and no Oracle to PostgreSQL scenario, and like every non-Oracle tool it does not consume Data Pump dump files. | Use DMS with SSMA for offline Oracle to Azure SQL migrations where a managed, repeatable pipeline is wanted. Plan a downtime window; there is no Oracle online migration path in DMS. For PostgreSQL targets use Ora2Pg or the VS Code schema conversion feature plus Data Factory for data.",
+      "score": 21.008
+    },
+    {
+      "id": "mapping_boolean-23ai--azure-pg-flex",
+      "type": "mapping",
+      "text": "23ai, 26ai | S | exact | PostgreSQL has had a native 1-byte boolean type for decades, accepting true/false, yes/no, on/off and 1/0 literals and usable directly as a predicate, so 23ai BOOLEAN columns and PL/SQL booleans map without change. Ora2Pg can also promote legacy NUMBER(1) or CHAR(1) flag columns to boolean with REPLACE_AS_BOOLEAN. | Map BOOLEAN to boolean (Ora2Pg default). Optionally use REPLACE_AS_BOOLEAN NUMBER:1 CHAR:1 to convert pre-23ai flag columns, extending BOOLEAN_VALUES for custom literals.",
+      "score": 18.817
+    },
+    {
+      "id": "feature_stored-outlines",
+      "type": "oracleFeature",
+      "text": "performance | pre-11.2 | Stored outlines | SQL plan baselines | A stored outline is a saved set of optimizer hints bound to a SQL text so that the optimizer reproduces the same execution plan every time. Outlines live in the OUTLN schema, are created with CREATE OUTLINE or captured automatically, and are activated through the USE_STORED_OUTLINES setting. Migrations care because outlines are a form of plan pinning. Their presence tells you which statements were fragile enough to need it, and any plan stability the application depends on has to be re-created with the target's own mechanisms, such as Query Store plan forcing on Azure SQL or hint-based approaches on PostgreSQL. The 12.1 Upgrade Guide lists stored outlines as deprecated with plan baselines as the replacement, and the 26ai guide says they were deprecated in Oracle Database 11g and that 26ai is the terminal release, instructing users to migrate to SQL plan baselines. The pages used do not state which 11g release began the deprecation, and no desupport release has been named, so neither field is set here.",
+      "score": 16.512
+    },
+    {
+      "id": "mapping_vector-datatype--azure-sql-db",
+      "type": "mapping",
+      "text": "23ai, 26ai | M | partial | Azure SQL Database and SQL Server 2025 provide a vector(n) type with up to 1998 float32 dimensions (float16 in preview), the VECTOR_DISTANCE function and vector index support, which covers embedding storage and similarity search in the same way as Oracle's VECTOR type. Oracle's larger dimension limits, in-database ONNX model loading and the broader AI Vector Search feature set do not carry over. | Create vector(n) columns for embeddings up to 1998 dimensions; truncate or re-embed larger vectors. Rewrite VECTOR_DISTANCE and approximate search queries to T-SQL VECTOR_DISTANCE with the matching metric. Generate embeddings in the application or through Azure AI services rather than in-database models. On Managed Instance confirm the Always-up-to-date update policy, which vector features require.",
+      "score": 16.331
+    },
+    {
+      "id": "mapping_boolean-23ai--azure-sql-db",
+      "type": "mapping",
+      "text": "23ai, 26ai | S | partial | SQL Server has no boolean column type; SSMA maps BOOLEAN to bit, which stores 0, 1 or NULL and cannot appear as a standalone predicate. Storage is equivalent, but every WHERE is_active style expression must be rewritten as a comparison with 1, and three-valued logic on NULL bits mirrors Oracle's UNKNOWN. | Accept the bit mapping for columns and parameters. Rewrite boolean-valued predicates and PL/SQL boolean variables to bit comparisons. Review CHECK constraints and defaults that used TRUE/FALSE literals.",
+      "score": 16.087
+    },
+    {
+      "id": "mapping_oracle-streams--azure-dms",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c | L | none | Azure Database Migration Service has no online (continuous sync) scenario with Oracle as a source; the only Oracle scenarios are offline migrations to Azure SQL targets through SSMA. It therefore cannot stand in for Streams either as a replication engine or as a minimal-downtime migration path. | Plan Oracle migrations to Azure SQL as offline cutovers with SSMA or DMS-via-SSMA. Use Fabric mirroring, Data Factory watermark pipelines or Oracle GoldenGate for continuous change movement.",
+      "score": 15.911
+    },
+    {
+      "id": "mapping_stored-outlines--azure-sql-db",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai | M | partial | Stored outlines pinned an execution plan for a SQL text. Query Store, enabled by default on Azure SQL Database and Managed Instance, keeps the history of plans per query and lets you force a retained plan with sp_query_store_force_plan or attach Query Store hints without changing application code, and automatic plan correction can force the last good plan itself. Outlines cannot be imported; each must be re-established by capturing the desired plan in Query Store. | Export the outline list and the SQL text of each outlined statement. After migration, run the workload so Query Store captures candidate plans. Force the plan matching the intended shape with sp_query_store_force_plan, or apply Query Store hints. Enable automatic plan correction to handle future regressions.",
+      "score": 15.83
+    }
+  ],
+  "result": "**Verdict:** Yes. Azure SQL has no boolean column type, so every 23ai `BOOLEAN` you adopt becomes `bit` in the later hop. Any SQL or PL/SQL that uses a boolean directly as a condition will have to be rewritten.\n\n**What to watch**\n- **The type mapping:** SSMA converts `BOOLEAN` to `bit`, which stores 0, 1 or NULL. Storage works out the same, so the column mapping itself is fine. [6]\n- **Conditions must be rewritten:** In SQL Server a `bit` can't stand alone as a condition. Every `WHERE is_active` style expression has to become a comparison such as `WHERE is_active = 1`. [6]\n- **NULL handling carries over:** NULL bits behave like Oracle's UNKNOWN, so NULL semantics carry over. [6]\n- **PL/SQL boolean variables:** These must also become `bit` comparisons in T-SQL. [6]\n- **CHECK constraints and defaults:** Review any that use `TRUE`/`FALSE` literals. [6]\n- **Alternate spellings:** 23ai lets applications write yes/no, on/off, t/f, y/n and 1/0 into a `BOOLEAN` column, and treats any non-zero number as TRUE. [1] My sources don't say whether `bit` accepts those same inputs. If your application relies on them, assume the inputs will need translating and test it.\n- **Converting old flag columns:** If you plan to turn existing `CHAR(1)` or `NUMBER(1)` flag columns into `BOOLEAN` on 23ai, you have to decide which columns and string conventions to convert. [1] Do that work once, knowing it all ends up as `bit` on Azure SQL anyway.\n- **Migration tooling:** For Oracle to Azure SQL, Azure DMS only supports offline migration, is in preview, and runs through SSMA. There is no online (continuous sync) path, so plan a downtime window. For ongoing replication, use GoldenGate, Fabric mirroring or Data Factory. [2][7]\n\n**For comparison:** If the later hop were to Azure Database for PostgreSQL instead, `BOOLEAN` would map to PostgreSQL's native `boolean` with no changes (Ora2Pg does this by default). [3]\n\n**Sources:** The passages I was given don't include URLs, so I can't cite links. Passage [1] notes that Oracle's 23ai documentation now redirects to the 26ai reference pages.",
+  "stderr": ""
+}

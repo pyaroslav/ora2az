@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "id": "q11",
+    "type": "fact",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 20378,
+    "session_id": "04dd8b3b-cb1a-4547-bda5-dc0ff5354c9c",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 9987,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 1882,
+      "output_tokens_details": {
+        "thinking_tokens": 739
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 9987,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1882,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 9987,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 9987
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q11",
+    "type": "fact",
+    "q": "Does Azure SQL Database (not Managed Instance) support database links / cross-database queries like Oracle?",
+    "expected": "Azure SQL Database lacks linked servers and cross-database queries (elastic query is the partial workaround); SQL MI supports linked servers; answer must distinguish DB from MI.",
+    "required_sources": [
+      "microsoft"
+    ]
+  },
+  "result": "# Does Azure SQL Database support Oracle-style database links?\n\n**No, not in the Oracle sense.** Azure SQL Database has no linked servers and no cross-database `db.schema.table` queries. The only built-in workaround is **Elastic Query**, which is limited and still in preview. If you need linked servers, use Azure SQL Managed Instance.\n\n## What Azure SQL Database lacks\n- **No linked servers** (`sp_addlinkedserver`), so there's no equivalent of `SELECT … FROM tab@remote_db`.\n- **No three- or four-part names** across databases. `OtherDb.dbo.Table` fails even when both databases are on the same logical server. Only `tempdb` and the current database can be referenced.\n- **No outbound connection to Oracle or other non-SQL sources** from inside the engine. You can't point a link at the old Oracle database during a phased cutover.\n- **No DTC or MSDTC distributed transactions.**\n- Docs: https://learn.microsoft.com/azure/azure-sql/database/transact-sql-tsql-differences-sql-server\n\n## What it does offer\n1. **Elastic Query (preview):** https://learn.microsoft.com/azure/azure-sql/database/elastic-query-overview\n   - You create an `EXTERNAL DATA SOURCE` (type `RDBMS`) and `EXTERNAL TABLE`s that point at another Azure SQL Database. You then query them like local tables.\n   - External tables are **read-only**. You can't run INSERT, UPDATE or DELETE through them.\n   - Filters are pushed down to the remote database only partly. Large joins pull the data across the network and perform poorly.\n   - It has been in preview for years with no GA date, so it's risky for production-critical paths.\n   - The only targets are other Azure SQL Databases.\n2. **`sp_execute_remote`:** runs any T-SQL, including DML, on a remote Azure SQL Database through an Elastic Query data source. It's the closest match to calling a remote procedure over a DB link.\n3. **Elastic transactions:** atomic transactions across Azure SQL Databases, driven mainly from .NET (`TransactionScope`). https://learn.microsoft.com/azure/azure-sql/database/elastic-transactions-overview\n\n## How to handle DB links in a migration\n- **Consolidate:** in most Oracle migrations, the linked Oracle databases or schemas become **separate schemas in one Azure SQL Database**. Cross-database calls then become normal same-database queries. This is the cleanest fix.\n- **Use Managed Instance if you need real linked servers.** MI supports linked servers and cross-database queries within the instance, plus distributed transactions through server trust groups. Its linked servers mainly target SQL Server and Azure SQL, not Oracle.\n- **Move integration out of the database:** use Azure Data Factory or Fabric pipelines for data movement, and APIs or messaging for runtime calls.\n- **Inventory first:** SSMA for Oracle flags DB-link references as conversion issues. Count them and group them by read-only vs. DML vs. remote procedure call. That breakdown usually decides between SQL Database and Managed Instance.\n\n**Rule of thumb:** a few read-only lookups can work with Elastic Query or consolidation. Frequent cross-database DML, remote procedure calls or distributed transactions point to Managed Instance.",
+  "stderr": ""
+}

@@ -1,0 +1,49 @@
+#!/usr/bin/env node
+// Thin wrapper: `ora2az ask "question" [--mcp none|groq|groq+kb] [--max-turns N]`
+// Runs the headless agent CLI (AGENT_CLI) with persona.md as the system prompt and only the Sanity Context MCP tools.
+import {runAgent, loadEnv} from '../lib/runtime.mjs'
+import {dirname, join, resolve} from 'node:path'
+import {fileURLToPath} from 'node:url'
+import {existsSync, readFileSync} from 'node:fs'
+
+const here = dirname(fileURLToPath(import.meta.url))
+const root = resolve(here, '..')
+const args = process.argv.slice(2)
+const cmd = args.shift()
+if (cmd !== 'ask' || !args.length) {
+  console.error('usage: ora2az ask "<question>" [--mcp none|groq|groq+kb] [--max-turns N] [--json]')
+  process.exit(2)
+}
+const opt = (name, dflt) => { const i = args.indexOf(name); if (i < 0) return dflt; const v = args[i + 1]; args.splice(i, 2); return v }
+const mcp = opt('--mcp', 'groq+kb')
+const maxTurns = opt('--max-turns', '12')
+const jsonOut = args.includes('--json'); if (jsonOut) args.splice(args.indexOf('--json'), 1)
+const question = args.join(' ')
+
+
+const TOOLS = {
+  none: [],
+  groq: ['mcp__sanity-groq__initial_context', 'mcp__sanity-groq__schema_explorer', 'mcp__sanity-groq__groq_query', 'mcp__sanity-groq__array_field_reader'],
+}
+TOOLS['groq+kb'] = [...TOOLS.groq, 'mcp__sanity-kb__initial_context', 'mcp__sanity-kb__knowledge_base_read']
+
+const agentArgs = [
+  '-p', question,
+  '--system-prompt-file', join(root, 'persona.md'),
+  '--model', process.env.AGENT_MODEL ?? 'sonnet',
+  '--mcp-config', join(root, 'mcp', `${mcp}.json`), '--strict-mcp-config',
+  '--permission-mode', 'dontAsk',
+  ...(TOOLS[mcp].length ? ['--allowedTools', TOOLS[mcp].join(',')] : []),
+  '--disallowedTools', 'Bash,Read,Edit,Write,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit',
+  '--max-turns', String(maxTurns),
+  '--output-format', 'json',
+]
+const t0 = Date.now()
+const r = runAgent(agentArgs, {cwd: root})
+if (r.status !== 0 && !r.stdout) { console.error(r.stderr || `agent CLI exited ${r.status}`); process.exit(r.status ?? 1) }
+let out
+try { out = JSON.parse(r.stdout) } catch { console.log(r.stdout); process.exit(0) }
+const meta = {mcp, num_turns: out.num_turns, duration_ms: Date.now() - t0, session_id: out.session_id, usage: out.usage}
+if (jsonOut) { console.log(JSON.stringify({question, ...meta, result: out.result}, null, 2)); process.exit(0) }
+console.log(out.result?.trim() ?? '(no result)')
+console.log(`\n— ${mcp} · turns ${meta.num_turns ?? '?'} · ${(meta.duration_ms / 1000).toFixed(1)}s · session ${meta.session_id ?? '?'}`)

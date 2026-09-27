@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "id": "q12",
+    "type": "fact",
+    "cond": "groq+kb",
+    "num_turns": 7,
+    "duration_ms": 35458,
+    "session_id": "72ce0740-0547-4fc1-b591-564530ee9f86",
+    "usage": {
+      "input_tokens": 10,
+      "cache_creation_input_tokens": 12468,
+      "cache_read_input_tokens": 51081,
+      "output_tokens": 3017,
+      "output_tokens_details": {
+        "thinking_tokens": 357
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12468,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1930,
+          "cache_read_input_tokens": 14889,
+          "cache_creation_input_tokens": 3393,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 3393
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q12",
+    "type": "fact",
+    "q": "What replaces the original exp utility in Oracle 26ai and what does that mean for our export-based migration scripts?",
+    "expected": "Original Export (exp) is desupported in 26ai; use Data Pump (expdp); scripts must be rewritten; mention that imp of old dumps may still be relevant if recorded.",
+    "required_sources": [
+      "oracle"
+    ]
+  },
+  "result": "## Verdict\nIn Oracle Database **26ai**, the original Export utility (**exp**) is **desupported**; Oracle's recorded replacement is **Data Pump Export (expdp)**. If your export-based migration scripts still shell out to `exp`, they need to be rewritten to use `expdp`/`impdp` (or a downstream Azure tool) before/while moving to 26ai — old `exp` dump files are not readable by anything in the Azure toolchain.\n\n## Scoped facts\n\n**Lifecycle status**\n- `exp` was introduced pre-11.2 and is recorded as **desupported in 26ai** (notice dated April 2023). No separate deprecation release is recorded — Oracle's 11g-era statement was a limited desupport-for-general-use, not a formal deprecation of a named release. — [Oracle Database Changes, Desupports, and Deprecations (Upgrade Guide 26ai)](https://docs.oracle.com/en/database/oracle/oracle-database/26/upgrd/oracle-database-changes-deprecations-desupports.html), [Original Export (Utilities 19c)](https://docs.oracle.com/en/database/oracle/oracle-database/19/sutil/oracle-original-export-utility.html)\n- Per the desupported/deprecated distinction in this dataset: a desupported feature \"receives no further bug fixes and its code may have been removed from the product entirely... it can fail or disappear after an upgrade.\" For an Oracle-to-Oracle path (including Oracle Database@Azure on 26ai), a desupported feature \"must be replaced before or during the migration, because the target release may not contain it at all.\" — Migration Terminology and Fidelity Levels entry (glossary_desupported)\n\n**What exp did vs. what replaces it**\n- `exp` is the client-side program that reads the database over a session and writes a proprietary dump file (`imp` is its counterpart). Data Pump (`expdp`/`impdp`) replaced the pair back in 10g with a server-side, parallel design and a *different, incompatible* dump-file format. — [Original Export (Utilities 19c)](https://docs.oracle.com/en/database/oracle/oracle-database/19/sutil/oracle-original-export-utility.html), [Overview of Oracle Data Pump (Utilities 19c)](https://docs.oracle.com/en/database/oracle/oracle-database/19/sutil/oracle-data-pump-overview.html)\n- Data Pump's own architecture: the client only starts/monitors a job while `DBMS_DATAPUMP`/`DBMS_METADATA` on the server do the actual read/write through a server-side `DIRECTORY` object — single-threaded `exp`/`imp` streams through the client instead, and the two dump formats are not interchangeable. Data Pump is the **only supported load path into Autonomous Database**. — Logical Migration with Data Pump entry (Dataset source: \"Run Data Pump for a cloud move you can prove\")\n\n**What this means for your migration scripts**\n- Legacy runbooks/cron jobs that still call `exp` for backups or schema copies need to be inventoried separately from Data Pump jobs: \"its dump files cannot be read by Data Pump import, and neither format can be loaded directly into an Azure database service, so an inventory of 'exports' must distinguish old-style dumps from Data Pump dumps before deciding what to keep.\" — [Original Export (Utilities 19c)](https://docs.oracle.com/en/database/oracle/oracle-database/19/sutil/oracle-original-export-utility.html) / feature summary sourced from same\n- The only mapping on record for old `exp` dumps targets **SQL Server Migration Assistant for Oracle (SSMA)**, fidelity **workaround**, effort **M**, scoped to Oracle **11.2–23ai** (this mapping's `appliesToOracleVersions` list does not include 26ai): SSMA needs a live Oracle connection, so \"old exp dumps must first be imported into an Oracle instance (any supported release, or Oracle Database@Azure) before SSMA, Ora2Pg or Data Factory can extract from it.\" — [SQL Server Migration Assistant for Oracle (OracleToSQL)](https://learn.microsoft.com/en-us/sql/ssma/oracle/sql-server-migration-assistant-for-oracle-oracletosql), [Azure Database Migration Service: supported migration scenarios](https://learn.microsoft.com/en-us/azure/dms/resource-scenario-status\")\n- Practically, rewritten scripts should move to `expdp`/`impdp` with explicit parameters (`SCHEMAS`/`TABLES`, `REMAP_SCHEMA`, `PARALLEL`+`DUMPFILE %U`, `FLASHBACK_SCN`/`FLASHBACK_TIME` for consistency, explicit `TABLE_EXISTS_ACTION`, `VERSION` when targeting an older release) and route the actual Azure load through Azure Database Migration Service, Azure Data Factory, SSMA, or Ora2Pg rather than expecting Data Pump dumps to load directly. — Logical Migration with Data Pump entry (Dataset source: \"Run Data Pump for a cloud move you can prove\")\n\n## Gaps\n- No `caveat` documents were found attached to the exp-utility→SSMA mapping (empty caveats array) — no additional documented edge cases beyond the rationale above.\n- No mapping in the dataset extends exp-utility coverage into 26ai itself; if your scripts must run *against* a 26ai source/target, the dataset has no evidence beyond \"desupported, replace with expdp.\"\n- No `dispute` document touches this feature.",
+  "stderr": ""
+}

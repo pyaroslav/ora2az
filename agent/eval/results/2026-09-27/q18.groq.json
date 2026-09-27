@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q18",
+    "type": "version-scope",
+    "cond": "groq",
+    "num_turns": 8,
+    "duration_ms": 37828,
+    "session_id": "498c8fe5-ed7d-41a5-862b-5930326262ea",
+    "usage": {
+      "input_tokens": 12,
+      "cache_creation_input_tokens": 7716,
+      "cache_read_input_tokens": 49971,
+      "output_tokens": 3468,
+      "output_tokens_details": {
+        "thinking_tokens": 1239
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 7716,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2169,
+          "cache_read_input_tokens": 11776,
+          "cache_creation_input_tokens": 1038,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 1038
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q18",
+    "type": "version-scope",
+    "q": "We are on Oracle 12.2 and use Oracle Multimedia for images. What are our options on Azure?",
+    "expected": "Oracle Multimedia deprecated in 18c, desupported in 19c; images should move to Blob Storage with metadata in the database; note that any lift to 19c+ loses the feature.",
+    "required_sources": [
+      "oracle",
+      "microsoft"
+    ]
+  },
+  "result": "**Verdict:** On Oracle 12.2, Oracle Multimedia has no direct Azure equivalent — the dataset records two partial/workaround paths (Azure SQL Database/MI with `varbinary(max)`, or Blob Storage/ADLS with metadata in relational columns), both requiring you to rebuild the media-processing logic outside the database.\n\n**Feature status at 12.2:**\nOracle Multimedia (formerly interMedia) provided ORDImage/ORDAudio/ORDVideo/ORDDoc object types with in-database processing (thumbnails, format conversion, metadata extraction, DICOM). At 12.2, DICOM support and the Java APIs are already deprecated per the 12.1/12.2 Upgrade Guides; the feature as a whole isn't deprecated until 18c and is desupported in 19c (Oracle's replacement guidance: SecureFiles LOBs plus external media processing). [Deprecated Features in Oracle Database 12c Release 2 (12.2)](https://docs.oracle.com/en/database/oracle/oracle-database/12.2/upgrd/deprecated-features-oracle-database-12c-r2.html), [Deprecated Features in Oracle Database 18c](https://docs.oracle.com/en/database/oracle/oracle-database/18/upgrd/deprecated-features-oracle-database-18c.html), [Oracle Database Changes, Desupports, and Deprecations (Upgrade Guide 19c)](https://docs.oracle.com/en/database/oracle/oracle-database/19/upgrd/oracle-database-changes-deprecations-desupports.html)\n\n**Option 1 — Azure SQL Database / Managed Instance** (fidelity: **partial**, effort: M, applies to 11.2–18c including 12.2)\nThe binary payload fits `varbinary(max)` (same mapping SSMA already uses for BLOB/BFILE), and full-text search can index `varbinary` via filters. But there is no in-database processing equivalent for the Multimedia methods themselves. [SSMA for Oracle: Project Settings (Type Mapping)](https://learn.microsoft.com/en-us/sql/ssma/oracle/project-settings-type-mapping-oracletosql)\n- **Major caveat:** FILESTREAM and FileTables are not supported on Azure SQL Database or Managed Instance, and FILESTREAM-containing backups can't be restored to Managed Instance — so large media should go in `varbinary(max)` or external Blob Storage instead. [T-SQL differences between SQL Server and Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/transact-sql-tsql-differences-sql-server)\n\n**Option 2 — Azure Blob Storage / Data Lake Storage Gen2** (fidelity: **workaround**, effort: L, applies to 11.2–18c including 12.2)\nSince Multimedia content is usually already stored as BLOBs/BFILEs under the hood, and Azure has no in-database media type, the pragmatic pattern is to move binaries to Blob/ADLS and keep path, content type, and extracted metadata in relational columns. Thumbnail generation and format conversion move to application code or Azure Functions. No caveats are recorded for this path in the dataset. [Azure Data Lake Storage overview (built on Blob Storage)](https://learn.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-introduction), [Azure Functions overview](https://learn.microsoft.com/en-us/azure/azure-functions/functions-overview)\n\n**Gaps:** No dispute records touch this feature/mapping pair, and the dataset has no caveats recorded for the Blob/ADLS option.",
+  "stderr": ""
+}

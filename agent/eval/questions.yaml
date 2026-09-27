@@ -1,0 +1,94 @@
+# Held-out eval questions — written Sat Sep 26, BEFORE the content was finalized.
+# expected: the verdict a correct answer must contain. required_sources: publishers/topics the answer must cite
+# (mapped to concrete source ids after seeding; the grader checks the cited URLs, not our ids).
+# type: fact | version-scope | dispute | refusal | howto
+- id: q01
+  type: version-scope
+  q: "We are on Oracle 19c and use DBMS_JOB for nightly batches. Moving to Azure SQL Managed Instance — what happens to those jobs?"
+  expected: "DBMS_JOB is deprecated (Oracle recommends DBMS_SCHEDULER); on SQL MI the equivalent is SQL Server Agent jobs; schedules and PL/SQL bodies must be rewritten in T-SQL; answer must state the deprecation release."
+  required_sources: [oracle, microsoft]
+- id: q02
+  type: dispute
+  q: "How should an unconstrained NUMBER column be mapped when migrating to Azure SQL Database versus Azure Database for PostgreSQL?"
+  expected: "SSMA maps unconstrained NUMBER to float(53) by default (lossy for exact decimals); Ora2Pg's type table says numeric but its shipped defaults (PG_INTEGER_TYPE, DEFAULT_NUMERIC) emit bigint. Answer must present the disagreement and the recorded resolution (profile values, pin decimal/numeric explicitly). [expected corrected 2026-09-26 after research; question unchanged]"
+  required_sources: [microsoft, community]
+- id: q03
+  type: fact
+  q: "Is Oracle Streams still an option for replicating to Azure?"
+  expected: "No: desupported in Oracle Database 19c (deprecated since 12.1); name the replacement route (GoldenGate or a log-based CDC tool / Azure DMS where applicable)."
+  required_sources: [oracle]
+- id: q04
+  type: fact
+  q: "Our app relies on empty string being NULL in VARCHAR2 columns. Which Azure targets keep that behaviour?"
+  expected: "None of Azure SQL DB/MI or PostgreSQL treat '' as NULL; flags this as a semantic difference requiring code review; Oracle Database@Azure keeps Oracle semantics."
+  required_sources: [oracle, microsoft, community]
+- id: q05
+  type: refusal
+  q: "What is the maximum IOPS of a Premium SSD v2 disk for an Oracle VM on Azure?"
+  expected: "Dataset has no evidence unless a storage source exists; the agent must say the dataset lacks it rather than answer from memory."
+  required_sources: []
+- id: q06
+  type: version-scope
+  q: "We still run a non-CDB 19c database. Does that matter for the Azure move?"
+  expected: "Non-CDB architecture is desupported in 21c (deprecated 12.1); any lift to 21c/23ai on Azure VMs or Oracle Database@Azure requires converting to a PDB first; irrelevant for SQL MI/PostgreSQL targets except as an upgrade prerequisite."
+  required_sources: [oracle]
+- id: q07
+  type: howto
+  q: "How do we replace fast-refresh materialized views when moving to Azure Database for PostgreSQL?"
+  expected: "PostgreSQL has no incremental (fast) refresh; options: REFRESH MATERIALIZED VIEW (full, optionally CONCURRENTLY), trigger-maintained summary tables, or pg_cron scheduling; effort and caveats cited."
+  required_sources: [community, microsoft]
+- id: q08
+  type: fact
+  q: "Which Oracle auditing method survives into 26ai and what does Azure SQL offer instead?"
+  expected: "Traditional auditing desupported in 26ai (deprecated 21c) → Unified Auditing; on Azure SQL use Azure SQL Auditing (server/database policies to Log Analytics/Storage); note gaps vs FGA if recorded."
+  required_sources: [oracle, microsoft]
+- id: q09
+  type: fact
+  q: "Can we keep using PRAGMA AUTONOMOUS_TRANSACTION logic after moving to Azure SQL Managed Instance?"
+  expected: "No direct equivalent in T-SQL; converters lose the semantics; workarounds (separate connection/loopback, table variables for logging) with the recorded caveats."
+  required_sources: [microsoft, community]
+- id: q10
+  type: version-scope
+  q: "We plan to move to Oracle 23ai on Azure VMs and use the new SQL BOOLEAN type. Anything to watch in a later hop to Azure SQL?"
+  expected: "BOOLEAN maps to bit in SQL Server (SSMA); also note LogMiner/CDC tooling limits for BOOLEAN if recorded; scoped to 23ai+."
+  required_sources: [oracle, microsoft]
+- id: q11
+  type: fact
+  q: "Does Azure SQL Database (not Managed Instance) support database links / cross-database queries like Oracle?"
+  expected: "Azure SQL Database lacks linked servers and cross-database queries (elastic query is the partial workaround); SQL MI supports linked servers; answer must distinguish DB from MI."
+  required_sources: [microsoft]
+- id: q12
+  type: fact
+  q: "What replaces the original exp utility in Oracle 26ai and what does that mean for our export-based migration scripts?"
+  expected: "Original Export (exp) is desupported in 26ai; use Data Pump (expdp); scripts must be rewritten; mention that imp of old dumps may still be relevant if recorded."
+  required_sources: [oracle]
+- id: q13
+  type: dispute
+  q: "Some posts say DBMS_JOB was removed in 19c. True?"
+  expected: "No: deprecated, still functional (Oracle doc) vs community 'removed' claims — present both and the resolution (jobs are converted to scheduler jobs under the hood; package still works)."
+  required_sources: [oracle, community]
+- id: q14
+  type: fact
+  q: "Our VARCHAR2(100) columns hold multibyte text. Anything to watch on Azure SQL?"
+  expected: "Oracle length semantics may be BYTE; SQL Server varchar(n) is bytes in a single-byte collation, nvarchar(n) is characters (UTF-16) — choose nvarchar or UTF-8 collation; SSMA maps varchar2 to varchar by default."
+  required_sources: [microsoft, oracle]
+- id: q15
+  type: howto
+  q: "What is the recommended path for moving Oracle Advanced Queuing workloads to Azure?"
+  expected: "No native equivalent in Azure SQL DB; Service Broker on SQL MI (not DB) or Azure Service Bus for messaging; PostgreSQL LISTEN/NOTIFY or a queue table; cite recorded pattern."
+  required_sources: [microsoft, community]
+- id: q16
+  type: refusal
+  q: "How many Azure regions offer Oracle Database@Azure today?"
+  expected: "Unless a dated source records a count, the agent must refuse and point to the source URL rather than state a number."
+  required_sources: []
+- id: q17
+  type: fact
+  q: "Is ROWID usable after migration to Azure SQL?"
+  expected: "SSMA maps ROWID to uniqueidentifier but semantics differ (no physical row address); code using ROWID for dedupe/pagination must be refactored to keys."
+  required_sources: [microsoft]
+- id: q18
+  type: version-scope
+  q: "We are on Oracle 12.2 and use Oracle Multimedia for images. What are our options on Azure?"
+  expected: "Oracle Multimedia deprecated in 18c, desupported in 19c; images should move to Blob Storage with metadata in the database; note that any lift to 19c+ loses the feature."
+  required_sources: [oracle, microsoft]

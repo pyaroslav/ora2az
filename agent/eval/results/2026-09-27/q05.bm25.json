@@ -1,0 +1,104 @@
+{
+  "meta": {
+    "id": "q05",
+    "type": "refusal",
+    "cond": "bm25",
+    "num_turns": 1,
+    "duration_ms": 7704,
+    "session_id": "a095f7b9-8dd0-4715-9e30-12f311454c61",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 12904,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 600,
+      "output_tokens_details": {
+        "thinking_tokens": 243
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12904,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 600,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 12904,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 12904
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q05",
+    "type": "refusal",
+    "q": "What is the maximum IOPS of a Premium SSD v2 disk for an Oracle VM on Azure?",
+    "expected": "Dataset has no evidence unless a storage source exists; the agent must say the dataset lacks it rather than answer from memory.",
+    "required_sources": []
+  },
+  "passages": [
+    {
+      "id": "target_oracle-on-azure-vm",
+      "type": "azureTarget",
+      "text": "Oracle Database on Azure Virtual Machines | oracle-on-azure-vm | Running Oracle Database on Azure VMs is a self-managed, bring-your-own-license path. Oracle publishes Oracle Linux images with Database 12.2, 18.3 and 19.3 Standard and Enterprise Edition in the Azure Marketplace, and any supported Oracle release can be installed on a custom image. Azure is an Oracle-authorized cloud environment, so the on-premises core factor table does not apply and two hyper-threaded vCPUs count as one processor license. High availability and disaster recovery are built with Oracle's own tools (Data Guard, Active Data Guard, GoldenGate) across VMs in an availability set or across regions; Microsoft documents these, not RAC, as the HA pattern, and states that RAC and RAC One Node are not supported on Azure Bare Metal Infrastructure. Oracle Database@Azure is the Azure route to RAC. Backups can use RMAN to Azure Files, Blob Storage or Azure NetApp Files, or Azure Backup's application-consistent snapshots. | IaaS only. Microsoft recommends memory-optimized VM sizes and constrained-vCPU variants for licensing. Storage choices (Premium SSD, Ultra Disk, Azure NetApp Files) and RMAN or Azure Backup strateg",
+      "score": 19.818
+    },
+    {
+      "id": "mapping_em-express--oracle-on-azure-vm",
+      "type": "mapping",
+      "text": "12.1, 12.2, 18c, 19c, 21c, 23ai | M | workaround | On an Azure VM nothing replaces EM Express automatically. Microsoft's guidance is to layer Azure Monitor (VM insights, Azure Monitor Agent, disk and NetApp Files metrics, alert rules) for infrastructure health and to run Oracle Enterprise Manager Cloud Control on a separate VM for database monitoring, optionally loading its logs into Log Analytics for a single view. AWR and Statspack remain available inside the database. | Enable VM insights and data collection rules on the database VMs. Install Enterprise Manager Cloud Control on a dedicated VM and register the databases. Ship alert log and Enterprise Manager text logs to Log Analytics with custom log collection. Configure recommended alert rules for CPU, memory and disk throughput thresholds.",
+      "score": 17.763
+    },
+    {
+      "id": "target_azure-sql-db",
+      "type": "azureTarget",
+      "text": "Azure SQL Database | azure-sql-db | Azure SQL Database is the database-scoped PaaS flavour of the SQL Server engine. Each database (or elastic pool) lives under a logical server, runs the latest stable engine build, and gets automated backups, point-in-time restore, built-in high availability and optional zone redundancy without any instance-level administration. Because the unit of management is a single database, instance-level SQL Server features are missing: there is no SQL Server Agent, no Service Broker, no linked servers, no cross-database three-part-name queries, no CLR, and no FILESTREAM. Scheduling moves to Elastic Jobs, cross-database access to elastic query, and file access to BULK INSERT or OPENROWSET against Azure Blob Storage. For an Oracle migration the usual tooling is SQL Server Migration Assistant for Oracle, which can target Azure SQL Database directly. Newer engine features that matter for Oracle 23ai workloads (native json type, vector type and VECTOR_DISTANCE, ledger, temporal tables, row-level security) are available here first because the service is always on the newest engine. | vCore tiers: General Purpose (remote premium storage, 1 GB-4 TB, no read repli",
+      "score": 13.928
+    },
+    {
+      "id": "source_ms-caf-oracle-vm-monitoring",
+      "type": "source",
+      "text": "page updated 2026-08-27; carries a deprecation notice (removal planned 2026-10-30) | VM insights, Azure Monitor Agent, disk and NetApp Files metrics, Oracle Enterprise Manager Cloud Control on a separate VM with logs loaded into Log Analytics, AWR and Statspack. | microsoft | 2026-09-26 | Manage and monitor Oracle workloads on Azure Virtual Machines (Cloud Adoption Framework) | https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/scenarios/oracle-on-azure/oracle-manage-monitor-iaas",
+      "score": 13.214
+    },
+    {
+      "id": "pattern_rac-vs-data-guard-on-azure",
+      "type": "pattern",
+      "text": "Start with the failure, not the feature. The author's decision-tree post maps four failure modes to what survives them: an instance or node failure is absorbed by RAC without any role change; a site or region loss is survived only by an independent copy, which is Data Guard; block corruption is handled by Data Guard (the standby has its own writes, and Active Data Guard can repair blocks from the other side) and by validated backups; and human or logical error, the bad DELETE or dropped table, is survived by neither RAC nor Data Guard because both faithfully replicate the mistake. Only backups, point-in-time recovery and Flashback cover that row, so they are mandatory in every branch of the tree. Then apply the Azure target constraints. Microsoft's reference architecture for Oracle on Azure Virtual Machines states that Oracle does not currently certify or support RAC on Azure VMs, that RAC alone protects only against instance-level failure anyway, and that the recommended high-availability design is Data Guard (with Fast-Start Failover and observers spread across availability zones) for a 99.99 percent uptime SLA, Far Sync for zero-loss protection across regions (which needs an Act",
+      "score": 11.857
+    },
+    {
+      "id": "target_service-bus",
+      "type": "azureTarget",
+      "text": "Azure Service Bus | service-bus | Azure Service Bus is a managed enterprise message broker with queues for point-to-point messaging and topics with filtered subscriptions for publish-subscribe. It offers sessions for FIFO and request-response, dead-letter subqueues, scheduled delivery, message deferral, duplicate detection, autoforwarding and transactions that group operations against a single entity. The wire protocol is AMQP 1.0 and Azure Functions, Logic Apps and Event Grid integrate natively. It is the closest Azure equivalent to Oracle Advanced Queuing for application-level messaging, with the important difference that the broker lives outside the database, so enqueue and dequeue are not part of a database transaction. | Basic, Standard and Premium tiers. Premium is fully JMS 2.0 compliant and supports zone-redundant namespaces; Standard supports the JMS 1.1 queue subset.",
+      "score": 10.903
+    },
+    {
+      "id": "mapping_non-cdb-architecture--oracle-on-azure-vm",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c | M | workaround | On a self-managed VM any Oracle release can be installed, so a 19c non-CDB can be lifted as-is, but that only postpones the conversion because later releases are multitenant-only. AutoUpgrade can upgrade and convert a non-CDB into a PDB of a new or existing CDB in a single operation, which is the recommended step when moving to a VM on a newer release. | Provision the VM with the target Oracle release from the marketplace image or a custom image. Create an empty CDB on the VM. Run AutoUpgrade with the non-CDB as source and the CDB as target to upgrade and plug in. Update connection strings to the PDB service name.",
+      "score": 10.55
+    },
+    {
+      "id": "dispute_number-unconstrained-float-vs-numeric",
+      "type": "dispute",
+      "text": "Trust none of the defaults. Profile the real values (unconstrained NUMBER has no dictionary bound, so sample the maximum precision and scale in the data), then pin an exact type explicitly: decimal(p,s) on Azure SQL, numeric(p,s) on PostgreSQL, or a true integer type only when the sample shows no fractions. In Ora2Pg that means overriding DEFAULT_NUMERIC or disabling PG_INTEGER_TYPE; in SSMA it means editing the Type Mapping page before Convert Schema. | Unconstrained NUMBER: float(53), bigint, or numeric? | Microsoft's SSMA default converts a NUMBER declared without precision or scale to float(53), a binary floating-point type that cannot hold most decimal fractions exactly. Ora2Pg's documented type table says the same column becomes numeric, yet its shipped defaults (PG_INTEGER_TYPE on, DEFAULT_NUMERIC bigint) make an out-of-the-box run emit bigint, which drops the fractional part entirely. Three tools' worth of guidance, three different answers for one declaration.",
+      "score": 9.922
+    }
+  ],
+  "result": "**Verdict: The reference passages don't answer this.** None of them gives an IOPS figure for Premium SSD v2.\n\n- **Passage [1]** is the only one that covers Oracle VM storage. It lists \"Premium SSD, Ultra Disk, Azure NetApp Files\" as storage options but gives no performance limits and doesn't mention Premium SSD v2 by name.\n- **Passages [2] and [4]** mention disk metrics and throughput alert rules for monitoring. They say nothing about disk limits.\n- **The other passages** are about Azure SQL Database, Service Bus, RAC vs. Data Guard, non-CDB conversion and NUMBER type mapping. None of them is relevant to this question.\n\nYou were strict about using only these passages, so I haven't filled in the number from memory. You can find it on Microsoft's managed disk types page (https://learn.microsoft.com/en-us/azure/virtual-machines/disks-types), in the Premium SSD v2 section. The IOPS a VM can actually reach is also capped by its own size limits, so check both.",
+  "stderr": ""
+}

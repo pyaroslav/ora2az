@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q07",
+    "type": "howto",
+    "cond": "groq+kb",
+    "num_turns": 7,
+    "duration_ms": 28000,
+    "session_id": "5c2d2e14-3162-4776-95d2-4248f9bd3938",
+    "usage": {
+      "input_tokens": 10,
+      "cache_creation_input_tokens": 6995,
+      "cache_read_input_tokens": 59276,
+      "output_tokens": 2270,
+      "output_tokens_details": {
+        "thinking_tokens": 158
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 6995,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1255,
+          "cache_read_input_tokens": 17727,
+          "cache_creation_input_tokens": 723,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 723
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q07",
+    "type": "howto",
+    "q": "How do we replace fast-refresh materialized views when moving to Azure Database for PostgreSQL?",
+    "expected": "PostgreSQL has no incremental (fast) refresh; options: REFRESH MATERIALIZED VIEW (full, optionally CONCURRENTLY), trigger-maintained summary tables, or pg_cron scheduling; effort and caveats cited.",
+    "required_sources": [
+      "community",
+      "microsoft"
+    ]
+  },
+  "result": "No dispute recorded on this topic. I have what I need to answer.\n\n## Verdict\nFast-refresh materialized views have **no direct equivalent** on Azure Database for PostgreSQL Flexible Server — fidelity is rated **partial**, effort **M**, for all Oracle versions 11.2 through 26ai. [PostgreSQL documentation: CREATE MATERIALIZED VIEW](https://www.postgresql.org/docs/current/sql-creatematerializedview.html)\n\n## Why\nPostgreSQL materialized views only support full recomputation via `REFRESH MATERIALIZED VIEW` — there is no materialized view log, no fast/incremental refresh, and no refresh-on-commit. `REFRESH MATERIALIZED VIEW CONCURRENTLY` avoids blocking readers but still recomputes the entire result. [PostgreSQL documentation: REFRESH MATERIALIZED VIEW](https://www.postgresql.org/docs/current/sql-refreshmaterializedview.html)\n\n**Caveat (major):** \"PostgreSQL REFRESH MATERIALIZED VIEW completely replaces the view's contents by re-running its query; the CONCURRENTLY option (which requires a unique index on plain columns) avoids blocking readers but still recomputes everything, and there is no incremental or fast refresh, no materialized view log and no refresh on commit.\" [PostgreSQL documentation: REFRESH MATERIALIZED VIEW](https://www.postgresql.org/docs/current/sql-refreshmaterializedview.html)\n\nThe `pg_ivm` extension — available on Flexible Server for PostgreSQL 13+ — adds incrementally maintained views, but only for a subset of query shapes. [Extensions and modules by name in Azure Database for PostgreSQL flexible server](https://learn.microsoft.com/en-us/azure/postgresql/extensions/concepts-extensions-versions)\n\n## Recommended approach (from the mapping's steps)\n1. Export with Ora2Pg `TYPE=MVIEW` and schedule `REFRESH MATERIALIZED VIEW CONCURRENTLY` via `pg_cron`.\n2. Add a unique index to each view so `CONCURRENTLY` is permitted.\n3. Evaluate `pg_ivm` for views needing near-real-time freshness, if the query shape is supported.\n4. Rewrite any code that depends on Oracle's automatic query rewrite to materialized views — PostgreSQL never substitutes a materialized view automatically.\n\nSources for the mapping: [PostgreSQL documentation: CREATE MATERIALIZED VIEW](https://www.postgresql.org/docs/current/sql-creatematerializedview.html), [PostgreSQL documentation: REFRESH MATERIALIZED VIEW](https://www.postgresql.org/docs/current/sql-refreshmaterializedview.html), [Extensions and modules by name in Azure Database for PostgreSQL flexible server](https://learn.microsoft.com/en-us/azure/postgresql/extensions/concepts-extensions-versions)\n\n## Gaps\n- No `dispute` entry exists in the dataset touching this mapping.\n- The dataset has no evidence on Cosmos DB or other non-relational Azure targets for this feature — only Azure Database for PostgreSQL Flexible Server and Azure SQL Database mappings exist. (If you're also considering Azure SQL Database, note: its closest equivalent is the indexed view, which is stronger than fast refresh — synchronous, no staleness — but far more restrictive and SSMA conversion fails on many common constructs; happy to detail that path if relevant to your target.)",
+  "stderr": ""
+}

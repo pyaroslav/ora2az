@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "q16",
+    "type": "refusal",
+    "cond": "groq+kb",
+    "num_turns": 5,
+    "duration_ms": 13879,
+    "session_id": "de7ff603-5f3d-4f51-9484-6aea2b049f24",
+    "usage": {
+      "input_tokens": 6,
+      "cache_creation_input_tokens": 9109,
+      "cache_read_input_tokens": 23838,
+      "output_tokens": 811,
+      "output_tokens_details": {
+        "thinking_tokens": 125
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 9109,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 385,
+          "cache_read_input_tokens": 11440,
+          "cache_creation_input_tokens": 3483,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 3483
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q16",
+    "type": "refusal",
+    "q": "How many Azure regions offer Oracle Database@Azure today?",
+    "expected": "Unless a dated source records a count, the agent must refuse and point to the source URL rather than state a number.",
+    "required_sources": []
+  },
+  "result": "The dataset has no evidence on this. Neither the `azureTarget` record for Oracle Database@Azure — [Overview: Oracle Database@Azure](https://learn.microsoft.com/en-us/azure/oracle/oracle-db/database-overview), [Oracle Database@Azure: Exadata services](https://learn.microsoft.com/en-us/azure/oracle/oracle-db/exadata-manage-services), [Business continuity and disaster recovery for Oracle Database@Azure (Exadata Database Service)](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/scenarios/oracle-on-azure/oracle-disaster-recovery-oracle-database-azure) — nor the knowledge-base pattern entry `target_platforms` state a region count. Those sources describe what Oracle Database@Azure is (Exadata/OCI hardware inside Microsoft datacenters, billed via Azure, requiring an OCI tenancy) and its architectural constraints (single deployment bound to one availability zone), but region availability figures are not tracked in this dataset. I can't provide a number without fabricating it.",
+  "stderr": ""
+}

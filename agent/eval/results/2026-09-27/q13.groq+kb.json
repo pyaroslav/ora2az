@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q13",
+    "type": "dispute",
+    "cond": "groq+kb",
+    "num_turns": 5,
+    "duration_ms": 18925,
+    "session_id": "e897e694-adfd-463a-b122-5748b79fa39e",
+    "usage": {
+      "input_tokens": 6,
+      "cache_creation_input_tokens": 10523,
+      "cache_read_input_tokens": 23845,
+      "output_tokens": 1282,
+      "output_tokens_details": {
+        "thinking_tokens": 39
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 10523,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 863,
+          "cache_read_input_tokens": 11445,
+          "cache_creation_input_tokens": 4892,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 4892
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q13",
+    "type": "dispute",
+    "q": "Some posts say DBMS_JOB was removed in 19c. True?",
+    "expected": "No: deprecated, still functional (Oracle doc) vs community 'removed' claims — present both and the resolution (jobs are converted to scheduler jobs under the hood; package still works).",
+    "required_sources": [
+      "oracle",
+      "community"
+    ]
+  },
+  "result": "**Verdict: False.** DBMS_JOB was not removed in 19c — it was deprecated in 12.2 and remains present (not desupported) as of 26ai.\n\n**Facts (dataset):**\n- DBMS_JOB is marked **deprecated in Oracle Database 12.2**, with **DBMS_SCHEDULER as the Oracle-side replacement** — per [Deprecated Features in Oracle Database 12c Release 2 (12.2)](https://docs.oracle.com/en/database/oracle/oracle-database/12.2/upgrd/deprecated-features-oracle-database-12c-r2.html).\n- The dataset's `desupportedIn` field for DBMS_JOB is **null** — i.e., it has **not been desupported as of 26ai**. Per [Oracle Database Changes, Desupports, and Deprecations (Upgrade Guide 19c)](https://docs.oracle.com/en/database/oracle/oracle-database/19/upgrd/oracle-database-changes-deprecations-desupports.html) and [Support for DBMS_JOB (Administrator's Guide 19c)](https://docs.oracle.com/en/database/oracle/oracle-database/19/admin/support-for-DBMS_JOB.html), starting in 19c an upgrade *re-creates existing DBMS_JOB jobs as Scheduler jobs*, and DBMS_JOB survives only as a compatibility interface — this is a behavioral change on upgrade, not removal of the package.\n- The [DBMS_JOB (PL/SQL Packages and Types Reference 19c)](https://docs.oracle.com/en/database/oracle/oracle-database/19/arpls/DBMS_JOB.html) source states the package has been superseded and support \"may be removed in a future release\" — future tense, confirming it was still present/supported in 19c.\n\n**Distinction that likely causes the confusion** (per [Migration Terminology and Fidelity Levels](kb6MdvV3ZA3Q), dataset): \"deprecated\" means still fully supported but flagged to plan away from; \"desupported\" means no further fixes and code may be removed entirely. DBMS_JOB in 19c hit only the \"jobs get re-created as Scheduler jobs on upgrade\" behavior — it did not cross into desupported status.\n\nNo dispute record exists in the dataset on this specific claim. If you have a specific post making the \"removed in 19c\" claim, I don't have it as a source to reconcile against — but per the oracleFeature record itself, that claim doesn't match the tracked `desupportedIn` field.",
+  "stderr": ""
+}

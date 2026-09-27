@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "sanity-groq": {
+      "type": "http",
+      "url": "https://api.sanity.io/v1/context/organizations/${SANITY_ORG_ID}/mcp/ora2az-groq",
+      "headers": {"Authorization": "Bearer ${SANITY_ORG_TOKEN}"}
+    },
+    "sanity-kb": {
+      "type": "http",
+      "url": "https://api.sanity.io/v1/context/organizations/${SANITY_ORG_ID}/mcp/ora2az-kb",
+      "headers": {"Authorization": "Bearer ${SANITY_ORG_TOKEN}"}
+    }
+  }
+}

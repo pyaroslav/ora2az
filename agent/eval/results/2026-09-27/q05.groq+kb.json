@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "q05",
+    "type": "refusal",
+    "cond": "groq+kb",
+    "num_turns": 7,
+    "duration_ms": 22563,
+    "session_id": "2f3351f0-17c0-42e4-aeee-df016df11476",
+    "usage": {
+      "input_tokens": 10,
+      "cache_creation_input_tokens": 10101,
+      "cache_read_input_tokens": 54205,
+      "output_tokens": 1311,
+      "output_tokens_details": {
+        "thinking_tokens": 278
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 10101,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 326,
+          "cache_read_input_tokens": 15535,
+          "cache_creation_input_tokens": 380,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 380
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q05",
+    "type": "refusal",
+    "q": "What is the maximum IOPS of a Premium SSD v2 disk for an Oracle VM on Azure?",
+    "expected": "Dataset has no evidence unless a storage source exists; the agent must say the dataset lacks it rather than answer from memory.",
+    "required_sources": []
+  },
+  "result": "No matches anywhere in the dataset.\n\n**Verdict:** The dataset has no evidence on this.\n\nI searched the `oracleFeature`/`mapping`/`caveat`/`azureTarget`/`glossary` graph and the migration-patterns knowledge base for \"Premium SSD,\" \"Premium SSD v2,\" and \"IOPS.\" The only related content is the `oracle-on-azure-vm` target's tier notes, which mention storage choices only in passing: \"Storage choices (Premium SSD, Ultra Disk, Azure NetApp Files) ... are the customer's responsibility\" — [Overview of Oracle applications and solutions on Azure (Oracle Database on Azure VMs)](https://learn.microsoft.com/en-us/azure/virtual-machines/workloads/oracle/oracle-overview). No specific IOPS figures for Premium SSD v2 are recorded anywhere in this dataset, so I can't state a maximum IOPS value from these sources.",
+  "stderr": ""
+}

@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "id": "q12",
+    "type": "fact",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 22515,
+    "session_id": "e45ef52f-8466-4041-8c67-b7ecc61d24f8",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 9988,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 2069,
+      "output_tokens_details": {
+        "thinking_tokens": 641
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 9988,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2069,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 9988,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 9988
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q12",
+    "type": "fact",
+    "q": "What replaces the original exp utility in Oracle 26ai and what does that mean for our export-based migration scripts?",
+    "expected": "Original Export (exp) is desupported in 26ai; use Data Pump (expdp); scripts must be rewritten; mention that imp of old dumps may still be relevant if recorded.",
+    "required_sources": [
+      "oracle"
+    ]
+  },
+  "result": "**Verdict:** Oracle Data Pump (`expdp`/`impdp`) replaces `exp`, and it has done so since 10g. Nothing new replaced it in 26ai. Original `exp` has been desupported for general use since 11g. Any migration script that still calls `exp` is technical debt, and you should rewrite it for Data Pump before you target 26ai or any Azure-hosted Oracle.\n\n**Key facts**\n- **Status of the old tools:** Original Export (`exp`) is desupported. Original Import (`imp`) is kept only so you can load old `exp`-format dump files, such as legacy archives. Don't count on `exp` being in a 26ai client or server install. Check your own install with `ls $ORACLE_HOME/bin/exp*`. Even if it's there, Oracle won't support you using it for migrations.\n  Docs: https://docs.oracle.com/en/database/oracle/oracle-database/23/sutil/oracle-original-export-utility.html\n- **The dump formats don't mix:** `imp` can't read `expdp` dumps, and `impdp` can't read `exp` dumps. You have to switch both ends of the pipeline together.\n- **Data Pump runs on the server:** `expdp` writes to a database `DIRECTORY` object on the DB host, not to the client's local disk. This is the change that breaks most scripts. You'll need `CREATE DIRECTORY` plus `READ`/`WRITE` grants, and a way to move the dump files afterwards.\n\n**What to change in your scripts**\n| `exp` parameter | Data Pump equivalent |\n|---|---|\n| `file=` / `log=` | `directory=DP_DIR dumpfile=x_%U.dmp logfile=x.log` |\n| `owner=` | `schemas=` |\n| `rows=n` | `content=metadata_only` |\n| `consistent=y` | `flashback_time=systimestamp` (or `flashback_scn=`) |\n| `indexes=n`, `statistics=none` | `exclude=index`, `exclude=statistics` |\n| `direct=y`, `buffer=` | Not needed (Data Pump picks the access method itself) |\n| `fromuser/touser` (on `imp`) | `remap_schema=` |\n\n- **Short-term workaround:** `expdp`/`impdp` have a \"legacy mode\". If you pass them original `exp`/`imp` parameters, they translate them and log what they mapped. That's useful for a first pass, but don't leave it in production scripts.\n  https://docs.oracle.com/en/database/oracle/oracle-database/23/sutil/datapump-legacy-mode.html\n- **Features worth using once you've switched:** `parallel=` with `%U` dump files, `compression=all` (needs the Advanced Compression option license), `encryption=`, `network_link=` (pulls data over a DB link with no dump files at all), and `exclude`/`include` filters.\n\n**What it means for each Azure target**\n- **Oracle Database@Azure (Exadata or Autonomous):** Stage dump files in Azure Blob Storage. On Autonomous, use `DBMS_CLOUD.CREATE_CREDENTIAL` and point `impdp` at the Blob URI with `credential=` and `dumpfile=https://...`. Oracle's **Zero Downtime Migration (ZDM)** does its logical migrations with Data Pump, so scripts that already use Data Pump fit straight into it.\n  https://docs.oracle.com/en/database/oracle/zero-downtime-migration/\n- **Oracle on Azure VMs:** Use `impdp network_link=` from the source if the network allows it. Otherwise, move the dumps with AzCopy or an Azure Files mount.\n- **Azure Database for PostgreSQL:** Neither `exp` nor `expdp` applies here. Use ora2pg or the Azure migration tooling instead.\n\n**Action items**\n1. Search your scripts for `exp `, `imp `, `file=` and `owner=`.\n2. Add the `DIRECTORY` setup to your target build.\n3. Rewrite the parameters using the table above.\n4. Test with `content=metadata_only` first, then a full parallel run.\n5. Keep `imp` only for restoring old archive dumps.",
+  "stderr": ""
+}

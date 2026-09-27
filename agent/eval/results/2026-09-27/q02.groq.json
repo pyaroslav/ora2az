@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q02",
+    "type": "dispute",
+    "cond": "groq",
+    "num_turns": 5,
+    "duration_ms": 25915,
+    "session_id": "6e7c577a-72b8-426c-b8a7-56aa22c73e9f",
+    "usage": {
+      "input_tokens": 10,
+      "cache_creation_input_tokens": 7086,
+      "cache_read_input_tokens": 37869,
+      "output_tokens": 2090,
+      "output_tokens_details": {
+        "thinking_tokens": 112
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 7086,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1319,
+          "cache_read_input_tokens": 11147,
+          "cache_creation_input_tokens": 1037,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 1037
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q02",
+    "type": "dispute",
+    "q": "How should an unconstrained NUMBER column be mapped when migrating to Azure SQL Database versus Azure Database for PostgreSQL?",
+    "expected": "SSMA maps unconstrained NUMBER to float(53) by default (lossy for exact decimals); Ora2Pg's type table says numeric but its shipped defaults (PG_INTEGER_TYPE, DEFAULT_NUMERIC) emit bigint. Answer must present the disagreement and the recorded resolution (profile values, pin decimal/numeric explicitly). [expected corrected 2026-09-26 after research; question unchanged]",
+    "required_sources": [
+      "microsoft",
+      "community"
+    ]
+  },
+  "result": "**Verdict:** Neither tool's default is safe as-is — an unconstrained Oracle `NUMBER` (exact decimal, up to 38 significant digits) needs an explicitly profiled `decimal(p,s)`/`numeric(p,s)` on both targets; the out-of-the-box conversion tools silently pick lossy or inconsistent defaults.\n\n### Azure SQL Database\n- **Fidelity: partial** (effort S). Oracle `NUMBER` w/o precision/scale is exact decimal up to 38 digits; the safe target is `decimal`/`numeric` with explicit precision/scale from the actual data, or `bigint` if the column only ever held integers. — [Oracle to Azure SQL Database: migration guide](https://learn.microsoft.com/en-us/azure/azure-sql/migration-guides/database/oracle-to-sql-database-guide)\n- **Caveat (major):** SSMA for Oracle's *default* type mapping converts unconstrained `NUMBER` to `float(53)` (binary floating point) — only `NUMBER` with explicit precision maps to `numeric` by default — so exact monetary/identifier values can silently drift unless you override the mapping. — [SSMA for Oracle: Project Settings (Type Mapping)](https://learn.microsoft.com/en-us/sql/ssma/oracle/project-settings-type-mapping-oracletosql)\n- Applies to Oracle 11.2–26ai (all versions listed in the mapping).\n\n### Azure Database for PostgreSQL (Flexible Server)\n- **Fidelity: partial** (effort S). PostgreSQL `numeric` is exact and effectively unbounded, matching Oracle `NUMBER`'s semantics — that's Ora2Pg's base type-table mapping. — [Ora2Pg documentation (configuration directives)](https://ora2pg.darold.net/documentation.html)\n- **Caveat (major):** Ora2Pg ships with `PG_INTEGER_TYPE` enabled by default, which routes unconstrained `NUMBER` to `DEFAULT_NUMERIC` (default = `bigint`), **silently dropping fractional digits** at load time unless you disable `PG_INTEGER_TYPE` or set `DEFAULT_NUMERIC` to `numeric`. — [Ora2Pg source code: lib/Ora2Pg.pm and lib/Ora2Pg/Oracle.pm](https://github.com/darold/ora2pg/blob/master/lib/Ora2Pg/Oracle.pm)\n- Applies to Oracle 11.2–26ai.\n\n### Dispute: \"Unconstrained NUMBER: float(53), bigint, or numeric?\"\n- **Claim A (Microsoft/SSMA):** default conversion → `float(53)`, which cannot represent most decimal fractions exactly.\n- **Claim B (Ora2Pg):** documented type table says `numeric`, but shipped defaults (`PG_INTEGER_TYPE` on, `DEFAULT_NUMERIC=bigint`) actually emit `bigint`, dropping fractions.\n- **Recorded resolution** (per Ora2Pg documentation, the resolving source): *\"Trust none of the defaults.\"* Profile the real data (since unconstrained `NUMBER` has no dictionary-enforced bound) to find actual max precision/scale, then pin an explicit type: `decimal(p,s)` on Azure SQL, `numeric(p,s)` on PostgreSQL, or a true integer type only if sampling shows no fractional values. For Ora2Pg, override `DEFAULT_NUMERIC` or disable `PG_INTEGER_TYPE`; for SSMA, edit the Type Mapping page before running Convert Schema.\n\nNo gaps: both mappings, both caveats, and the governing dispute are all present in the dataset for this feature.",
+  "stderr": ""
+}

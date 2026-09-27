@@ -1,0 +1,212 @@
+# Community sources (PostgreSQL project docs, open-source tool docs and READMEs, Oracle community blogs).
+# All retrieved on 2026-09-26.
+
+- _id: source.ora2pg-docs
+  title: "Ora2Pg documentation (configuration directives)"
+  publisher: community
+  url: https://ora2pg.darold.net/documentation.html
+  docVersion: "Ora2Pg 25.0 (changelog 2025-04-20); text read from doc/Ora2Pg.pod in the GitHub repository"
+  retrievedAt: 2026-09-26
+  note: "DATA_TYPE default list, PG_NUMERIC_TYPE, PG_INTEGER_TYPE, DEFAULT_NUMERIC, NULL_EQUAL_EMPTY, REPLACE_AS_BOOLEAN, AUTONOMOUS_TRANSACTION, PG_BACKGROUND, USE_ORAFCE, PACKAGE_AS_SCHEMA, export TYPE list, ROWID/UROWID note."
+
+- _id: source.ora2pg-source
+  title: "Ora2Pg source code: lib/Ora2Pg.pm and lib/Ora2Pg/Oracle.pm (type mapping defaults)"
+  publisher: community
+  url: https://github.com/darold/ora2pg/blob/master/lib/Ora2Pg/Oracle.pm
+  docVersion: "Ora2Pg 25.0 ($VERSION = '25.0')"
+  retrievedAt: 2026-09-26
+  note: "Base type hash maps NUMBER to numeric, DATE to timestamp(0), ROWID/UROWID to oid, XMLTYPE to xml, BOOLEAN to boolean, SDO_GEOMETRY to geometry; _sql_type returns default_numeric (bigint) for NUMBER without precision when pg_integer_type is on, and Ora2Pg.pm sets pg_integer_type = 1 and default_numeric = bigint when unset."
+
+- _id: source.postgres-docs-matviews
+  title: "PostgreSQL documentation: CREATE MATERIALIZED VIEW"
+  publisher: community
+  url: https://www.postgresql.org/docs/current/sql-creatematerializedview.html
+  docVersion: "PostgreSQL 18"
+  retrievedAt: 2026-09-26
+  note: "Materialized views persist query results and are refreshed later with REFRESH MATERIALIZED VIEW; WITH [NO] DATA."
+
+- _id: source.postgres-docs-refresh-matview
+  title: "PostgreSQL documentation: REFRESH MATERIALIZED VIEW"
+  publisher: community
+  url: https://www.postgresql.org/docs/current/sql-refreshmaterializedview.html
+  docVersion: "PostgreSQL 18"
+  retrievedAt: 2026-09-26
+  note: "Refresh fully replaces the contents; CONCURRENTLY needs a unique index and avoids blocking readers; no incremental refresh."
+
+- _id: source.postgres-docs-character-types
+  title: "PostgreSQL documentation: Character types"
+  publisher: community
+  url: https://www.postgresql.org/docs/current/datatype-character.html
+  docVersion: "PostgreSQL 18"
+  retrievedAt: 2026-09-26
+  note: "varchar(n) and char(n) limits count characters, not bytes; no performance difference between text and varchar."
+
+- _id: source.postgres-docs-numeric-types
+  title: "PostgreSQL documentation: Numeric types"
+  publisher: community
+  url: https://www.postgresql.org/docs/current/datatype-numeric.html
+  docVersion: "PostgreSQL 18"
+  retrievedAt: 2026-09-26
+  note: "numeric is exact with up to 131072 digits before and 16383 after the decimal point when unconstrained; slower than integer and float types."
+
+- _id: source.postgres-docs-boolean
+  title: "PostgreSQL documentation: Boolean type"
+  publisher: community
+  url: https://www.postgresql.org/docs/current/datatype-boolean.html
+  docVersion: "PostgreSQL 18"
+  retrievedAt: 2026-09-26
+  note: "1-byte boolean accepting true/false, yes/no, on/off, 1/0 literals."
+
+- _id: source.postgres-docs-datetime
+  title: "PostgreSQL documentation: Date/time types"
+  publisher: community
+  url: https://www.postgresql.org/docs/current/datatype-datetime.html
+  docVersion: "PostgreSQL 18"
+  retrievedAt: 2026-09-26
+  note: "date has no time component; timestamp without/with time zone at microsecond resolution; timestamptz stored as UTC."
+
+- _id: source.postgres-docs-xml
+  title: "PostgreSQL documentation: XML type"
+  publisher: community
+  url: https://www.postgresql.org/docs/current/datatype-xml.html
+  docVersion: "PostgreSQL 18"
+  retrievedAt: 2026-09-26
+  note: "xml type has no comparison operators, so it cannot be indexed directly; use expression indexes on XPath results; xpath() and xmltable()."
+
+- _id: source.postgres-docs-plpgsql-transactions
+  title: "PostgreSQL documentation: Transaction management in PL/pgSQL"
+  publisher: community
+  url: https://www.postgresql.org/docs/current/plpgsql-transactions.html
+  docVersion: "PostgreSQL 18"
+  retrievedAt: 2026-09-26
+  note: "COMMIT/ROLLBACK allowed only in procedures called with CALL or DO blocks, not in functions or inside exception blocks; no autonomous transaction construct."
+
+- _id: source.postgres-docs-row-security
+  title: "PostgreSQL documentation: Row security policies"
+  publisher: community
+  url: https://www.postgresql.org/docs/current/ddl-rowsecurity.html
+  docVersion: "PostgreSQL 18"
+  retrievedAt: 2026-09-26
+  note: "ENABLE ROW LEVEL SECURITY, CREATE POLICY with USING and WITH CHECK, PERMISSIVE vs RESTRICTIVE, owners bypass unless FORCE ROW LEVEL SECURITY, BYPASSRLS."
+
+- _id: source.postgres-docs-system-columns
+  title: "PostgreSQL documentation: System columns (ctid)"
+  publisher: community
+  url: https://www.postgresql.org/docs/current/ddl-system-columns.html
+  docVersion: "PostgreSQL 18"
+  retrievedAt: 2026-09-26
+  note: "ctid is the physical location of a row version and changes on UPDATE or VACUUM FULL, so it must not be used as a long-term row identifier."
+
+- _id: source.postgres-docs-queries-with
+  title: "PostgreSQL documentation: WITH queries (recursive CTEs)"
+  publisher: community
+  url: https://www.postgresql.org/docs/current/queries-with.html
+  docVersion: "PostgreSQL 18"
+  retrievedAt: 2026-09-26
+  note: "WITH RECURSIVE syntax, SEARCH DEPTH/BREADTH FIRST and CYCLE clauses."
+
+- _id: source.postgres-docs-partitioning
+  title: "PostgreSQL documentation: Table partitioning"
+  publisher: community
+  url: https://www.postgresql.org/docs/current/ddl-partitioning.html
+  docVersion: "PostgreSQL 18"
+  retrievedAt: 2026-09-26
+  note: "Declarative RANGE, LIST and HASH partitioning; unique constraints must include the partition key; no global indexes; no automatic partition creation."
+
+- _id: source.orafce-readme
+  title: "orafce README (Oracle compatibility functions and packages for PostgreSQL)"
+  publisher: community
+  url: https://github.com/orafce/orafce/blob/master/README.asciidoc
+  docVersion: "orafce 4.x (Azure PG Flex ships 4.16 for PostgreSQL 14-18)"
+  retrievedAt: 2026-09-26
+  note: "dbms_output, utl_file, dbms_pipe, dbms_alert, dbms_random, varchar2 with byte semantics, oracle.date, nvl/decode/add_months; notes that empty strings differ from NULL in PostgreSQL."
+
+- _id: source.pg-cron-readme
+  title: "pg_cron README"
+  publisher: community
+  url: https://github.com/citusdata/pg_cron
+  docVersion: "pg_cron 1.6"
+  retrievedAt: 2026-09-26
+  note: "cron.schedule, cron.schedule_in_database, cron.alter_job, cron.job_run_details, GMT default timezone, no job dependencies, one running instance per job."
+
+- _id: source.pgaudit-readme
+  title: "pgAudit README"
+  publisher: community
+  url: https://github.com/pgaudit/pgaudit
+  docVersion: "pgaudit branches per PostgreSQL 14-19"
+  retrievedAt: 2026-09-26
+  note: "Session vs object audit logging, pgaudit.log classes, pgaudit.role, CSV log format, best-effort logging, superusers cannot be reliably audited."
+
+- _id: source.oracle-fdw-readme
+  title: "oracle_fdw README (Oracle foreign data wrapper for PostgreSQL)"
+  publisher: community
+  url: https://github.com/laurenz/oracle_fdw
+  docVersion: "oracle_fdw 2.x (Azure PG Flex ships 1.2 extension version for PostgreSQL 12-18)"
+  retrievedAt: 2026-09-26
+  note: "SELECT/INSERT/UPDATE/DELETE against Oracle tables with WHERE pushdown, IMPORT FOREIGN SCHEMA, needs Oracle client libraries, no two-phase commit."
+
+- _id: source.pgvector-readme
+  title: "pgvector README"
+  publisher: community
+  url: https://github.com/pgvector/pgvector
+  docVersion: "pgvector 0.8.x"
+  retrievedAt: 2026-09-26
+  note: "vector up to 2,000 dimensions, halfvec up to 4,000, HNSW and IVFFlat indexes, L2/inner product/cosine/L1 distances."
+
+- _id: source.asktom-dbms-job-not-working-19c
+  title: "Ask TOM: dbms_job.submit(v_job, 'Proc(JOB);', sysdate) - not working anymore in 19c"
+  publisher: community
+  url: https://asktom.oracle.com/ords/f?p=100:11::::RP:P11_QUESTION_ID:9543716900346819825
+  docVersion: "Ask TOM question thread (title as indexed by search engines; page body blocked to automated retrieval on 2026-09-26)"
+  retrievedAt: 2026-09-26
+  note: "Community question asserting that DBMS_JOB submission stopped working after an upgrade from 12.1.0.2 to 19.8; cited as an example of the 'DBMS_JOB no longer works in 19c' claim."
+
+- _id: source.oracle-base-dbms-job-19c
+  title: "ORACLE-BASE: DBMS_JOB jobs converted to DBMS_SCHEDULER jobs in Oracle Database 19c"
+  publisher: community
+  url: https://oracle-base.com/articles/19c/dbms_job-jobs-converted-to-dbms_scheduler-jobs-19c
+  docVersion: "article created 2019-08-27, updated 2020-11-14"
+  retrievedAt: 2026-09-26
+  note: "DBMS_JOB submissions create DBMS_JOB$_n scheduler jobs, the legacy interface keeps working, CREATE JOB privilege is now required, job submission stays transactional."
+
+- _id: source.mikedietrich-dbms-job-19c
+  title: "Mike Dietrich: DBMS_JOB behavior change in Oracle 19c during upgrade"
+  publisher: community
+  url: https://mikedietrichde.com/2019/05/24/dbms_job-behavior-change-in-oracle-19c-during-upgrade/
+  docVersion: "blog post 2019-05-24"
+  retrievedAt: 2026-09-26
+  note: "Upgrade converts DBMS_JOB jobs into scheduler jobs, DBMS_JOB remains a wrapper over DBMS_SCHEDULER, CREATE JOB must be granted, deprecated since 12.2.0.1 with no desupport announced."
+
+- _id: source.connor-mcdonald-dbms-job-transactions
+  title: "Connor McDonald: DBMS_JOB - the joy of transactions"
+  publisher: community
+  url: https://connor-mcdonald.com/2019/05/28/dbms_job-the-joy-of-transactions/
+  docVersion: "blog post 2019-05-28"
+  retrievedAt: 2026-09-26
+  note: "In 19c DBMS_JOB.SUBMIT creates a paired scheduler job yet stays transactional (rolled back with the caller), unlike DBMS_SCHEDULER which commits immediately."
+
+# ---- added for the obituary-roster follow-up (retrieved 2026-09-26); publisher reflects the actual author
+
+- _id: source.postgres-docs-functions-xml
+  title: "PostgreSQL documentation: XML functions"
+  publisher: community
+  url: https://www.postgresql.org/docs/current/functions-xml.html
+  docVersion: "PostgreSQL 18"
+  retrievedAt: 2026-09-26
+  note: "xmlelement, xmlforest, xmlagg, query_to_xml, table_to_xml, cursor_to_xml, xpath, xpath_exists, XMLTABLE; XPath 1.0 only; requires a libxml build."
+
+- _id: source.oracle-autoupgrade-23
+  title: "Oracle Database 23ai Upgrade Guide: Using AutoUpgrade for Oracle Database upgrades"
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/23/upgrd/using-autoupgrade-oracle-database-upgrades.html
+  docVersion: "Oracle Database 23ai Upgrade Guide"
+  retrievedAt: 2026-09-26
+  note: "AutoUpgrade analyze, fixup, deploy and upgrade modes driven by a config file; can upgrade and convert a non-CDB to a PDB in one operation and automate patching."
+
+- _id: source.oracle-exadata-cloud-manage-databases
+  title: "Exadata Database Service on Dedicated Infrastructure: Manage databases"
+  publisher: oracle
+  url: https://docs.oracle.com/en/engineered-systems/exadata-cloud-service/ecscm/manage-databases.html
+  docVersion: "Oracle Cloud documentation, retrieved 2026-09-26"
+  retrievedAt: 2026-09-26
+  note: "Console and APIs create only CDBs with an initial PDB; non-CDB (19.x and earlier) only through dbaascli; supported releases 11.2 through 26ai; automatic backups to Autonomous Recovery Service (19.18+) or Object Storage; TDE mandatory."

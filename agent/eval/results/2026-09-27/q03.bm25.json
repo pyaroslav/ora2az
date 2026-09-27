@@ -1,0 +1,106 @@
+{
+  "meta": {
+    "id": "q03",
+    "type": "fact",
+    "cond": "bm25",
+    "num_turns": 1,
+    "duration_ms": 8088,
+    "session_id": "7760ad0d-fe7f-4f17-97fd-7c4162f676f5",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 12172,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 817,
+      "output_tokens_details": {
+        "thinking_tokens": 26
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12172,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 817,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 12172,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 12172
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q03",
+    "type": "fact",
+    "q": "Is Oracle Streams still an option for replicating to Azure?",
+    "expected": "No: desupported in Oracle Database 19c (deprecated since 12.1); name the replacement route (GoldenGate or a log-based CDC tool / Azure DMS where applicable).",
+    "required_sources": [
+      "oracle"
+    ]
+  },
+  "passages": [
+    {
+      "id": "mapping_oracle-streams--oracle-db-at-azure",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c | M | partial | Streams was desupported in 19c, so on Oracle Database@Azure the Oracle-native successor is GoldenGate, which Microsoft lists as a monitored deployment type in the service and describes as the option for active-active replication. GoldenGate is not included in the Database@Azure price and needs its own licence, and its capture/replicat configuration differs from Streams rules. | Rewrite Streams capture, propagation and apply rules as GoldenGate extract, pump and replicat parameter files. Deploy GoldenGate on Database@Azure or on Azure VMs with network reach to both endpoints. Monitor GoldenGate deployments through Azure Monitor metrics and logs.",
+      "score": 13.836
+    },
+    {
+      "id": "feature_oracle-streams",
+      "type": "oracleFeature",
+      "text": "replication | 12.1 | 19c | pre-11.2 | Oracle Streams | Oracle GoldenGate | Oracle Streams was the database's built-in framework for log-based capture, propagation and apply of changes. Capture processes mined redo, staged logical change records in Advanced Queuing queues, and apply processes replayed them on the same or another database. It was used for replication, data sharing between systems and change feeds, and was configured through DBMS_STREAMS_ADM and related packages. Migrations care because a Streams configuration rarely shows up in application code; it appears as capture and apply processes, queue tables and rules. If downstream systems depend on a Streams feed, the Azure design needs a replacement pipeline, whether GoldenGate, Azure Data Factory or another change data capture tool, and the Azure database targets cannot participate in Streams at all. Oracle's 12.1 Upgrade Guide deprecates Streams and names GoldenGate as the replacement. The 19c Upgrade Guide desupports it starting with 19.1 (notice dated April 2019), noting that Streams never supported 12c-era features such as multitenant. The same notice states that Advanced Queuing itself is not deprecated and remains ",
+      "score": 10.135
+    },
+    {
+      "id": "mapping_oracle-streams--fabric",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c | M | partial | Fabric mirroring for Oracle reads the redo stream through LogMiner and lands changes as Delta tables in OneLake with latency as low as tens of seconds, which reproduces the capture-and-apply side of Streams for analytics consumers. It is one-directional into OneLake, requires archive log mode, supplemental logging and an on-premises data gateway, and cannot replicate into another Oracle or SQL database, so operational database-to-database replication still needs GoldenGate or application-level replication. | Enable archive log mode and supplemental logging on the source and grant the LogMiner-related privileges. Install the on-premises data gateway with network reach to the Oracle listener. Create a mirrored database in Fabric selecting the schemas or tables to replicate. Point reporting and downstream pipelines at the SQL analytics endpoint or Delta tables.",
+      "score": 10.038
+    },
+    {
+      "id": "caveat_pg-no-fast-refresh-mv",
+      "type": "caveat",
+      "text": "major | PostgreSQL REFRESH MATERIALIZED VIEW completely replaces the view's contents by re-running its query; the CONCURRENTLY option (which requires a unique index on plain columns) avoids blocking readers but still recomputes everything, and there is no incremental or fast refresh, no materialized view log and no refresh on commit.",
+      "score": 9.527
+    },
+    {
+      "id": "glossary_scn",
+      "type": "glossary",
+      "text": "system change number, commit SCN | Oracle's internal logical clock: a monotonically increasing number that the database assigns to every commit and stamps into redo, undo and data blocks, so that any two events can be ordered without reference to wall-clock time. Migration work leans on it constantly: FLASHBACK_SCN gives a Data Pump export a single consistent snapshot, SET UNTIL SCN drives point-in-time recovery, and change-capture tools start replicating from a known SCN. It is database-specific and has no equivalent value on SQL Server or PostgreSQL, so an SCN is a cutover bookmark on the Oracle side, not something that travels to the target. | SCN (system change number)",
+      "score": 9.279
+    },
+    {
+      "id": "glossary_desupported",
+      "type": "glossary",
+      "text": "removed, discontinued | Oracle's status for a feature it no longer fixes bugs for and whose code it may have removed from the product. A desupported feature can fail or vanish after an upgrade, so any target that runs a newer Oracle release (for example Oracle Database@Azure on 26ai) forces a replacement before or during the move, and a non-Oracle target needs a functional equivalent regardless. Contrast with deprecated, where the feature still works and is still supported. | Desupported",
+      "score": 9.269
+    },
+    {
+      "id": "mapping_oracle-streams--azure-dms",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c | L | none | Azure Database Migration Service has no online (continuous sync) scenario with Oracle as a source; the only Oracle scenarios are offline migrations to Azure SQL targets through SSMA. It therefore cannot stand in for Streams either as a replication engine or as a minimal-downtime migration path. | Plan Oracle migrations to Azure SQL as offline cutovers with SSMA or DMS-via-SSMA. Use Fabric mirroring, Data Factory watermark pipelines or Oracle GoldenGate for continuous change movement.",
+      "score": 8.299
+    },
+    {
+      "id": "dispute_dbms-job-deprecated-vs-removed",
+      "type": "dispute",
+      "text": "Both observations are true and compatible. From 19c a schema calling DBMS_JOB.SUBMIT needs the CREATE JOB privilege, otherwise it fails with ORA-27486; that privilege change, not removal, is behind most 'not working anymore' reports. The package is deprecated and functional through 26ai. For an Azure move the consequence is unchanged: job bodies are PL/SQL and must be re-homed to SQL Server Agent (Managed Instance), Elastic Jobs (Azure SQL Database) or pg_cron (PostgreSQL), but the timeline is not forced by removal. | Did DBMS_JOB stop working in 19c? | Oracle documents DBMS_JOB as deprecated since 12.2 with existing jobs converted to Scheduler jobs and the legacy interface still functional. An Ask TOM thread reports that DBMS_JOB.SUBMIT 'stopped working' after a 12.1 to 19.8 upgrade, and that framing circulates as 'DBMS_JOB was removed in 19c'.",
+      "score": 8.258
+    }
+  ],
+  "result": "**No, Oracle Streams isn't an option.** It was desupported in Oracle 19c, and no Azure database target can take part in Streams. You'll need to replace it, usually with GoldenGate.\n\n**Status**\n- Oracle deprecated Streams in 12.1 and named GoldenGate as its replacement. Oracle desupported it from 19.1 (notice dated April 2019). Streams never supported 12c-era features such as multitenant. [2]\n- \"Desupported\" means Oracle no longer fixes bugs and may have removed the code. A target on a newer Oracle release, such as Oracle Database@Azure on 26ai, forces the replacement before or during the move. A non-Oracle target needs an equivalent anyway. [6]\n- Advanced Queuing itself isn't deprecated. [2]\n\n**Replacement options by target**\n- **Oracle Database@Azure → GoldenGate.** It's the Oracle-native successor and the option for active-active replication. Microsoft lists it as a monitored deployment type, so you can watch it through Azure Monitor metrics and logs. [1]\n  - It isn't included in the Database@Azure price and needs its own licence.\n  - Streams capture, propagation and apply rules must be rewritten as GoldenGate extract, pump and replicat parameter files.\n  - You can deploy it on Database@Azure or on Azure VMs that can reach both endpoints.\n- **Microsoft Fabric mirroring (analytics only).** It reads redo through LogMiner and writes Delta tables in OneLake, with latency as low as tens of seconds. [3]\n  - It only replicates one way, into OneLake, and can't replicate into another Oracle or SQL database.\n  - It requires archive log mode, supplemental logging and an on-premises data gateway.\n- **Azure Database Migration Service can't replace Streams.** It has no online (continuous sync) scenario with Oracle as a source, only offline migrations to Azure SQL through SSMA. [7]\n- **Other change-feed routes:** Azure Data Factory watermark pipelines or other change data capture tools. [2][7]\n\n**Migration tip:** Streams configurations rarely show up in application code. Look for capture and apply processes, queue tables and rules, and find out which downstream systems depend on those feeds. [2]\n\nThe passages had no URLs, so the citations above refer to the numbered passages.",
+  "stderr": ""
+}

@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "id": "q02",
+    "type": "dispute",
+    "cond": "bm25",
+    "num_turns": 1,
+    "duration_ms": 12174,
+    "session_id": "0146d636-fb46-4cae-a2ad-be910f61820b",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 12526,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 1139,
+      "output_tokens_details": {
+        "thinking_tokens": 81
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12526,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1139,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 12526,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 12526
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q02",
+    "type": "dispute",
+    "q": "How should an unconstrained NUMBER column be mapped when migrating to Azure SQL Database versus Azure Database for PostgreSQL?",
+    "expected": "SSMA maps unconstrained NUMBER to float(53) by default (lossy for exact decimals); Ora2Pg's type table says numeric but its shipped defaults (PG_INTEGER_TYPE, DEFAULT_NUMERIC) emit bigint. Answer must present the disagreement and the recorded resolution (profile values, pin decimal/numeric explicitly). [expected corrected 2026-09-26 after research; question unchanged]",
+    "required_sources": [
+      "microsoft",
+      "community"
+    ]
+  },
+  "passages": [
+    {
+      "id": "caveat_number-ssma-float53",
+      "type": "caveat",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | major | SSMA for Oracle's default column type mapping (and its argument, return-value and local-variable mappings) converts an unconstrained Oracle NUMBER to float[53], SQL Server's double-precision binary floating-point type, which cannot represent most decimal fractions exactly; only NUMBER with an explicit precision is mapped to numeric, so exact monetary or identifier values in unconstrained columns can be altered unless the mapping is overridden.",
+      "score": 24.845
+    },
+    {
+      "id": "mapping_number-unconstrained--azure-pg-flex",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | S | partial | PostgreSQL numeric is exact and effectively unbounded, so it can hold anything an Oracle NUMBER holds; that is what Ora2Pg's base type table maps NUMBER to. The trap is the shipped configuration: with PG_INTEGER_TYPE enabled (the default) an unconstrained NUMBER is emitted as DEFAULT_NUMERIC, which defaults to bigint, silently truncating decimals unless the setting is changed or the column is overridden. | Run Ora2Pg SHOW_COLUMN and look for columns marked for review (unconstrained NUMBER). Set DEFAULT_NUMERIC to numeric, or disable PG_INTEGER_TYPE, for schemas with decimal data in unconstrained columns. Use MODIFY_TYPE for individual columns that should be integer types for speed. Validate with TEST_DATA or checksums after loading.",
+      "score": 23.095
+    },
+    {
+      "id": "dispute_number-unconstrained-float-vs-numeric",
+      "type": "dispute",
+      "text": "Trust none of the defaults. Profile the real values (unconstrained NUMBER has no dictionary bound, so sample the maximum precision and scale in the data), then pin an exact type explicitly: decimal(p,s) on Azure SQL, numeric(p,s) on PostgreSQL, or a true integer type only when the sample shows no fractions. In Ora2Pg that means overriding DEFAULT_NUMERIC or disabling PG_INTEGER_TYPE; in SSMA it means editing the Type Mapping page before Convert Schema. | Unconstrained NUMBER: float(53), bigint, or numeric? | Microsoft's SSMA default converts a NUMBER declared without precision or scale to float(53), a binary floating-point type that cannot hold most decimal fractions exactly. Ora2Pg's documented type table says the same column becomes numeric, yet its shipped defaults (PG_INTEGER_TYPE on, DEFAULT_NUMERIC bigint) make an out-of-the-box run emit bigint, which drops the fractional part entirely. Three tools' worth of guidance, three different answers for one declaration.",
+      "score": 18.918
+    },
+    {
+      "id": "mapping_number-unconstrained--azure-sql-db",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | S | partial | Oracle NUMBER without precision or scale is an exact decimal with up to 38 significant digits. SSMA's default column mapping turns it into float(53), a binary floating-point type that cannot represent most decimal fractions exactly, so amounts and identifiers can drift. The safe target is decimal or numeric with an explicit precision and scale chosen from the actual data, or bigint when the column only ever held integers. | Profile each unconstrained NUMBER column for maximum digits before and after the decimal point. Override the SSMA type mapping (project or table level) from float[53] to numeric(p,s) or bigint before conversion. Keep float only for columns that genuinely hold scientific measurements. Compare SUM() and COUNT(DISTINCT) of key columns between source and target after migration.",
+      "score": 16.201
+    },
+    {
+      "id": "feature_vector-datatype",
+      "type": "oracleFeature",
+      "text": "datatype | 23ai | VECTOR datatype / AI Vector Search (23ai) | The VECTOR type stores embeddings, the numeric arrays that machine-learning models produce from text, images and other content. A column can fix the number of dimensions and the element format (8-bit integers, 32-bit or 64-bit floats, or packed binary) or leave either flexible. Around the type sit distance functions for similarity search, approximate-search indexes based on neighbor graphs and neighbor partitions, and the ability to generate embeddings inside the database from imported ONNX models. Migrations care because vector workloads are new and the target landscape is moving. PostgreSQL on Azure supports the pgvector extension, Azure AI Search provides vector indexes as a separate service, and Azure SQL's own vector support should be checked against current documentation at decision time. Dimension counts, formats and index parameters need to be carried across explicitly, and in-database embedding generation has no direct equivalent. The feature shipped with 23ai and requires the COMPATIBLE parameter at 23.4.0 or higher. The 23ai documentation URLs redirect to the 26ai AI Vector Search guide, which is cited here.",
+      "score": 13.819
+    },
+    {
+      "id": "caveat_number-ora2pg-bigint-default",
+      "type": "caveat",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | major | In Ora2Pg 25.0 source code, Ora2Pg.pm sets pg_integer_type to 1 when unset and default_numeric to bigint when unset, and Oracle.pm's type resolver returns default_numeric for a NUMBER with no precision and no scale when pg_integer_type is on, marking the column with # in SHOW_COLUMN output for review; an out-of-the-box run therefore emits bigint and silently drops fractional digits at load time.",
+      "score": 13.579
+    },
+    {
+      "id": "target_azure-dms",
+      "type": "azureTarget",
+      "text": "Azure Database Migration Service | migration-tool | Azure Database Migration Service orchestrates migrations to Azure data platforms, with generally available scenarios for SQL Server, MySQL, PostgreSQL and MongoDB sources. Its supported-scenario table lists Oracle to Azure SQL targets as offline-only preview scenarios that rely on SSMA for schema conversion and data movement, and it has no Oracle to PostgreSQL scenario; the separate migration service inside Azure Database for PostgreSQL also accepts only PostgreSQL sources. In practice, an Oracle migration uses DMS as a wrapper around SSMA for SQL targets and uses Ora2Pg, the VS Code schema conversion feature or Data Factory for PostgreSQL targets. Dump-file based tooling such as Data Pump or the original Export utility cannot be consumed by DMS. | Oracle appears only as an offline source for Azure SQL Database, Managed Instance and SQL Server on Azure VMs, marked 'using DMS via SSMA' and Preview. No Oracle source is listed for online migrations or for Azure Database for PostgreSQL.",
+      "score": 13.193
+    },
+    {
+      "id": "source_ms-adf-oracle-connector",
+      "type": "source",
+      "text": "page updated 2026-08-05 | Connector version 2.0, Oracle 11g and later, partitioned parallel copy, NUMBER without precision mapped to Decimal(256,130) in v2.0 and Double in v1.0. | microsoft | 2026-09-26 | Copy data to and from Oracle with Azure Data Factory | https://learn.microsoft.com/en-us/azure/data-factory/connector-oracle",
+      "score": 13.069
+    }
+  ],
+  "result": "**Short answer:** Don't accept either tool's default. Check the real values in each column first, then set an exact type yourself: `decimal(p,s)`/`numeric(p,s)` on Azure SQL Database, `numeric(p,s)` on Azure Database for PostgreSQL. Use an integer type only when the data never has fractions [3].\n\n**Azure SQL Database (SSMA)**\n- By default, SSMA maps an unconstrained `NUMBER` to `float(53)`. The same default applies to arguments, return values and local variables. Only `NUMBER` with an explicit precision becomes `numeric` [1].\n- `float(53)` is binary floating point. It can't store most decimal fractions exactly, so money amounts and IDs can drift [1][4].\n- An Oracle `NUMBER` is an exact decimal with up to 38 significant digits. The safe target is `decimal`/`numeric` with a precision and scale chosen from the data, or `bigint` if the column only ever held integers [4].\n- What to do:\n  1. For each column, measure the most digits before and after the decimal point.\n  2. On SSMA's Type Mapping page (project or table level), change `float[53]` to `numeric(p,s)` or `bigint` **before** you run Convert Schema.\n  3. Keep `float` only for real scientific measurements.\n  4. After migration, compare `SUM()` and `COUNT(DISTINCT)` on key columns between source and target [3][4].\n\n**Azure Database for PostgreSQL (Ora2Pg)**\n- PostgreSQL `numeric` is exact and effectively unbounded, so it can hold any Oracle `NUMBER` value. Ora2Pg's documented type table maps `NUMBER` to it [2].\n- The catch is Ora2Pg's shipped settings. `PG_INTEGER_TYPE` is on by default and `DEFAULT_NUMERIC` defaults to `bigint`, so an out-of-the-box run outputs `bigint`. The fractional digits are then silently dropped at load time. This matches the Ora2Pg 25.0 source code [2][6].\n- What to do:\n  1. Run `SHOW_COLUMN` and look for columns marked `#` for review.\n  2. Set `DEFAULT_NUMERIC` to `numeric`, or turn off `PG_INTEGER_TYPE`, for schemas that have decimals in unconstrained columns.\n  3. Use `MODIFY_TYPE` for individual columns that should be integer types for speed.\n  4. After loading, check the data with `TEST_DATA` or checksums [2].\n\n**Related points**\n- Azure DMS has no Oracle-to-PostgreSQL scenario. For Oracle to Azure SQL, it relies on SSMA for schema conversion, so the SSMA default above still applies [7].\n- If you move data with Azure Data Factory, its Oracle connector maps `NUMBER` without precision to `Decimal(256,130)` in v2.0 and `Double` in v1.0. Avoid v1.0 for these columns (https://learn.microsoft.com/en-us/azure/data-factory/connector-oracle) [8].",
+  "stderr": ""
+}

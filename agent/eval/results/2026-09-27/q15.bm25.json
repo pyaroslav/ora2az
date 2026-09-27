@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "id": "q15",
+    "type": "howto",
+    "cond": "bm25",
+    "num_turns": 1,
+    "duration_ms": 12027,
+    "session_id": "fd5231d2-695d-4e99-846a-c15e0fa6c931",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 12306,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 1209,
+      "output_tokens_details": {
+        "thinking_tokens": 174
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12306,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1209,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 12306,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 12306
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q15",
+    "type": "howto",
+    "q": "What is the recommended path for moving Oracle Advanced Queuing workloads to Azure?",
+    "expected": "No native equivalent in Azure SQL DB; Service Broker on SQL MI (not DB) or Azure Service Bus for messaging; PostgreSQL LISTEN/NOTIFY or a queue table; cite recorded pattern.",
+    "required_sources": [
+      "microsoft",
+      "community"
+    ]
+  },
+  "passages": [
+    {
+      "id": "feature_advanced-queuing",
+      "type": "oracleFeature",
+      "text": "integration | pre-11.2 | Oracle Advanced Queuing (AQ) | Advanced Queuing is the message broker built into the database. Messages live in queue tables and are enqueued and dequeued with DBMS_AQ inside ordinary database transactions, so a business update and its outgoing message commit or roll back together. It supports point-to-point and publish-subscribe queues, rule-based subscribers, persistent and buffered messages, propagation between queues on different databases, asynchronous notifications, and a Java Message Service interface. Migrations care because the transactional coupling between data and messages is exactly what external brokers lack. Moving to Azure Service Bus or Storage queues typically requires an outbox pattern to preserve atomicity, and PL/SQL consumers become functions or services. Queue tables, subscriber rules and propagation schedules are configuration that assessment tools rarely surface. Oracle's 19c Upgrade Guide states, in the Streams desupport notice, that Advanced Queuing is not deprecated and is fully supported. The 21c guide deprecates sharded queues in favor of Transactional Event Queues, which are the evolution of the same feature.",
+      "score": 18.553
+    },
+    {
+      "id": "source_ms-kb-oracle-vm-migration",
+      "type": "source",
+      "text": "page updated 2025-07 | Discovery/design/deploy flow; RAC is not supported on Azure VMs; data movement with RMAN, Data Pump, Data Guard, GoldenGate over VPN/ExpressRoute, AzCopy or Data Box; Data Pump not recommended for large sizes with strict downtime; cutover steps. | microsoft | 2026-09-26 | Migrate Oracle workloads to Azure VMs | https://learn.microsoft.com/en-us/azure/virtual-machines/workloads/oracle/oracle-migration",
+      "score": 15.226
+    },
+    {
+      "id": "target_functions",
+      "type": "azureTarget",
+      "text": "Azure Functions | functions | Azure Functions is event-driven serverless compute with triggers and bindings for timers, HTTP, Service Bus, Blob Storage, Azure SQL and other services, written in C#, Java, JavaScript, PowerShell, Python or Go. Durable Functions add stateful orchestrations. In Oracle migrations Functions replace database-hosted glue code that has no PaaS equivalent: DBMS_SCHEDULER jobs that call out to the OS or network, UTL_FILE or UTL_HTTP style file and web access, and Advanced Queuing consumers that reacted to messages. A timer trigger plus a T-SQL call is a common stand-in for a scheduler job on Azure SQL Database. | Hosting: Flex Consumption (recommended), Premium (always-warm, unlimited duration), Dedicated (App Service plan), Container Apps, and the legacy Windows-only Consumption plan.",
+      "score": 14.597
+    },
+    {
+      "id": "source_oracle-adque-19-intro",
+      "type": "source",
+      "text": "Advanced Queuing User's Guide 19c | oracle | 2026-09-26 | Introduction to Oracle Database Advanced Queuing (AQ User's Guide 19c) | https://docs.oracle.com/en/database/oracle/oracle-database/19/adque/aq-introduction.html",
+      "score": 14.234
+    },
+    {
+      "id": "feature_oracle-streams",
+      "type": "oracleFeature",
+      "text": "replication | 12.1 | 19c | pre-11.2 | Oracle Streams | Oracle GoldenGate | Oracle Streams was the database's built-in framework for log-based capture, propagation and apply of changes. Capture processes mined redo, staged logical change records in Advanced Queuing queues, and apply processes replayed them on the same or another database. It was used for replication, data sharing between systems and change feeds, and was configured through DBMS_STREAMS_ADM and related packages. Migrations care because a Streams configuration rarely shows up in application code; it appears as capture and apply processes, queue tables and rules. If downstream systems depend on a Streams feed, the Azure design needs a replacement pipeline, whether GoldenGate, Azure Data Factory or another change data capture tool, and the Azure database targets cannot participate in Streams at all. Oracle's 12.1 Upgrade Guide deprecates Streams and names GoldenGate as the replacement. The 19c Upgrade Guide desupports it starting with 19.1 (notice dated April 2019), noting that Streams never supported 12c-era features such as multitenant. The same notice states that Advanced Queuing itself is not deprecated and remains ",
+      "score": 11.579
+    },
+    {
+      "id": "target_service-bus",
+      "type": "azureTarget",
+      "text": "Azure Service Bus | service-bus | Azure Service Bus is a managed enterprise message broker with queues for point-to-point messaging and topics with filtered subscriptions for publish-subscribe. It offers sessions for FIFO and request-response, dead-letter subqueues, scheduled delivery, message deferral, duplicate detection, autoforwarding and transactions that group operations against a single entity. The wire protocol is AMQP 1.0 and Azure Functions, Logic Apps and Event Grid integrate natively. It is the closest Azure equivalent to Oracle Advanced Queuing for application-level messaging, with the important difference that the broker lives outside the database, so enqueue and dequeue are not part of a database transaction. | Basic, Standard and Premium tiers. Premium is fully JMS 2.0 compliant and supports zone-redundant namespaces; Standard supports the JMS 1.1 queue subset.",
+      "score": 11.441
+    },
+    {
+      "id": "mapping_non-cdb-architecture--oracle-on-azure-vm",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c | M | workaround | On a self-managed VM any Oracle release can be installed, so a 19c non-CDB can be lifted as-is, but that only postpones the conversion because later releases are multitenant-only. AutoUpgrade can upgrade and convert a non-CDB into a PDB of a new or existing CDB in a single operation, which is the recommended step when moving to a VM on a newer release. | Provision the VM with the target Oracle release from the marketplace image or a custom image. Create an empty CDB on the VM. Run AutoUpgrade with the non-CDB as source and the CDB as target to upgrade and plug in. Update connection strings to the PDB service name.",
+      "score": 10.688
+    },
+    {
+      "id": "mapping_advanced-queuing--azure-sql-db",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | L | none | Azure SQL Database has no Service Broker and no other in-database queue, so Advanced Queuing has no direct target here. Messaging must move to Service Bus (or Storage queues) with an outbox table for transactional consistency, and consumers become application services or Azure Functions. | Move queue definitions to Service Bus. Write an outbox table in the same transaction as business DML and relay it with a function or worker. Replace dequeue-driven PL/SQL with Service Bus triggered code.",
+      "score": 10.128
+    }
+  ],
+  "result": "**Recommendation:** If the target is a managed Azure database such as Azure SQL Database, move AQ messaging to **Azure Service Bus**. Keep transactional consistency with an **outbox table**, and rewrite PL/SQL consumers as **Azure Functions** or application services [1][6][8].\n\n**Key facts from the passages:**\n\n- **Why it's hard:** AQ enqueues and dequeues inside ordinary database transactions, so a business update and its message commit or roll back together. External brokers don't do this [1]. Service Bus is the closest Azure equivalent, but it runs outside the database, so its enqueue and dequeue aren't part of a database transaction [6].\n- **No in-database target on Azure SQL Database:** It has no Service Broker and no other in-database queue. The mapping is rated low (\"L\") with no direct equivalent [8].\n- **Steps [8]:**\n  1. Recreate the queue definitions in Service Bus.\n  2. Write to an outbox table in the same transaction as the business DML. A function or worker then relays those rows to Service Bus.\n  3. Replace dequeue-driven PL/SQL with code triggered by Service Bus. Azure Functions has native Service Bus triggers [3].\n- **How AQ features map to Service Bus [6]:**\n  - Point-to-point queues → Service Bus queues.\n  - Publish-subscribe with rule-based subscribers → topics with filtered subscriptions.\n  - JMS → full JMS 2.0 on the Premium tier; Standard supports only the JMS 1.1 queue subset.\n  - Storage queues are the simpler alternative [1][8].\n- **Assessment gap:** Queue tables, subscriber rules and propagation schedules are configuration that assessment tools rarely surface. You need to inventory them by hand [1].\n- **AQ itself is still supported:** Oracle's 19c Upgrade Guide says AQ is not deprecated. 21c deprecates sharded queues in favour of Transactional Event Queues, which are the next version of the same feature [1]. Don't confuse AQ with Streams, which was desupported in 19c. Streams used AQ queues internally, and a Streams feed needs its own replacement pipeline, such as GoldenGate or Azure Data Factory [5].\n\n**What the passages don't answer:** They don't give a recommendation for keeping AQ as-is on Oracle on an Azure VM. Passage [7] says any Oracle release can be installed on a VM, but it doesn't mention AQ, so I can't cite the passages for \"lift AQ unchanged onto a VM.\" The VM migration guide covers data movement only (RMAN, Data Pump, Data Guard, GoldenGate) [2].\n\n**Sources:**\n- [2] https://learn.microsoft.com/en-us/azure/virtual-machines/workloads/oracle/oracle-migration\n- [4] https://docs.oracle.com/en/database/oracle/oracle-database/19/adque/aq-introduction.html\n- [1], [3], [5], [6], [7], [8] are internal reference entries with no URLs.",
+  "stderr": ""
+}

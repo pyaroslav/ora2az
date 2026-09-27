@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q09",
+    "type": "fact",
+    "cond": "groq",
+    "num_turns": 4,
+    "duration_ms": 22294,
+    "session_id": "6a8f35aa-4c0b-47f2-ad1f-a496f3d2128b",
+    "usage": {
+      "input_tokens": 8,
+      "cache_creation_input_tokens": 5684,
+      "cache_read_input_tokens": 26771,
+      "output_tokens": 1857,
+      "output_tokens_details": {
+        "thinking_tokens": 65
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 5684,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1387,
+          "cache_read_input_tokens": 8214,
+          "cache_creation_input_tokens": 2568,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 2568
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q09",
+    "type": "fact",
+    "q": "Can we keep using PRAGMA AUTONOMOUS_TRANSACTION logic after moving to Azure SQL Managed Instance?",
+    "expected": "No direct equivalent in T-SQL; converters lose the semantics; workarounds (separate connection/loopback, table variables for logging) with the recorded caveats.",
+    "required_sources": [
+      "microsoft",
+      "community"
+    ]
+  },
+  "result": "**Verdict: No — PRAGMA AUTONOMOUS_TRANSACTION has no working equivalent on Azure SQL Managed Instance.** The mapping is rated `workaround` fidelity with `L` (large) effort, and the standard emulation mechanism is explicitly blocked on Managed Instance.\n\n### Scoped facts (Oracle 11.2–23ai → Azure SQL Managed Instance, all tiers: General Purpose, Next-gen General Purpose, Business Critical)\n\n- SQL Server (and therefore Azure SQL MI) has no autonomous transaction concept: nested `BEGIN TRAN` calls simply join the outer transaction. — [SSMA for Oracle: O2SS0205 Unable to convert PRAGMA AUTONOMOUS_TRANSACTION](https://learn.microsoft.com/en-us/sql/ssma/oracle/messages/o2ss0205)\n- Microsoft's SQL Server Migration Assistant (SSMA) tries to emulate the pragma at the routine level by splitting the routine into an implementation procedure plus a wrapper that calls an **extended stored procedure** (`xp_ora2ms_exec2_ex` in `master`) to open a second connection and run the logic independently. This is documented as slow compared with native Oracle behavior. — [SSMA for Oracle: O2SS0205](https://learn.microsoft.com/en-us/sql/ssma/oracle/messages/o2ss0205)\n- **Blocker caveat**: Azure SQL Managed Instance does not support extended stored procedures at all (`sp_addextendedproc`/`sp_dropextendedproc` are unavailable). This means SSMA's extended-procedure-based emulator **cannot be installed** on Managed Instance, and any converted routine that depends on it must be manually rewritten. Applies to all MI tiers (General Purpose, Next-gen General Purpose, Business Critical). — [T-SQL differences between SQL Server and Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/transact-sql-tsql-differences-sql-server)\n- Additionally, SSMA doesn't even convert the pragma inside **anonymous blocks** at all (error O2SS0205), regardless of target. — [SSMA for Oracle: O2SS0205](https://learn.microsoft.com/en-us/sql/ssma/oracle/messages/o2ss0205)\n- Recommended alternative per the dataset's rationale: for logging-style autonomous transactions (the most common use case), replace with **table variables** (which survive rollback) or an external log sink, rather than trying to emulate the pragma. — [SSMA for Oracle: Converting Oracle Schemas](https://learn.microsoft.com/en-us/sql/ssma/oracle/converting-oracle-schemas-oracletosql)\n\n### Note on scope\nThis mapping applies to Oracle 11.2 through 23ai (the feature itself was introduced pre-11.2, per [oracleFeature: PRAGMA AUTONOMOUS_TRANSACTION], and is not marked deprecated/desupported in the dataset).\n\n### Alternative target noted in the dataset (not what you asked, but relevant)\nIf Azure SQL MI is not a hard requirement, the dataset also has a mapping to **Azure Database for PostgreSQL Flexible Server**, also rated `workaround`/`M` effort — PostgreSQL has no autonomous transactions either, but PL/pgSQL allows `COMMIT`/`ROLLBACK` in procedures called at the top of the call stack, and tools (Ora2Pg, Microsoft's PG schema-conversion tooling) emulate the pragma via a second connection (dblink or `pg_background`), which adds a connection per call and bypasses the caller's snapshot. — [PostgreSQL documentation: Transaction management in PL/pgSQL](https://www.postgresql.org/docs/current/plpgsql-transactions.html)\n\nNo disputes are recorded in the dataset for this feature.",
+  "stderr": ""
+}

@@ -1,0 +1,58 @@
+{
+  "meta": {
+    "id": "q04",
+    "type": "fact",
+    "cond": "groq",
+    "num_turns": 6,
+    "duration_ms": 31335,
+    "session_id": "6bae6b8c-a3bd-4ad6-bc20-c4996dc6ab94",
+    "usage": {
+      "input_tokens": 8,
+      "cache_creation_input_tokens": 7265,
+      "cache_read_input_tokens": 28177,
+      "output_tokens": 2450,
+      "output_tokens_details": {
+        "thinking_tokens": 567
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 7265,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1561,
+          "cache_read_input_tokens": 9636,
+          "cache_creation_input_tokens": 2727,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 2727
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q04",
+    "type": "fact",
+    "q": "Our app relies on empty string being NULL in VARCHAR2 columns. Which Azure targets keep that behaviour?",
+    "expected": "None of Azure SQL DB/MI or PostgreSQL treat '' as NULL; flags this as a semantic difference requiring code review; Oracle Database@Azure keeps Oracle semantics.",
+    "required_sources": [
+      "oracle",
+      "microsoft",
+      "community"
+    ]
+  },
+  "result": "**Verdict: None.** The dataset shows no Azure target that preserves Oracle's \"empty string = NULL\" behavior for VARCHAR2 natively — only workarounds exist for the two mapped targets.\n\n## Feature\n[Empty string equals NULL](feature_empty-string-null) — \"Oracle treats a character value of zero length as NULL... Oracle's SQL reference explicitly says this may not remain true in future releases and advises applications not to depend on it.\" Documented, unchanged as of 26ai, applies to Oracle 11.2–26ai.\n\n## Mapped Azure targets (both fidelity = **workaround**)\n\n**Azure SQL Database**\n- Fidelity: workaround, Effort: M\n- \"Oracle stores a zero-length VARCHAR2 as NULL... SQL Server keeps '' as a real value distinct from NULL... After migration the same INSERT of '' produces a non-null row, IS NULL predicates stop matching it, and NOT NULL constraints that used to reject '' now accept it.\" — [NULL and UNKNOWN (Transact-SQL)](https://learn.microsoft.com/en-us/sql/t-sql/language-elements/null-and-unknown-transact-sql) (Microsoft)\n- Caveat (major): \"In SQL Server and Azure SQL an empty string '' is a stored zero-length value that is distinct from NULL.\" — same source.\n- Applies to Oracle 11.2–26ai.\n\n**Azure Database for PostgreSQL Flexible Server**\n- Fidelity: workaround, Effort: M\n- \"PostgreSQL distinguishes '' from NULL exactly as SQL Server does. Ora2Pg offers NULL_EQUAL_EMPTY, which rewrites IS NULL and IS NOT NULL tests into coalesce()-based checks so converted code keeps Oracle's behaviour... orafce adds a trigger function that replaces empty strings with NULL on write.\" — [Ora2Pg documentation](https://ora2pg.darold.net/documentation.html) (community), [orafce README](https://github.com/orafce/orafce/blob/master/README.asciidoc)\n- Caveat (major): \"PostgreSQL treats '' as a non-NULL value.\" — same Ora2Pg source.\n- Applies to Oracle 11.2–26ai.\n\n## Gaps\n- No dispute is recorded on this feature.\n- The dataset has no mapping entry for this feature against Oracle Database@Azure or Oracle on Azure VM (both run real Oracle, which would presumably preserve the behavior natively) — the dataset has no evidence either way for those targets.\n- No other azureTarget (Azure SQL Managed Instance, Fabric, etc.) has a mapping for this feature in the dataset.\n\n**Bottom line for your app:** if you move VARCHAR2-empty-string-as-NULL logic to Azure SQL Database or Azure PostgreSQL Flexible Server, the native behavior does *not* carry over — you need the cited workarounds (application-level coalesce rewrites, Ora2Pg's `NULL_EQUAL_EMPTY`, or orafce's empty-to-NULL trigger). No mapped target reproduces the behavior with `exact` fidelity per this dataset.",
+  "stderr": ""
+}

@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "id": "q07",
+    "type": "howto",
+    "cond": "bm25",
+    "num_turns": 1,
+    "duration_ms": 9901,
+    "session_id": "3b96ecf1-0d7f-44a5-b19e-263c2e29df5c",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 11948,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 945,
+      "output_tokens_details": {
+        "thinking_tokens": 88
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 11948,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 945,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 11948,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 11948
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q07",
+    "type": "howto",
+    "q": "How do we replace fast-refresh materialized views when moving to Azure Database for PostgreSQL?",
+    "expected": "PostgreSQL has no incremental (fast) refresh; options: REFRESH MATERIALIZED VIEW (full, optionally CONCURRENTLY), trigger-maintained summary tables, or pg_cron scheduling; effort and caveats cited.",
+    "required_sources": [
+      "community",
+      "microsoft"
+    ]
+  },
+  "passages": [
+    {
+      "id": "feature_materialized-views-fast-refresh",
+      "type": "oracleFeature",
+      "text": "performance | pre-11.2 | Fast-refresh materialized views | A materialized view stores the result of a query as a real segment and can be refreshed either completely, by re-running the defining query, or incrementally (\"fast\"), by applying only the changes recorded in materialized view logs on the base tables or by partition change tracking. Refresh can run on commit or on demand, and query rewrite lets the optimizer answer queries against base tables from a matching materialized view without changing application SQL. Migrations care because incremental refresh and query rewrite are where the difficulty lies. SQL Server indexed views are maintained synchronously but accept only a restricted class of queries, and PostgreSQL materialized views support only complete refresh. Fast-refresh views with joins and aggregates, on-commit refresh and rewrite-dependent reporting therefore need re-engineering, often into scheduled loads or change-driven summary tables. Read-only materialized views are supported and not deprecated. The updatable variety used for disconnected replication was removed with Advanced Replication in 12.2.",
+      "score": 24.761
+    },
+    {
+      "id": "mapping_materialized-views-fast-refresh--azure-pg-flex",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | M | partial | PostgreSQL materialized views persist a query result but are refreshed only by REFRESH MATERIALIZED VIEW, which recomputes the whole result (CONCURRENTLY avoids blocking readers but still recomputes). There are no materialized view logs, no fast refresh and no refresh on commit. The pg_ivm extension, available on Flexible Server for PostgreSQL 13 and later, adds incrementally maintained views for a subset of query shapes. | Export with Ora2Pg TYPE=MVIEW and schedule REFRESH MATERIALIZED VIEW CONCURRENTLY with pg_cron. Add a unique index to each view so CONCURRENTLY is allowed. Evaluate pg_ivm for views that need near-real-time freshness and fit its supported query shapes. Rewrite query-rewrite-dependent code, because PostgreSQL never substitutes a materialized view automatically.",
+      "score": 24.725
+    },
+    {
+      "id": "mapping_materialized-views-fast-refresh--azure-sql-db",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | L | partial | The closest engine feature is the indexed view: a view with a unique clustered index whose rows are maintained synchronously as base tables change, which is stronger than fast refresh (no staleness) but far more restrictive. SSMA converts materialized views to indexed views and fails when the definition has outer joins, subqueries, DISTINCT, MIN/MAX, UNION, HAVING, window functions or nondeterministic expressions, and indexed views add cost to every write on the base tables. Views that cannot be indexed become tables refreshed by a scheduled job. | Test each materialized view definition against the indexed-view restrictions (SCHEMABINDING, COUNT_BIG with GROUP BY, no outer joins). Convert eligible views to indexed views and measure DML overhead on the base tables. For the rest, create a table plus a stored procedure doing a full or delta rebuild, scheduled with Elastic Jobs or Agent. Drop the concept of REFRESH ON COMMIT; indexed views are always current, tables are refreshed on schedule.",
+      "score": 20.395
+    },
+    {
+      "id": "caveat_pg-no-fast-refresh-mv",
+      "type": "caveat",
+      "text": "major | PostgreSQL REFRESH MATERIALIZED VIEW completely replaces the view's contents by re-running its query; the CONCURRENTLY option (which requires a unique index on plain columns) avoids blocking readers but still recomputes everything, and there is no incremental or fast refresh, no materialized view log and no refresh on commit.",
+      "score": 19.443
+    },
+    {
+      "id": "source_postgres-docs-matviews",
+      "type": "source",
+      "text": "PostgreSQL 18 | Materialized views persist query results and are refreshed later with REFRESH MATERIALIZED VIEW; WITH [NO] DATA. | community | 2026-09-26 | PostgreSQL documentation: CREATE MATERIALIZED VIEW | https://www.postgresql.org/docs/current/sql-creatematerializedview.html",
+      "score": 19.107
+    },
+    {
+      "id": "source_oracle-cncpt-19-schema-objects",
+      "type": "source",
+      "text": "Database Concepts 19c, E96138-11, Sep 2025 | Partitioning strategies and indexes, materialized view refresh methods and query rewrite, sequences and gaps. | oracle | 2026-09-26 | Partitions, Views, and Other Schema Objects (Database Concepts 19c) | https://docs.oracle.com/en/database/oracle/oracle-database/19/cncpt/partitions-views-and-other-schema-objects.html",
+      "score": 15.964
+    },
+    {
+      "id": "source_postgres-docs-refresh-matview",
+      "type": "source",
+      "text": "PostgreSQL 18 | Refresh fully replaces the contents; CONCURRENTLY needs a unique index and avoids blocking readers; no incremental refresh. | community | 2026-09-26 | PostgreSQL documentation: REFRESH MATERIALIZED VIEW | https://www.postgresql.org/docs/current/sql-refreshmaterializedview.html",
+      "score": 14.358
+    },
+    {
+      "id": "caveat_ssma-mview-indexed-view-restrictions",
+      "type": "caveat",
+      "text": "major | SSMA converts Oracle materialized views to indexed views and fails the conversion when the definition uses user-defined functions, nondeterministic expressions, float columns in SELECT/WHERE/GROUP BY, custom types, COUNT(DISTINCT), FETCH, outer joins, subqueries or other views, window functions, MIN/MAX, UNION/MINUS/INTERSECT or HAVING.",
+      "score": 13.901
+    }
+  ],
+  "result": "**Verdict:** There is no direct equivalent to fast refresh. PostgreSQL materialized views on Azure Database for PostgreSQL only support full recompute. You have three options: move to scheduled full refreshes, use pg_ivm where the query fits, or rebuild the view as your own summary table.\n\n**What you lose** [2][4][7]\n- There are no materialized view logs, no fast (incremental) refresh and no refresh on commit.\n- `REFRESH MATERIALIZED VIEW` always re-runs the whole query. Adding `CONCURRENTLY` stops it from blocking readers, but it still recomputes everything. It also needs a unique index on plain columns.\n- There is no query rewrite. PostgreSQL never swaps a materialized view in for base-table queries automatically [2].\n\n**Replacement approach** [2]\n1. **Export:** Use Ora2Pg with `TYPE=MVIEW` to convert the view definitions.\n2. **Default pattern:** Add a unique index to each view, then schedule `REFRESH MATERIALIZED VIEW CONCURRENTLY` with pg_cron.\n3. **Near-real-time needs:** Evaluate the pg_ivm extension. It's available on Flexible Server for PostgreSQL 13 and later, and it maintains views incrementally, but only for some query shapes.\n4. **Query-rewrite code:** Change the reporting SQL so it queries the materialized view directly.\n\n**Harder cases** [1]\nSome views won't fit the patterns above. Examples are fast-refresh views with joins and aggregates, views that refresh on commit, and reports that depend on query rewrite. These usually need re-engineering into scheduled loads or change-driven summary tables.\n\n**Sources**\n- [5] PostgreSQL docs, CREATE MATERIALIZED VIEW: https://www.postgresql.org/docs/current/sql-creatematerializedview.html\n- [7] PostgreSQL docs, REFRESH MATERIALIZED VIEW: https://www.postgresql.org/docs/current/sql-refreshmaterializedview.html\n- [6] Oracle 19c Concepts (the Oracle refresh methods and query rewrite): https://docs.oracle.com/en/database/oracle/oracle-database/19/cncpt/partitions-views-and-other-schema-objects.html\n- [2] Oracle → Azure PG Flexible Server mapping note. No URL was given for it.\n\nThe passages don't list which query shapes pg_ivm supports. Check its documentation before committing to it.",
+  "stderr": ""
+}

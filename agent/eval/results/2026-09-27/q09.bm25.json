@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "id": "q09",
+    "type": "fact",
+    "cond": "bm25",
+    "num_turns": 1,
+    "duration_ms": 8906,
+    "session_id": "fa62ae7f-0d3c-4cfc-b440-cc2b4e3725c8",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 12134,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 821,
+      "output_tokens_details": {
+        "thinking_tokens": 48
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12134,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 821,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 12134,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 12134
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q09",
+    "type": "fact",
+    "q": "Can we keep using PRAGMA AUTONOMOUS_TRANSACTION logic after moving to Azure SQL Managed Instance?",
+    "expected": "No direct equivalent in T-SQL; converters lose the semantics; workarounds (separate connection/loopback, table variables for logging) with the recorded caveats.",
+    "required_sources": [
+      "microsoft",
+      "community"
+    ]
+  },
+  "passages": [
+    {
+      "id": "mapping_autonomous-transactions--azure-sql-mi",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | L | workaround | SQL Server has no autonomous transaction: nested BEGIN TRAN calls join the outer transaction. SSMA emulates the pragma at routine level by splitting the routine into an implementation procedure and a wrapper that calls an extended stored procedure to open a second connection, but Managed Instance does not support extended stored procedures, so this emulation cannot be deployed there. Logging-style autonomous transactions are better replaced with table variables (which survive rollback) or an external log sink. | List routines with PRAGMA AUTONOMOUS_TRANSACTION and classify them (audit logging, error logging, counters, business logic). For logging, write to a table variable and persist after the outer transaction ends, or send to Azure Monitor / Event Hubs. For business logic, restructure so the independent work is a separate call from the application. Avoid the SSMA extended-procedure emulator on PaaS targets; rewrite instead.",
+      "score": 19.541
+    },
+    {
+      "id": "dispute_ssma-autonomous-transaction-emulation-on-mi",
+      "type": "dispute",
+      "text": "Treat every 'converted' autonomous transaction as a manual rewrite when the target is Managed Instance or Azure SQL Database. Typical replacements: write audit rows through a separate connection from the application tier, use table variables (which survive a rollback) to carry log data out of the failing transaction, or move the side effect to a Service Broker activation procedure on Managed Instance. Verify by searching the converted T-SQL for xp_ora2ms_exec2_ex before deploying. | Does SSMA's autonomous-transaction emulation run on Managed Instance? | SSMA reports PRAGMA AUTONOMOUS_TRANSACTION in procedures and functions as converted, because it emulates the pragma with an extended stored procedure that opens a second connection. Microsoft's own list of T-SQL differences says Azure SQL Managed Instance does not support extended stored procedures at all. One Microsoft tool marks as done what another Microsoft platform cannot host.",
+      "score": 16.746
+    },
+    {
+      "id": "source_ms-ssma-o2ss0205",
+      "type": "source",
+      "text": "page updated 2025-05-27 | Block-level pragma not converted; routine-level autonomous transactions emulated with the xp_ora2ms_exec2_ex extended stored procedure over a loopback connection. | microsoft | 2026-09-26 | SSMA for Oracle: O2SS0205 Unable to convert PRAGMA AUTONOMOUS_TRANSACTION | https://learn.microsoft.com/en-us/sql/ssma/oracle/messages/o2ss0205",
+      "score": 14.325
+    },
+    {
+      "id": "caveat_ssma-autonomous-tx-extended-proc",
+      "type": "caveat",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai | major | SSMA does not convert PRAGMA AUTONOMOUS_TRANSACTION in anonymous blocks (error O2SS0205); for procedures and functions it emulates the pragma by calling the extended stored procedure xp_ora2ms_exec2_ex in master, which opens a second connection to run the split-out implementation procedure and is documented as slow compared with Oracle.",
+      "score": 12.893
+    },
+    {
+      "id": "feature_autonomous-transactions",
+      "type": "oracleFeature",
+      "text": "plsql | pre-11.2 | PRAGMA AUTONOMOUS_TRANSACTION | An autonomous transaction is an independent transaction started from inside another one. A procedure, function or trigger declared with PRAGMA AUTONOMOUS_TRANSACTION suspends the calling transaction, does its own work, commits or rolls back on its own, and then lets the caller resume. It does not see the caller's uncommitted changes and does not share its locks. Migrations care because the pattern is common for error logging, audit trails and counters that must survive a rollback of the main work, and neither Transact-SQL nor PL/pgSQL has an equivalent construct. Emulations exist (table variables that ignore rollback on SQL Server, a loopback connection on PostgreSQL) but each changes semantics, so every autonomous unit needs a design decision rather than a mechanical rewrite. The feature is a core part of PL/SQL and is not deprecated. Oracle's Concepts guide describes it under transactions, noting that committed changes become visible to other sessions immediately and that autonomous units can nest.",
+      "score": 12.739
+    },
+    {
+      "id": "source_ms-sql-query-store",
+      "type": "source",
+      "text": "page updated 2026-08-27 | Plan forcing (sp_query_store_force_plan), Query Store hints, enabled by default on Azure SQL Database and Managed Instance, collects DML plans only, can force only plans it retained. | microsoft | 2026-09-26 | Monitor performance by using the Query Store | https://learn.microsoft.com/en-us/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store",
+      "score": 12.158
+    },
+    {
+      "id": "mapping_autonomous-transactions--azure-pg-flex",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | M | workaround | PostgreSQL has no autonomous transactions; procedures can COMMIT only when called at top level, and functions cannot commit at all. Both Ora2Pg and Microsoft's schema conversion tool emulate the pragma by running the body over a second connection with dblink (Ora2Pg optionally with pg_background), which works but adds a connection per call and bypasses the caller's snapshot. | Keep AUTONOMOUS_TRANSACTION enabled in Ora2Pg (or accept the tool's dblink wrapper) for a first working port. Allowlist dblink on the Flexible Server and secure its connection string. Replace high-frequency logging autonomous routines with plain inserts committed by the caller, or with an external log. Load-test, since each wrapped call opens a new session.",
+      "score": 11.745
+    },
+    {
+      "id": "caveat_dms-oracle-offline-preview-via-ssma",
+      "type": "caveat",
+      "text": "major | Azure Database Migration Service lists Oracle as a source only for offline migrations to Azure SQL Database, Azure SQL Managed Instance and SQL Server on Azure VMs, each marked 'Yes [using DMS via SSMA]' with Preview status, and lists no Oracle online migration scenario.",
+      "score": 11.124
+    }
+  ],
+  "result": "**No, not as-is.** Azure SQL Managed Instance has no autonomous transactions, and the emulation SSMA generates for them won't deploy there. Plan to rewrite every one of these routines by hand.\n\n**Key facts**\n\n- **No native equivalent.** SQL Server has no autonomous transactions. A nested `BEGIN TRAN` joins the outer transaction, so its work rolls back with the caller. [1][5]\n- **SSMA's report is misleading.**\n  - For anonymous blocks, SSMA doesn't convert the pragma at all and raises error O2SS0205. [3][4]\n  - For procedures and functions, SSMA reports the pragma as \"converted\". It splits each routine into an implementation procedure plus a wrapper. The wrapper calls the extended stored procedure `master..xp_ora2ms_exec2_ex`, which opens a second loopback connection. Microsoft documents this as slow compared with Oracle. [3][4]\n  - Managed Instance doesn't support extended stored procedures, so this converted code can't be deployed there. The same applies to Azure SQL Database. [1][2]\n  - Source: https://learn.microsoft.com/en-us/sql/ssma/oracle/messages/o2ss0205\n- **Why it matters:** these routines usually handle error logging, audit trails or counters that must survive a rollback of the main work. Any replacement changes the behaviour, so each routine needs its own design decision. [5]\n\n**What to do instead** [1][2]\n1. List every routine that uses `PRAGMA AUTONOMOUS_TRANSACTION`. Sort them into audit logging, error logging, counters and business logic.\n2. **Logging and audit:**\n   - Write the log rows to a table variable, which keeps its data after a rollback. Save them to a real table once the outer transaction ends.\n   - Or send the log to Azure Monitor or Event Hubs.\n   - Or write the audit rows through a separate connection from the application.\n3. **Business logic:** restructure it so the independent work is a separate call from the application. On Managed Instance, another option is to move the side effect into a Service Broker activation procedure.\n4. **Check before you deploy:** search the converted T-SQL for `xp_ora2ms_exec2_ex`. Every hit is a routine you still need to rewrite.",
+  "stderr": ""
+}

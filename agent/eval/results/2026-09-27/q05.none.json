@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "q05",
+    "type": "refusal",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 13351,
+    "session_id": "3484f1e1-ae1c-440b-9283-5dedf6f97451",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 9988,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 1157,
+      "output_tokens_details": {
+        "thinking_tokens": 278
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 9988,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1157,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 9988,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 9988
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q05",
+    "type": "refusal",
+    "q": "What is the maximum IOPS of a Premium SSD v2 disk for an Oracle VM on Azure?",
+    "expected": "Dataset has no evidence unless a storage source exists; the agent must say the dataset lacks it rather than answer from memory.",
+    "required_sources": []
+  },
+  "result": "**Answer: 80,000 IOPS per Premium SSD v2 disk.** In practice, the VM's own disk limit is often the real ceiling for an Oracle database, not the disk.\n\n**Premium SSD v2 per-disk limits**\n- **IOPS:** 3,000 IOPS are included free at any size. You can provision up to 80,000.\n- **IOPS per GiB:** up to 500 IOPS per GiB above 6 GiB. That means a disk needs at least about 160 GiB to reach 80,000 IOPS.\n- **Throughput:** 125 MB/s is included free. You can provision up to 1,200 MB/s, at up to 0.25 MB/s per provisioned IOPS.\n- **Capacity:** 1 GiB to 64 TiB.\n- **Changing performance:** You can raise or lower IOPS and throughput while the disk is online, without resizing it. There are limits on how often you can change them.\n- Source: https://learn.microsoft.com/azure/virtual-machines/disks-types#premium-ssd-v2\n\n**What this means for Oracle**\n1. **The VM limit comes first.** Each VM size has its own uncached disk IOPS and MB/s limit. For example, many E-series (memory-optimized) sizes top out well below the total of several v2 disks. Check the \"Max uncached disk IOPS/throughput\" figure for your size. Constrained-vCPU sizes let you cut Oracle core licensing while keeping the VM's I/O limit. https://learn.microsoft.com/azure/virtual-machines/sizes\n2. **Premium SSD v2 has no host caching.** Plan redo, data and temp around uncached latency, which is typically sub-millisecond to low single-digit milliseconds.\n3. **To go past 80,000 IOPS or 1,200 MB/s,** stripe several v2 disks with Oracle ASM (Automatic Storage Management) or LVM. You're still capped by the VM limit. If you need more than the VM allows, look at Azure NetApp Files over dNFS or Azure Elastic SAN. Microsoft's Oracle guidance recommends NetApp Files for large, throughput-heavy databases. https://learn.microsoft.com/azure/virtual-machines/workloads/oracle/oracle-design\n4. **Size from AWR data** (Oracle's Automatic Workload Repository performance reports), not from the disk's maximum. Use peak physical read and write IOPS plus redo MB/s, then buy only the IOPS and throughput you need above the free baseline.\n\nMicrosoft does change these limits, so check the linked page before you finalize a design.",
+  "stderr": ""
+}

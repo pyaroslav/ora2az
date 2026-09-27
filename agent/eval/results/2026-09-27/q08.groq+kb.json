@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q08",
+    "type": "fact",
+    "cond": "groq+kb",
+    "num_turns": 10,
+    "duration_ms": 49034,
+    "session_id": "b790b475-781b-4442-a54e-aa7afaffd74a",
+    "usage": {
+      "input_tokens": 16,
+      "cache_creation_input_tokens": 15637,
+      "cache_read_input_tokens": 116261,
+      "output_tokens": 4001,
+      "output_tokens_details": {
+        "thinking_tokens": 1289
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 15637,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1587,
+          "cache_read_input_tokens": 20383,
+          "cache_creation_input_tokens": 1068,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 1068
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q08",
+    "type": "fact",
+    "q": "Which Oracle auditing method survives into 26ai and what does Azure SQL offer instead?",
+    "expected": "Traditional auditing desupported in 26ai (deprecated 21c) → Unified Auditing; on Azure SQL use Azure SQL Auditing (server/database policies to Log Analytics/Storage); note gaps vs FGA if recorded.",
+    "required_sources": [
+      "oracle",
+      "microsoft"
+    ]
+  },
+  "result": "**Verdict:** Oracle **Unified Auditing** (12c+) is the method that survives into 26ai. **Traditional Auditing** is deprecated in 21c and desupported in 26ai, replaced by Unified Auditing. Azure SQL Database/Managed Instance's counterpart is **Azure SQL Auditing**, mapped at **partial fidelity** with documented coverage gaps.\n\n**Oracle side**\n- Traditional (pre-Unified) Auditing (`AUDIT_TRAIL` parameter, `SYS.AUD$`, `FGA_LOG$`) — introduced pre-11.2, **deprecated in 21c**, **desupported in 26ai**; Oracle's recorded replacement is Unified Auditing. [Oracle Database Changes, Desupports, and Deprecations (Upgrade Guide 21c)](https://docs.oracle.com/en/database/oracle/oracle-database/21/upgrd/oracle-database-changes-deprecations-desupports.html), [Oracle Database Changes, Desupports, and Deprecations (Upgrade Guide 26ai)](https://docs.oracle.com/en/database/oracle/oracle-database/26/upgrd/oracle-database-changes-deprecations-desupports.html)\n- Unified Auditing (12c onward) — Oracle's single audit facility: named policies (`CREATE AUDIT POLICY` / `AUDIT`), all sources written to `UNIFIED_AUDIT_TRAIL`, managed via `DBMS_AUDIT_MGMT`; predefined `ORA_SECURECONFIG` and `ORA_LOGON_FAILURES` ship enabled; records are written in queued mode (call `DBMS_AUDIT_MGMT.FLUSH_UNIFIED_AUDIT_TRAIL` before trusting an empty-looking trail). It explicitly replaces the now-desupported traditional auditing. [Oracle Database Security Guide 19c: Introduction to Auditing](https://docs.oracle.com/en/database/oracle/oracle-database/19/dbseg/introduction-to-auditing.html)\n\n**Azure side — mapping (dataset: traditional-auditing → Azure SQL Auditing)**\n- Fidelity: **partial**, effort **M**, applies to Oracle **11.2–23ai** source states (i.e., while traditional auditing still exists on the source). Azure SQL `AUDIT` action groups (batch completed, logins, schema/permission changes) written to Blob Storage, Log Analytics, or Event Hubs are the mapped mechanism; granularity differs from Oracle's per-object BY ACCESS/BY SESSION model. [Auditing for Azure SQL Database and Azure Synapse Analytics](https://learn.microsoft.com/en-us/azure/azure-sql/database/auditing-overview), [Configure auditing for Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/auditing-configure)\n- **Caveat (major severity)**, applies to Azure SQL tiers General Purpose, Business Critical, Hyperscale: Azure SQL Auditing is best-effort under very high load (may not capture every event), truncates statement text at **4,000 characters**, does **not** audit `tempdb`/temp tables, and does **not** record failed Microsoft Entra logins in the SQL audit log (those require Entra sign-in logs separately). [Auditing for Azure SQL Database and Azure Synapse Analytics](https://learn.microsoft.com/en-us/azure/azure-sql/database/auditing-overview)\n\n**Other Azure targets (context, not Azure SQL):**\n- PostgreSQL Flexible Server maps traditional-auditing intent to **pgAudit**, also **partial fidelity**, with caveats that pgAudit config is lost on in-place major-version upgrades and that superusers can't be reliably audited. [Audit logging in Azure Database for PostgreSQL flexible server (pgaudit)](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/concepts-audit), [pgAudit README](https://github.com/pgaudit/pgaudit)\n- Oracle Database@Azure requires **no re-expression**: Unified Auditing runs unchanged in-database, optionally surfaced via Azure Monitor — per the \"Auditing Migration and Compliance\" pattern entry.\n\nNo dispute in the dataset touches this topic.",
+  "stderr": ""
+}

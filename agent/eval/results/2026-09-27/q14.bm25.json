@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "id": "q14",
+    "type": "fact",
+    "cond": "bm25",
+    "num_turns": 1,
+    "duration_ms": 8345,
+    "session_id": "54e32213-3431-40e7-b7ec-11cf0ad1c7fc",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 12461,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 830,
+      "output_tokens_details": {
+        "thinking_tokens": 21
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12461,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 830,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 12461,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 12461
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q14",
+    "type": "fact",
+    "q": "Our VARCHAR2(100) columns hold multibyte text. Anything to watch on Azure SQL?",
+    "expected": "Oracle length semantics may be BYTE; SQL Server varchar(n) is bytes in a single-byte collation, nvarchar(n) is characters (UTF-16) — choose nvarchar or UTF-8 collation; SSMA maps varchar2 to varchar by default.",
+    "required_sources": [
+      "microsoft",
+      "oracle"
+    ]
+  },
+  "passages": [
+    {
+      "id": "caveat_pg-varchar-counts-characters",
+      "type": "caveat",
+      "text": "minor | PostgreSQL varchar(n) and char(n) limit length in characters, not bytes, so Oracle VARCHAR2 columns declared with BYTE semantics on a multibyte character set accept more data in PostgreSQL than in Oracle, and orafce's varchar2 type must be used if byte semantics are required.",
+      "score": 17.23
+    },
+    {
+      "id": "mapping_varchar2-byte-semantics--azure-pg-flex",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | S | partial | PostgreSQL varchar(n) counts characters, not bytes, and databases are normally UTF-8, so Oracle columns declared with CHAR semantics map one-to-one. Columns declared in BYTE semantics on a multibyte database are looser in PostgreSQL, which is harmless, but applications that depended on byte-length overflow errors will no longer get them; orafce ships a varchar2 type with byte semantics for that case. | Let Ora2Pg map VARCHAR2 to varchar; consider text where lengths were arbitrary. Where byte-exact behaviour is required, install orafce and use its varchar2 type. Remember trailing spaces are significant in varchar and text but ignored for char(n) comparisons.",
+      "score": 15.711
+    },
+    {
+      "id": "mapping_number-unconstrained--azure-pg-flex",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | S | partial | PostgreSQL numeric is exact and effectively unbounded, so it can hold anything an Oracle NUMBER holds; that is what Ora2Pg's base type table maps NUMBER to. The trap is the shipped configuration: with PG_INTEGER_TYPE enabled (the default) an unconstrained NUMBER is emitted as DEFAULT_NUMERIC, which defaults to bigint, silently truncating decimals unless the setting is changed or the column is overridden. | Run Ora2Pg SHOW_COLUMN and look for columns marked for review (unconstrained NUMBER). Set DEFAULT_NUMERIC to numeric, or disable PG_INTEGER_TYPE, for schemas with decimal data in unconstrained columns. Use MODIFY_TYPE for individual columns that should be integer types for speed. Validate with TEST_DATA or checksums after loading.",
+      "score": 11.467
+    },
+    {
+      "id": "feature_varchar2-byte-semantics",
+      "type": "oracleFeature",
+      "text": "datatype | pre-11.2 | VARCHAR2 byte vs char length semantics | A VARCHAR2 length can be declared in bytes or in characters. Without a qualifier the session's NLS_LENGTH_SEMANTICS decides, and the default is BYTE. The column limit is 4000 bytes, or 32767 with MAX_STRING_SIZE set to EXTENDED. In a Unicode database a byte-declared column holds fewer characters than its number suggests, and the same declaration means different things in different databases. Migrations care because column sizing must be translated, not copied. SQL Server nvarchar lengths count UTF-16 code units and PostgreSQL varchar lengths count characters, so a VARCHAR2(100 BYTE) column in an AL32UTF8 database may need a smaller or larger target length depending on the data, and mixed semantics in one schema make blanket rules unsafe. Overlong-value errors during load are the usual symptom of getting this wrong. The type is core SQL and not deprecated.",
+      "score": 10.474
+    },
+    {
+      "id": "target_elastic-jobs",
+      "type": "azureTarget",
+      "text": "Azure SQL Elastic Jobs | elastic-jobs | Elastic Jobs is the scheduling service for Azure SQL Database. A job agent resource stores job definitions and history in a dedicated job database and runs T-SQL job steps, on a schedule or on demand, against target groups that can be single databases, all databases on a logical server or all databases in an elastic pool, enumerated dynamically at run time across servers and subscriptions. Authentication uses a user-assigned managed identity or database-scoped credentials, all schedule times are UTC, scripts must be idempotent because failed steps are retried, and history is purged after 45 days. It is the Microsoft-recommended replacement for SQL Server Agent on Azure SQL Database. It only runs T-SQL, so anything an Oracle job did outside SQL (OS commands, file moves, email) needs Azure Functions, Logic Apps or Data Factory instead. | Job agent tiers JA100, JA200, JA400 and JA800 set the number of concurrent target connections (100 to 800). The job database cannot be Hyperscale or an auto-pausing serverless database.",
+      "score": 10.324
+    },
+    {
+      "id": "feature_boolean-23ai",
+      "type": "oracleFeature",
+      "text": "datatype | 23ai | SQL BOOLEAN datatype (23ai) | Oracle Database 23ai added a native SQL BOOLEAN column type after decades in which PL/SQL had booleans but tables did not. Columns accept TRUE, FALSE and NULL, plus a set of string spellings such as yes and no, on and off, t and f, y and n, and 1 and 0; numeric inputs map zero to FALSE and anything else to TRUE. Constraints, comparisons, and IS TRUE and IS FALSE tests all work on the type. Migrations care in the reverse direction from most features: this is a convergence, since SQL Server's bit and PostgreSQL's boolean have long existed. The real work is in older schemas that emulate booleans with CHAR(1) flags or NUMBER(1) columns and check constraints, where the migration has to decide which columns become true booleans and translate the string conventions the application relied on. The type is new and fully supported. Oracle's 23ai documentation URLs now redirect to the 26ai reference pages, which is where the current description lives.",
+      "score": 9.615
+    },
+    {
+      "id": "caveat_pg-hint-plan-needs-preload",
+      "type": "caveat",
+      "text": "minor | pg_hint_plan on Flexible Server must be allowlisted, loaded through shared_preload_libraries and created in each database, and steers the planner through hint phrases inside a comment beginning with /*+ in the SQL text.",
+      "score": 9.59
+    },
+    {
+      "id": "mapping_varchar2-byte-semantics--azure-sql-db",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | M | partial | SSMA maps varchar2(n) to varchar(n) by default. SQL Server varchar stores the code page of its collation, so multilingual data that lived in an AL32UTF8 Oracle database is either lost or must go to nvarchar, or to varchar under a UTF-8 collation available since SQL Server 2019 and on Azure SQL. Length semantics also differ: Oracle's CHAR length semantics count characters, while SQL Server's n for varchar counts bytes and for nvarchar counts byte-pairs, so supplementary characters can overflow. | Check NLS_CHARACTERSET and NLS_LENGTH_SEMANTICS on the source. For non-ASCII data, change the SSMA mapping to nvarchar(n) or create the database with a UTF-8 (_UTF8) collation. Widen columns declared with CHAR semantics when the target collation is UTF-8 (up to 4 bytes per character). Test sorting and comparisons, since Oracle binary sorts differ from SQL Server collations.",
+      "score": 8.51
+    }
+  ],
+  "result": "**Verdict:** Yes. SSMA's default mapping of `VARCHAR2(100)` to `varchar(100)` can lose multibyte text or reject rows as too long, so change the target type and translate each length instead of copying it.\n\n**Key facts (from [8] and [4]):**\n\n1. **Data loss with the default mapping.** SSMA maps `varchar2(n)` to `varchar(n)` by default. SQL Server `varchar` stores text in the code page of its collation. Multilingual data from an AL32UTF8 Oracle database is either lost or has to go into one of these:\n   - `nvarchar(n)`, or\n   - `varchar(n)` under a UTF-8 (`_UTF8`) collation, which Azure SQL supports.\n\n2. **The two engines count length differently.**\n   - Oracle BYTE semantics count bytes. BYTE is the default when neither the declaration nor `NLS_LENGTH_SEMANTICS` says otherwise.\n   - Oracle CHAR semantics count characters.\n   - SQL Server `varchar(n)` counts bytes.\n   - SQL Server `nvarchar(n)` counts UTF-16 code units (byte pairs), so supplementary characters take two units each and can overflow.\n\n   The right target length for a `VARCHAR2(100 BYTE)` column in an AL32UTF8 database depends on the data. It may need to be smaller or larger.\n\n3. **Mixed semantics make blanket rules unsafe.** If some columns in the schema use BYTE and others use CHAR, no single mapping rule works. Size each column on its own terms.\n\n**What to do:**\n- On the source, check `NLS_CHARACTERSET` and `NLS_LENGTH_SEMANTICS`, and how each column was declared (BYTE or CHAR).\n- For non-ASCII data, change the SSMA mapping to `nvarchar(n)`, or create the database with a `_UTF8` collation.\n- If you use a UTF-8 collation, widen columns declared with CHAR semantics. A character can take up to 4 bytes, so `VARCHAR2(100 CHAR)` may need up to `varchar(400)`.\n- Watch for \"value too long\" errors during the load. They are the usual sign that sizing went wrong.\n- Test sorting and comparisons. Oracle's binary sort order differs from SQL Server collations.\n\nThe passages don't include source URLs, so I can't give links.",
+  "stderr": ""
+}

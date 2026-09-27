@@ -1,0 +1,108 @@
+{
+  "meta": {
+    "id": "q04",
+    "type": "fact",
+    "cond": "bm25",
+    "num_turns": 1,
+    "duration_ms": 13950,
+    "session_id": "195194f6-43f7-4301-8885-17d2888908e5",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 12326,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 1329,
+      "output_tokens_details": {
+        "thinking_tokens": 339
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12326,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1329,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 12326,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 12326
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q04",
+    "type": "fact",
+    "q": "Our app relies on empty string being NULL in VARCHAR2 columns. Which Azure targets keep that behaviour?",
+    "expected": "None of Azure SQL DB/MI or PostgreSQL treat '' as NULL; flags this as a semantic difference requiring code review; Oracle Database@Azure keeps Oracle semantics.",
+    "required_sources": [
+      "oracle",
+      "microsoft",
+      "community"
+    ]
+  },
+  "passages": [
+    {
+      "id": "caveat_empty-string-sqlserver-not-null",
+      "type": "caveat",
+      "text": "major | In SQL Server and Azure SQL an empty string '' is a stored zero-length value that is distinct from NULL; Microsoft's NULL documentation states that a null value is different from an empty or zero value, so Oracle code that relied on '' being NULL changes behaviour.",
+      "score": 28.686
+    },
+    {
+      "id": "feature_empty-string-null",
+      "type": "oracleFeature",
+      "text": "sql | pre-11.2 | Empty string equals NULL | Oracle treats a character value of zero length as NULL. Inserting an empty string stores NULL, comparisons with an empty literal behave like comparisons with NULL, and concatenation is the one operator that tolerates null operands. Oracle's SQL reference explicitly says this may not remain true in future releases and advises applications not to depend on it. Migrations care because SQL Server and PostgreSQL distinguish an empty string from NULL. NOT NULL constraints that Oracle accepted silently start rejecting empty values or, conversely, allow empty strings that Oracle would have stored as NULL; equality tests, LENGTH results, and COALESCE and NVL patterns all shift. Every empty-string literal and every IS NULL test on character columns in the source code is a review item. The behavior is long-standing and unchanged as of 26ai; it is documented, not deprecated, but flagged by Oracle as something not to rely on.",
+      "score": 22.67
+    },
+    {
+      "id": "mapping_empty-string-null--azure-pg-flex",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | M | workaround | PostgreSQL distinguishes '' from NULL exactly as SQL Server does. Ora2Pg offers NULL_EQUAL_EMPTY, which rewrites IS NULL and IS NOT NULL tests into coalesce()-based checks so converted code keeps Oracle's behaviour, and its documentation recommends instead converting empty strings to NULL when the application can be changed. orafce adds a trigger function that replaces empty strings with NULL on write. | Choose between NULL_EQUAL_EMPTY rewriting and normalizing data at write time. If normalizing, add orafce's replace_empty_strings trigger or an application-side rule. Re-express NVL(col, 'x') logic that assumed '' was NULL with coalesce(nullif(col, ''), 'x'). Test NOT NULL columns that Oracle allowed to be \"empty\" by rejecting the insert.",
+      "score": 20.166
+    },
+    {
+      "id": "mapping_empty-string-null--azure-sql-db",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | M | workaround | Oracle stores a zero-length VARCHAR2 as NULL, so applications never see an empty string. SQL Server keeps '' as a real value distinct from NULL, and Microsoft's documentation states that a null value differs from an empty or zero value. After migration the same INSERT of '' produces a non-null row, IS NULL predicates stop matching it, and NOT NULL constraints that used to reject '' now accept it, so data and code need explicit handling. | Decide a policy: normalize '' to NULL on write (application or trigger) or treat '' and NULL as equivalent in queries with NULLIF. Add CHECK constraints or triggers that reject '' where Oracle's implicit NULL enforced NOT NULL. Enable SSMA's ISNULL-in-concatenation option so NULL || 'x' keeps Oracle's result. Search code for = '' and <> '' comparisons, which were always false or unknown in Oracle.",
+      "score": 19.12
+    },
+    {
+      "id": "source_orafce-readme",
+      "type": "source",
+      "text": "orafce 4.x (Azure PG Flex ships 4.16 for PostgreSQL 14-18) | dbms_output, utl_file, dbms_pipe, dbms_alert, dbms_random, varchar2 with byte semantics, oracle.date, nvl/decode/add_months; notes that empty strings differ from NULL in PostgreSQL. | community | 2026-09-26 | orafce README (Oracle compatibility functions and packages for PostgreSQL) | https://github.com/orafce/orafce/blob/master/README.asciidoc",
+      "score": 16.265
+    },
+    {
+      "id": "target_ora2pg",
+      "type": "azureTarget",
+      "text": "Ora2Pg | migration-tool | Ora2Pg is the open-source Perl tool that connects to Oracle, extracts schema and data and emits PostgreSQL DDL, PL/pgSQL and COPY or INSERT data files, or loads them directly. Export types cover tables, views, materialized views, sequences, triggers, functions, procedures, packages, partitions, types, grants, synonyms, FDW definitions and data, plus assessment reports with migration cost estimates. Microsoft's own Oracle-to-PostgreSQL guidance points at it. Its configuration determines datatype outcomes that matter for this dataset: the built-in map sends NUMBER to numeric, but the shipped defaults (PG_INTEGER_TYPE on with DEFAULT_NUMERIC bigint) turn unconstrained NUMBER into bigint unless changed; DATE becomes timestamp(0); ROWID becomes oid, which fails on data import; NULL_EQUAL_EMPTY rewrites null tests to mimic Oracle's empty-string behaviour; and autonomous transactions are wrapped with dblink or pg_background. | Version 25.0 (2025-04-20) at retrieval. Needs Perl with DBD::Oracle and an Oracle client; can also read MySQL and SQL Server sources.",
+      "score": 15.56
+    },
+    {
+      "id": "mapping_varchar2-byte-semantics--azure-pg-flex",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | S | partial | PostgreSQL varchar(n) counts characters, not bytes, and databases are normally UTF-8, so Oracle columns declared with CHAR semantics map one-to-one. Columns declared in BYTE semantics on a multibyte database are looser in PostgreSQL, which is harmless, but applications that depended on byte-length overflow errors will no longer get them; orafce ships a varchar2 type with byte semantics for that case. | Let Ora2Pg map VARCHAR2 to varchar; consider text where lengths were arbitrary. Where byte-exact behaviour is required, install orafce and use its varchar2 type. Remember trailing spaces are significant in varchar and text but ignored for char(n) comparisons.",
+      "score": 14.356
+    },
+    {
+      "id": "caveat_empty-string-postgres-not-null",
+      "type": "caveat",
+      "text": "major | PostgreSQL treats '' as a non-NULL value; Ora2Pg's NULL_EQUAL_EMPTY directive exists to rewrite IS NULL tests into coalesce()-based checks precisely because PostgreSQL differentiates empty strings from NULL, and its documentation recommends converting empty strings to NULL when the application can be changed.",
+      "score": 13.349
+    }
+  ],
+  "result": "**Verdict: None of the Azure targets these passages cover treats `''` as NULL natively.** Azure SQL / SQL Server and Azure Database for PostgreSQL Flexible Server both keep an empty string as a real value, separate from NULL. You can get Oracle's behaviour back on either one, but only by changing code or data.\n\n**Azure SQL Database and SQL Server-family targets** [1][4]\n- An empty string is stored as a zero-length value. Microsoft's documentation says a null value is different from an empty or zero value.\n- What changes after migration:\n  - Inserting `''` now stores a non-null row.\n  - `IS NULL` no longer matches those rows.\n  - `NOT NULL` columns now accept `''`, where Oracle rejected it.\n- How to work around it:\n  - Pick one policy: either convert `''` to NULL when writing (in the application or a trigger), or use `NULLIF` in queries to treat the two as the same.\n  - Add CHECK constraints or triggers that reject `''` on columns where Oracle's `NOT NULL` used to do that.\n  - Turn on SSMA's ISNULL-in-concatenation option.\n  - Review every `= ''` and `<> ''` comparison. In Oracle these were never true, so they now behave differently.\n\n**Azure Database for PostgreSQL Flexible Server** [3][8]\n- PostgreSQL separates `''` from NULL in the same way SQL Server does. You have two options:\n  - **Ora2Pg `NULL_EQUAL_EMPTY`:** rewrites `IS NULL` and `IS NOT NULL` tests into `coalesce()`-based checks so the converted code behaves like Oracle [6].\n  - **Convert the data when it's written:** use orafce's `replace_empty_strings` trigger or an application rule. Ora2Pg's documentation recommends this if you can change the application.\n- Rewrite `NVL(col,'x')` as `coalesce(nullif(col,''),'x')`, and test `NOT NULL` columns.\n- orafce's `varchar2` type only changes length counting to bytes. It does not make `''` behave as NULL, and orafce's own README says empty strings differ from NULL in PostgreSQL [5][7].\n\n**Two more points**\n- Oracle itself says applications shouldn't depend on this behaviour and that it may change in future releases. It is still unchanged as of 26ai [2]. Every empty-string literal and every `IS NULL` test on a character column needs review, whichever target you pick.\n- These passages don't cover running Oracle Database itself on Azure (for example Oracle Database@Azure or Oracle on Azure VMs). I can't confirm from them which targets would keep the behaviour unchanged, although running Oracle itself presumably would.\n\nSources: orafce README, https://github.com/orafce/orafce/blob/master/README.asciidoc. The other passages [1]–[4] and [6]–[8] came without URLs.",
+  "stderr": ""
+}

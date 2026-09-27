@@ -1,0 +1,106 @@
+{
+  "meta": {
+    "id": "q11",
+    "type": "fact",
+    "cond": "bm25",
+    "num_turns": 1,
+    "duration_ms": 7979,
+    "session_id": "35f5431b-b062-450b-8b90-2e7212441af4",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 12528,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 729,
+      "output_tokens_details": {
+        "thinking_tokens": 0
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12528,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 729,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 12528,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 12528
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q11",
+    "type": "fact",
+    "q": "Does Azure SQL Database (not Managed Instance) support database links / cross-database queries like Oracle?",
+    "expected": "Azure SQL Database lacks linked servers and cross-database queries (elastic query is the partial workaround); SQL MI supports linked servers; answer must distinguish DB from MI.",
+    "required_sources": [
+      "microsoft"
+    ]
+  },
+  "passages": [
+    {
+      "id": "glossary_azure-sql-database-vs-managed-instance",
+      "type": "glossary",
+      "text": "Azure SQL DB, SQL MI | Both are Microsoft's managed SQL Server engine, but at different scopes. Azure SQL Database is database-scoped (a single database or an elastic pool on a logical server) and omits instance-level features: no SQL Server Agent, no cross-database three-part-name queries, no linked servers, no CLR, no Service Broker, no Database Mail; Microsoft points to Elastic Jobs and Elastic Query instead. Azure SQL Managed Instance is instance-scoped, injected into your virtual network, and keeps most of the SQL Server surface, including SQL Agent, cross-database queries and transactions within the instance, linked servers to SQL Server and SQL Database, CLR (without file-system access), Service Broker and a configurable time zone. For an Oracle estate, instance-level features such as DBMS_SCHEDULER, database links and in-database queuing map more directly to Managed Instance, while SQL Database usually needs a platform-service substitute. | Azure SQL Database vs Azure SQL Managed Instance",
+      "score": 22.445
+    },
+    {
+      "id": "feature_database-links",
+      "type": "oracleFeature",
+      "text": "integration | pre-11.2 | Database links | A database link is a one-way pointer from one database to another that lets SQL reference remote objects with the @link suffix. Links are private, public or global; they authenticate as a fixed user, the connected user or the current user; and through Heterogeneous Services and gateways they can reach non-Oracle systems. Statements spanning several databases become distributed transactions coordinated by two-phase commit, subject to restrictions on DDL, privilege grants and referential integrity across links. Migrations care because links weave separate databases into one application, and Azure targets offer weaker equivalents: linked servers on SQL Managed Instance, external tables for cross-database queries on Azure SQL Database, and foreign data wrappers on PostgreSQL. Cross-database DML with atomic commit is generally unavailable, so each link must be classified as read-only lookup, data movement or transactional coupling before a design is chosen. Links are supported and not deprecated. The 26ai Upgrade Guide desupports one variant, current-user links that rely on Enterprise User Security, recommending fixed-user or connected-user link",
+      "score": 20.636
+    },
+    {
+      "id": "mapping_database-links--azure-sql-mi",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | M | partial | Managed Instance supports linked servers and cross-database queries within the instance, so links between Oracle schemas that land in the same instance become plain three-part names, and links to other SQL Server, Managed Instance, Azure SQL Database or Synapse endpoints become linked servers with SQL or Entra authentication. Linked servers to Oracle or other non-SQL databases are not supported, and distributed transactions over linked servers are limited to the DTC preview scenarios. | Co-locate linked schemas in one instance and replace link syntax with database.schema.object names. Create linked servers for remaining SQL-family targets; test with OPENQUERY for pushdown. Route remaining Oracle-side dependencies through Data Factory or the application. Avoid distributed transactions across linked servers unless the DTC preview is acceptable.",
+      "score": 20.473
+    },
+    {
+      "id": "source_ms-sqldb-mi-feature-comparison",
+      "type": "source",
+      "text": "page updated 2026-09-09 | Feature matrix: SQL Server Agent, Service Broker, linked servers, cross-database queries, CLR, FILESTREAM, full-text search, elastic jobs, elastic query, BACKUP/RESTORE. | microsoft | 2026-09-26 | Compare SQL Database Engine features: Azure SQL Database vs Azure SQL Managed Instance | https://learn.microsoft.com/en-us/azure/azure-sql/database/features-comparison",
+      "score": 17.731
+    },
+    {
+      "id": "source_ms-sqldb-elastic-query",
+      "type": "source",
+      "text": "page updated 2026-09-01 | Cross-database queries through external tables; preview; read-only access to external tables; shard-map mode reaching end of support 2027-03-31. | microsoft | 2026-09-26 | Elastic query overview (Azure SQL Database) | https://learn.microsoft.com/en-us/azure/azure-sql/database/elastic-query-overview",
+      "score": 17.239
+    },
+    {
+      "id": "target_azure-sql-mi",
+      "type": "azureTarget",
+      "text": "Azure SQL Managed Instance | azure-sql-mi | Azure SQL Managed Instance is an instance-scoped PaaS deployment of the SQL Server engine with near-complete compatibility with the latest Enterprise Edition surface area. It is deployed into a customer virtual network, keeps instance-level features that Azure SQL Database lacks (SQL Server Agent with T-SQL job steps, Service Broker, linked servers to SQL targets, cross-database queries and transactions within the instance, CLR from binary, Database Mail, Resource Governor, native COPY_ONLY backups to URL) and supports restoring native SQL Server backups from Azure Blob Storage. It is still PaaS, so it cannot see a file system: BULK INSERT and OPENROWSET read only from Blob Storage, FILESTREAM and FileTable are unavailable, extended stored procedures and xp_cmdshell are not supported, and backups are restorable only to SQL Server 2022 or 2025 depending on the instance update policy. For Oracle migrations it is the target that absorbs the most Oracle-isms (jobs, queues, links) with the least re-architecture; SSMA for Oracle targets it directly. | General Purpose: remote storage (5-10 ms latency), up to 80 vCores, 16 TB, 100 databases, no r",
+      "score": 16.969
+    },
+    {
+      "id": "mapping_database-links--azure-sql-db",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | L | workaround | Azure SQL Database supports neither linked servers nor cross-database three-part-name queries. Elastic query (still in preview) exposes remote Azure SQL tables as read-only external tables and can execute remote procedures with sp_execute_remote, which covers reporting-style database links but not DML through the link or links to non-SQL targets. Many teams instead consolidate schemas into one database or move to Managed Instance. | Inventory DBA_DB_LINKS and classify link usage (read-only lookup, DML, distributed transaction, non-Oracle target). Consolidate tightly coupled schemas into one database where possible. For read-only access across Azure SQL databases, create external data sources and external tables (elastic query). Replace DML over links with application-level orchestration or Data Factory.",
+      "score": 16.762
+    },
+    {
+      "id": "mapping_data-pump--azure-dms",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai | M | partial | Azure Database Migration Service lists Oracle only as an offline, preview source for Azure SQL Database, Managed Instance and SQL Server on Azure VMs, and the scenario is documented as running through SSMA. It offers no Oracle online (continuous sync) scenario and no Oracle to PostgreSQL scenario, and like every non-Oracle tool it does not consume Data Pump dump files. | Use DMS with SSMA for offline Oracle to Azure SQL migrations where a managed, repeatable pipeline is wanted. Plan a downtime window; there is no Oracle online migration path in DMS. For PostgreSQL targets use Ora2Pg or the VS Code schema conversion feature plus Data Factory for data.",
+      "score": 16.618
+    }
+  ],
+  "result": "**Short answer: no, not natively.** Azure SQL Database has no linked servers and no cross-database three-part-name queries. The closest substitute is Elastic Query, which is still in preview and only reads data. It works for read-only reporting-style links. It does not replace links that change data, links that need a transaction to commit across databases, or links to non-SQL systems.\n\n**Key facts**\n\n- **What's missing:** Azure SQL Database is scoped to a single database. It leaves out instance-level features, including linked servers and three-part-name queries across databases. [1][7] (https://learn.microsoft.com/en-us/azure/azure-sql/database/features-comparison)\n- **Elastic Query (the workaround):**\n  - It exposes remote Azure SQL tables as read-only external tables.\n  - It can run remote procedures with `sp_execute_remote`.\n  - It is still in preview.\n  - Its shard-map mode reaches end of support on 2027-03-31. [5][7] (https://learn.microsoft.com/en-us/azure/azure-sql/database/elastic-query-overview)\n- **What it can't do:** write data through the link, commit a transaction across several databases (the two-phase commit Oracle links provide), or reach Oracle or other non-SQL targets. [2][7]\n- **Contrast with Managed Instance:** Managed Instance supports cross-database queries within the instance and linked servers to SQL Server, Managed Instance, Azure SQL Database and Synapse. It is the closer match for Oracle links, but it still can't link to Oracle, and distributed transactions are limited to DTC preview scenarios. [3][6]\n\n**Recommended approach for Azure SQL Database** [2][7]\n1. List the links in `DBA_DB_LINKS`. Label each one as a read-only lookup, data changes, a distributed transaction, or a non-Oracle target.\n2. Merge tightly coupled schemas into one database where you can.\n3. For read-only lookups between Azure SQL databases, use Elastic Query (external data sources plus external tables).\n4. Move data changes that went through links into the application or Azure Data Factory.\n5. If many links depend on transactions, consider Managed Instance instead.",
+  "stderr": ""
+}

@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.next/
+.sanity/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+agent/eval/results/**/*.raw.json

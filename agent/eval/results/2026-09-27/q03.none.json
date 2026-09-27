@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "id": "q03",
+    "type": "fact",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 15632,
+    "session_id": "fb0492c9-e1f4-4681-aa40-6c55d1877ad7",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 9973,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 1453,
+      "output_tokens_details": {
+        "thinking_tokens": 366
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 9973,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1453,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 9973,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 9973
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q03",
+    "type": "fact",
+    "q": "Is Oracle Streams still an option for replicating to Azure?",
+    "expected": "No: desupported in Oracle Database 19c (deprecated since 12.1); name the replacement route (GoldenGate or a log-based CDC tool / Azure DMS where applicable).",
+    "required_sources": [
+      "oracle"
+    ]
+  },
+  "result": "# Is Oracle Streams still an option for replicating to Azure?\n\n**No, don't use Oracle Streams for a new Azure replication design.** Oracle deprecated it in 12c (12.1.0.2) and removed support in Database 19c. Every supported target on Azure runs 19c or later, whether that's an Oracle VM on Azure or Oracle Database@Azure, so none of them support Streams.\n\n## Key facts\n- **Deprecation timeline:** Oracle deprecated Streams in 12.1.0.2 and removed support in 19c. The 19c Upgrade Guide says to use Oracle GoldenGate instead. Advanced Replication was removed even earlier, in 12.1.\n  - https://docs.oracle.com/en/database/oracle/oracle-database/19/upgrd/deprecated-features-oracle-database-12c-r1.html\n  - https://docs.oracle.com/en/database/oracle/oracle-database/19/upgrd/desupported-features-oracle-database-19c.html\n- **Legacy sources:** If your source is still 11g or 12c running Streams, both the source and Streams are well past Premier Support. Plan to decommission it, not extend it.\n- **XStream is not a way around this.** The XStream APIs still exist, but you need a GoldenGate license to use them.\n\n## What to use instead\n\n| Scenario | Recommended option |\n|---|---|\n| Oracle to Oracle on Azure VMs | **Data Guard** (physical standby) for DR or migration cutover. Use **GoldenGate** for active-active, filtering, or near-zero-downtime upgrades. |\n| Oracle to Oracle Database@Azure (Exadata / Autonomous) | **Zero Downtime Migration (ZDM)**, which uses Data Guard or GoldenGate under the hood, plus **OCI GoldenGate** for ongoing replication |\n| Oracle to Azure SQL / PostgreSQL / Fabric (heterogeneous CDC) | **GoldenGate** (Azure Marketplace image or GoldenGate for Big Data), or third-party CDC tools such as **Qlik Replicate**, **Striim** or **Debezium** (via Kafka / Event Hubs) |\n| Batch or bulk loads only | Azure Data Factory / Fabric Data Factory with the Oracle connector (not true CDC) |\n\nUseful references:\n- Microsoft, Oracle on Azure VMs, HA/DR: https://learn.microsoft.com/azure/virtual-machines/workloads/oracle/oracle-reference-architecture\n- Oracle Database@Azure migration: https://learn.microsoft.com/azure/oracle/oracle-db/\n- Oracle ZDM: https://www.oracle.com/database/zero-downtime-migration/\n\n## Recommendation\nFor a like-for-like Oracle target, use Data Guard, or ZDM if you're moving to Oracle Database@Azure. Add GoldenGate only if you need logical, bidirectional or heterogeneous replication. If you have existing Streams configurations, treat them as requirements to rebuild in GoldenGate. Map each capture, propagation and apply rule to a GoldenGate Extract, distribution path and Replicat.",
+  "stderr": ""
+}

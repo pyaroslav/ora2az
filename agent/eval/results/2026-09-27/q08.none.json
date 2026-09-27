@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q08",
+    "type": "fact",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 22406,
+    "session_id": "2cc96645-f621-4eff-b26d-334704ab069d",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 9983,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 2260,
+      "output_tokens_details": {
+        "thinking_tokens": 570
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 9983,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2260,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 9983,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 9983
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q08",
+    "type": "fact",
+    "q": "Which Oracle auditing method survives into 26ai and what does Azure SQL offer instead?",
+    "expected": "Traditional auditing desupported in 26ai (deprecated 21c) → Unified Auditing; on Azure SQL use Azure SQL Auditing (server/database policies to Log Analytics/Storage); note gaps vs FGA if recorded.",
+    "required_sources": [
+      "oracle",
+      "microsoft"
+    ]
+  },
+  "result": "# Oracle auditing in 26ai vs. Azure SQL auditing\n\n**Verdict:** Only **Unified Auditing** carries into Oracle AI Database 26ai. Traditional auditing (the `AUDIT_TRAIL` parameter, `SYS.AUD$`, OS/XML audit files) was desupported in 23ai, and 26ai is built on that release. On the Azure side, the replacement is **Azure SQL Auditing** in SQL Database, or **SQL Server Audit** in Managed Instance. For threat detection and tamper evidence, add **Defender for SQL** and **Ledger**.\n\n## Oracle side\n- **Traditional auditing:** deprecated in 21c and desupported in 23ai/26ai. You can no longer create or change policies with the old syntax (`AUDIT SELECT TABLE…` in the traditional style). The legacy `AUD$` and `FGA_LOG$` data is kept only so you can read it.\n- **What survives:**\n  - Unified audit policies: `CREATE AUDIT POLICY` and `AUDIT POLICY … BY/EXCEPT/WHENEVER SUCCESSFUL`.\n  - A single trail, `UNIFIED_AUDIT_TRAIL`, stored in `AUDSYS`.\n  - Predefined policies such as `ORA_SECURECONFIG` and `ORA_LOGON_LOGOFF`.\n  - Fine-grained auditing (`DBMS_FGA`), which now writes into the unified trail.\n  - 23ai added column-level unified audit policies.\n- **Before you migrate:** convert any traditional policies still in use with `DBMS_AUDIT_MGMT` and the conversion scripts. Otherwise you lose audit coverage when you upgrade to 23ai/26ai, whether or not you move to Azure.\n- Docs: Oracle Database Security Guide, \"Auditing\" (https://docs.oracle.com/en/database/oracle/oracle-database/23/dbseg/), and the 23ai Upgrade Guide's desupported-features section (https://docs.oracle.com/en/database/oracle/oracle-database/23/upgrd/).\n\n## Azure equivalents\n| Oracle feature | Azure SQL Database | Azure SQL Managed Instance |\n|---|---|---|\n| Unified audit policies | Server- or database-level **Auditing** using audit action groups (e.g. `SUCCESSFUL_DATABASE_AUTHENTICATION_GROUP`, `DATABASE_OBJECT_CHANGE_GROUP`, `BATCH_COMPLETED_GROUP`), configured in the Portal, ARM/Bicep, PowerShell or CLI | Full T-SQL `CREATE SERVER AUDIT` plus server and database audit specifications |\n| Audit destination (`UNIFIED_AUDIT_TRAIL`) | Azure Storage (`.xel` files), Log Analytics, or Event Hubs | `TO URL` (Storage) or `TO EXTERNAL_MONITOR` (Log Analytics/Event Hubs) |\n| `DBMS_FGA` conditional auditing | Partial: a predicate filter (`-PredicateExpression` in `Set-AzSqlServerAudit`). It cannot run a handler procedure or audit specific columns the way FGA does. | `WHERE` predicate on `CREATE SERVER AUDIT` |\n| Querying the trail | `sys.fn_get_audit_file()`, or KQL in Log Analytics or Sentinel | Same |\n| Tamper evidence / anomaly detection | **Ledger** tables; **Microsoft Defender for SQL** | Same |\n\nDocs:\n- Azure SQL Database auditing: https://learn.microsoft.com/azure/azure-sql/database/auditing-overview\n- Managed Instance auditing: https://learn.microsoft.com/azure/azure-sql/managed-instance/auditing-configure\n- Ledger: https://learn.microsoft.com/sql/relational-databases/security/ledger/ledger-overview\n\n## Migration gotchas\n- **Nothing converts your audit policies for you.** SSMA and Azure DMS move schema and data only. Rebuild each unified policy by hand as action groups or audit specifications.\n- **FGA column and handler logic doesn't port cleanly.** Usually you combine an audit predicate with triggers or Defender alerts, or you accept coarser auditing.\n- **Retention and immutability are set on the storage account**, not in the database. Use immutable blob storage or Log Analytics retention in place of Oracle's `DBMS_AUDIT_MGMT` purge jobs.\n- **Test the volume first.** `BATCH_COMPLETED_GROUP` generates a lot of records and adds cost.\n\nI've written this from my own knowledge and haven't rechecked the docs today. Confirm the exact 26ai desupport notes against the current 26ai release notes before you sign off.",
+  "stderr": ""
+}

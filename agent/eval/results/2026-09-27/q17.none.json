@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "id": "q17",
+    "type": "fact",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 17197,
+    "session_id": "c616b468-4015-4565-a08f-40429594f842",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 9971,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 1598,
+      "output_tokens_details": {
+        "thinking_tokens": 476
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 9971,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1598,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 9971,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 9971
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q17",
+    "type": "fact",
+    "q": "Is ROWID usable after migration to Azure SQL?",
+    "expected": "SSMA maps ROWID to uniqueidentifier but semantics differ (no physical row address); code using ROWID for dedupe/pagination must be refactored to keys.",
+    "required_sources": [
+      "microsoft"
+    ]
+  },
+  "result": "# Can you still use ROWID after moving to Azure SQL?\n\n**No.** Azure SQL Database and Azure SQL Managed Instance have no ROWID pseudo-column. You have to swap it for a real key or a surrogate column you add yourself.\n\n**What SSMA for Oracle does with it**\n- **ROWID or UROWID as a column data type:** SSMA maps these to `uniqueidentifier` by default. It keeps the column, but the column no longer holds a physical row address. You can change this in SSMA's type mapping settings.\n- **The ROWID pseudo-column (`WHERE ROWID = …`, `SELECT ROWID …`):** SSMA's \"Generate ROWID column\" project setting can add a `ROWID` column of type `uniqueidentifier` to converted tables. It fills the column with a NEWID()-style default and indexes it, which lets converted code that references ROWID keep running. You can turn this on for all tables or only for tables that have triggers. If the setting is off, statements that use ROWID fail to convert and show up as errors in the assessment report.\n  - Conversion settings: https://learn.microsoft.com/en-us/sql/ssma/oracle/project-settings-conversion-oracletosql\n  - Type mapping: https://learn.microsoft.com/en-us/sql/ssma/oracle/project-settings-type-mapping-oracletosql\n\n**Things to watch for**\n- **Semantics change:** Oracle ROWID is a physical address, so it's fast and can change after table moves or partition operations. The SSMA column is only a logical GUID. It behaves like a key, and fetching rows by it is no faster than using any other indexed column.\n- **Cost of the extra column:** It adds 16 bytes per row plus an extra index, and random GUIDs cause index fragmentation. Before you migrate data, decide whether to keep this column or remove it.\n- **Don't use `%%physloc%%`:** It's an undocumented, unsupported SQL Server virtual column. Its values change when the table is rebuilt or reorganized, so application code shouldn't depend on it.\n- **Stored ROWIDs are dead data:** Any ROWID values saved in tables, logs or external systems point to nothing after migration.\n\n**How to fix code that uses ROWID**\n- **Row lookup or update by ROWID:** Use the primary key, or add an `IDENTITY`/`SEQUENCE` column if the table has no key.\n- **Dedup patterns like `DELETE … WHERE ROWID NOT IN (SELECT MIN(ROWID) …)`:** Rewrite with a CTE and `ROW_NUMBER() OVER (PARTITION BY …)`, then `DELETE FROM cte WHERE rn > 1`.\n- **`WHERE CURRENT OF` cursor logic:** T-SQL supports this for updatable cursors, but it's better to rewrite it as set-based statements that use the key.\n- **Pagination or ordering by ROWID:** Use `ORDER BY` on a real key with `OFFSET/FETCH`. Rows have no physical order to rely on.\n\n**Recommendation:** During assessment, list every ROWID reference: grep the PL/SQL, application SQL and ORM mappings. Use SSMA's generated ROWID column only as a temporary bridge, and aim to have every table use a proper key in the end.",
+  "stderr": ""
+}

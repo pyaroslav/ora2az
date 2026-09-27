@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q10",
+    "type": "version-scope",
+    "cond": "groq+kb",
+    "num_turns": 7,
+    "duration_ms": 35203,
+    "session_id": "e98ccf69-5f3c-43dd-bf81-1cf5511dfb8e",
+    "usage": {
+      "input_tokens": 10,
+      "cache_creation_input_tokens": 9417,
+      "cache_read_input_tokens": 49895,
+      "output_tokens": 2371,
+      "output_tokens_details": {
+        "thinking_tokens": 587
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 9417,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1034,
+          "cache_read_input_tokens": 13925,
+          "cache_creation_input_tokens": 1306,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 1306
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q10",
+    "type": "version-scope",
+    "q": "We plan to move to Oracle 23ai on Azure VMs and use the new SQL BOOLEAN type. Anything to watch in a later hop to Azure SQL?",
+    "expected": "BOOLEAN maps to bit in SQL Server (SSMA); also note LogMiner/CDC tooling limits for BOOLEAN if recorded; scoped to 23ai+.",
+    "required_sources": [
+      "oracle",
+      "microsoft"
+    ]
+  },
+  "result": "No dispute or pattern on this topic. That's sufficient evidence to answer.\n\n## Verdict\nMoving BOOLEAN columns from Oracle 23ai to Azure SQL Database later is **partial fidelity** — storage works, but predicate syntax breaks and must be rewritten.\n\n## Scoped facts\n\n- **Feature**: SQL BOOLEAN datatype, introduced in Oracle 23ai. Your planned Oracle 23ai/Azure VM deployment is in scope for this mapping (`appliesToOracleVersions`: 23ai, 26ai).\n- **Oracle 23ai on Azure VM (first hop)**: no caveat/mapping issue recorded — this is native Oracle running on IaaS, so the BOOLEAN type behaves as on any Oracle 23ai instance. The dataset has no separate mapping entry for that leg (it's not a cross-platform hop).\n- **Later hop → Azure SQL Database**: fidelity = **partial**, effort = **S**.\n  - Rationale: \"SQL Server has no boolean column type; SSMA maps BOOLEAN to bit, which stores 0, 1 or NULL and cannot appear as a standalone predicate. Storage is equivalent, but every WHERE is_active style expression must be rewritten as a comparison with 1, and three-valued logic on NULL bits mirrors Oracle's UNKNOWN.\" — [SSMA for Oracle: Project Settings (Type Mapping)](https://learn.microsoft.com/en-us/sql/ssma/oracle/project-settings-type-mapping-oracletosql)\n  - **Caveat (minor, appliesTo 23ai/26ai)**: \"SSMA maps Oracle BOOLEAN to bit for arguments, return values and local variables (bit stores 0, 1 or NULL), so boolean expressions used directly as predicates or in SELECT lists must be rewritten as comparisons.\" — same source, publisher Microsoft.\n  - **What to watch, concretely**: any PL/SQL or SQL code using a boolean column/variable directly as a predicate (e.g., `WHERE is_active`) will need rewriting to an explicit comparison (`WHERE is_active = 1`) once on Azure SQL DB. NULL-bit semantics do carry over Oracle's three-valued (UNKNOWN) logic, so that behavior itself isn't lost — only the bare-predicate syntax is.\n\n## Gaps\n- The dataset has **no mapping entry for Azure SQL Managed Instance** specifically for this feature — only Azure SQL Database and Azure Database for PostgreSQL Flexible Server are covered. If your later hop targets Managed Instance rather than Azure SQL Database, there's no evidence on file confirming the same SSMA bit-mapping behavior applies, though the source cited (SSMA Type Mapping page) is not DB/MI-specific in its title.\n- No dispute or how-to pattern in the knowledge base touches this specific BOOLEAN-to-bit conversion, so no conflicting claims to report.",
+  "stderr": ""
+}

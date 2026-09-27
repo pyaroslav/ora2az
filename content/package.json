@@ -1,0 +1,14 @@
+{
+  "name": "ora2az-content",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate": "node validate.mjs",
+    "seed": "node seed.mjs",
+    "seed:dry": "node seed.mjs --dry"
+  },
+  "dependencies": {
+    "@sanity/client": "^7",
+    "yaml": "^2"
+  }
+}

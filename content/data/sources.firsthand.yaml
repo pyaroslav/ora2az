@@ -1,0 +1,220 @@
+- _id: source.ua-blog-cloud-migration-methods
+  title: 'Migrating Oracle to the Cloud: Which Method, and When'
+  publisher: firsthand
+  url: https://uptimearchitect.com/blog/oracle-cloud-migration-methods/
+  docVersion: blog post, 2026-06
+  retrievedAt: 2026-09-26
+  note: Establishes the logical-vs-physical split, the four decision gates (target, endianness/version, downtime, edition)
+    and that Oracle Database@Azure accepts the full physical toolbox while Autonomous is logical only.
+- _id: source.ua-blog-charset-migration-data-loss
+  title: The Migration Completed Successfully. Half the Names Are Now Question Marks.
+  publisher: firsthand
+  url: https://uptimearchitect.com/blog/oracle-character-set-migration-data-loss/
+  docVersion: blog post, 2026-09
+  retrievedAt: 2026-09-26
+  note: Establishes the two silent loss modes (transliteration and replacement), why row counts cannot detect them, the round-trip
+    CONVERT scan, the NLS_LANG pass-through trap and BYTE vs CHAR length semantics.
+- _id: source.ua-blog-data-pump-done-right
+  title: 'Oracle Data Pump, Done Right: A Migration You Can Prove'
+  publisher: firsthand
+  url: https://uptimearchitect.com/blog/oracle-data-pump-done-right/
+  docVersion: blog post, 2026-09
+  retrievedAt: 2026-09-26
+  note: Establishes Data Pump's server-side architecture, the parameters that decide a clean move (REMAP_*, PARALLEL with
+    %U, FLASHBACK_TIME, TABLE_EXISTS_ACTION, ENCRYPTION_PASSWORD, VERSION, NETWORK_LINK), the parfile quoting rule and row-count
+    verification.
+- _id: source.ua-blog-database-at-azure-vs-oci
+  title: 'OCI vs Oracle Database@Azure: Where Should Your Oracle Database Live?'
+  publisher: firsthand
+  url: https://uptimearchitect.com/blog/oracle-database-at-azure-vs-oci/
+  docVersion: blog post, 2026-07
+  retrievedAt: 2026-09-26
+  note: Establishes the three placement options (OCI native, Oracle Database@Azure, OCI-Azure Interconnect), the split control
+    plane, MACC burn-down, and that app-to-database latency compounds per round trip.
+- _id: source.ua-blog-ha-decision-tree
+  title: 'The Oracle HA Decision Tree: RAC vs Data Guard vs Both'
+  publisher: firsthand
+  url: https://uptimearchitect.com/blog/oracle-ha-decision-tree-rac-vs-data-guard/
+  docVersion: blog post, 2026-05
+  retrievedAt: 2026-09-26
+  note: Establishes the failure-mode matrix (RAC survives node loss, Data Guard survives site loss, only backups and Flashback
+    survive human error), protection modes and RPO, MAA tiers, and the licensing split between RAC, Data Guard and Active
+    Data Guard.
+- _id: source.ua-blog-dg-switchover-vs-failover
+  title: 'Data Guard Switchover vs Failover: Which Role Transition, and When'
+  publisher: firsthand
+  url: https://uptimearchitect.com/blog/oracle-data-guard-switchover-vs-failover/
+  docVersion: blog post, 2026-06
+  retrievedAt: 2026-09-26
+  note: Establishes the planned/unplanned distinction, zero-loss and reversibility of a switchover, protection-mode-dependent
+    loss on failover, reinstate via Flashback Database, and Fast-Start Failover observer placement.
+- _id: source.ua-blog-rman-recovery-runbook
+  title: 'Oracle RMAN Recovery Runbook: Restore, Recover, Prove It'
+  publisher: firsthand
+  url: https://uptimearchitect.com/blog/oracle-rman-recovery-runbook/
+  docVersion: blog post, 2026-07
+  retrievedAt: 2026-09-26
+  note: Establishes restore-vs-recover, point-in-time recovery with SET UNTIL inside a RUN block and OPEN RESETLOGS, controlfile
+    recovery from autobackup with SET DBID, and RESTORE ... VALIDATE / PREVIEW as pre-checks.
+- _id: source.ua-blog-autonomous-always-free
+  title: Your First Oracle Autonomous Database on OCI Always Free
+  publisher: firsthand
+  url: https://uptimearchitect.com/blog/oracle-autonomous-database-oci-always-free/
+  docVersion: blog post, 2026-07
+  retrievedAt: 2026-09-26
+  note: Establishes that Autonomous Database is fully managed (no infrastructure configuration, no RAC or Data Guard set up
+    by the customer) and is administered as ADMIN, not SYS.
+- _id: source.ua-lab-migration-methods
+  title: 'oracle-labs: migration-methods (method-selection scenarios with answer key)'
+  publisher: firsthand
+  url: https://github.com/pyaroslav/oracle-labs/tree/main/migration-methods
+  docVersion: lab, 2026-07
+  retrievedAt: 2026-09-26
+  note: 'Six graded scenarios: same-arch lift to Exadata (Data Guard), big-endian exit (XTTS with RMAN CONVERT), into Autonomous
+    (Data Pump only), Oracle Database@Azure (physical Data Guard is allowed), cross-endian near-zero (GoldenGate), and a Standard
+    Edition 2 source (no Data Guard).'
+- _id: source.ua-lab-charset-migration
+  title: 'oracle-labs: charset-migration (reproduce silent character-set loss, then prevent it)'
+  publisher: firsthand
+  url: https://github.com/pyaroslav/oracle-labs/tree/main/charset-migration
+  docVersion: lab, 2026-09
+  retrievedAt: 2026-09-26
+  note: Ten AL32UTF8 names converted into US7ASCII lose 5 of 10 with zero errors and unchanged row count; WE8MSWIN1252 still
+    loses the CJK name; AL32UTF8 loses nothing; a round-trip CONVERT scan flags the lossy rows in advance.
+- _id: source.ua-lab-data-pump
+  title: 'oracle-labs: data-pump (export it, drop it, prove it came back)'
+  publisher: firsthand
+  url: https://github.com/pyaroslav/oracle-labs/tree/main/data-pump
+  docVersion: lab, 2026-09
+  retrievedAt: 2026-09-26
+  note: Asserts a lossless 5,000 + 20,000 row round trip, a REMAP_SCHEMA import with identical counts, and a parfile-driven
+    INCLUDE export that lands only the chosen table.
+- _id: source.ua-lab-latency
+  title: 'oracle-labs: latency (round trips x latency, measured)'
+  publisher: firsthand
+  url: https://github.com/pyaroslav/oracle-labs/tree/main/latency
+  docVersion: lab, 2026-07
+  retrievedAt: 2026-09-26
+  note: Injects 0 ms / 2 ms / 10 ms of app-to-database latency (same datacenter, Interconnect, cross-region) and shows a 1,000-round-trip
+    workload's elapsed time growing by roughly round trips times delay while a batched workload barely moves.
+- _id: source.ua-lab-tde
+  title: 'oracle-labs: tde (read the datafile off disk and watch encryption work)'
+  publisher: firsthand
+  url: https://github.com/pyaroslav/oracle-labs/tree/main/tde
+  docVersion: lab, 2026-08
+  retrievedAt: 2026-09-26
+  note: A canary string is present in a plaintext datafile and absent from an AES256-encrypted tablespace's datafile; closing
+    the keystore blocks reads with ORA-28365 until it is reopened.
+- _id: source.ua-lab-unified-auditing
+  title: 'oracle-labs: unified-auditing (prove your policies actually capture)'
+  publisher: firsthand
+  url: https://github.com/pyaroslav/oracle-labs/tree/main/unified-auditing
+  docVersion: lab, 2026-08
+  retrievedAt: 2026-09-26
+  note: Enables ORA_SECURECONFIG and ORA_LOGON_FAILURES plus a custom policy, triggers a failed login, a CREATE USER and a
+    sensitive read, flushes the queued trail and asserts each landed in UNIFIED_AUDIT_TRAIL.
+- _id: source.ora2az-readme
+  title: 'ora2az project README (dataset conventions: fidelity and effort scales)'
+  publisher: firsthand
+  url: https://github.com/pyaroslav/ora2az
+  docVersion: project README, 2026-09
+  retrievedAt: 2026-09-26
+  note: Defines this dataset's own fidelity scale (exact / partial / workaround / none) and effort scale (S / M / L) for mappings.
+- _id: source.oracle-glossary-multitenant-intro
+  title: 'Oracle Multitenant Administrator''s Guide 19c: Introduction to the Multitenant Architecture'
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/multi/introduction-to-the-multitenant-architecture.html
+  docVersion: Oracle Database 19c
+  retrievedAt: 2026-09-26
+  note: Defines CDB, PDB, CDB$ROOT, PDB$SEED and non-CDB.
+- _id: source.oracle-glossary-non-cdb-desupported
+  title: 'Oracle Database Upgrade Guide 21c: Manual Non-CDB Oracle Database Release Upgrades to Multitenant Architecture'
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/21/upgrd/upgrade-scenarios-non-cdb-oracle-databases.html
+  docVersion: Oracle Database 21c Upgrade Guide
+  retrievedAt: 2026-09-26
+  note: States that the non-CDB architecture is desupported from 21c, that a CDB is the only supported architecture, and that
+    a non-CDB must be upgraded by plugging it into a CDB as a PDB.
+- _id: source.oracle-glossary-transporting-data
+  title: 'Oracle Database Administrator''s Guide 19c: Transporting Data'
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/admin/transporting-data.html
+  docVersion: Oracle Database 19c
+  retrievedAt: 2026-09-26
+  note: Transportable tablespaces across platforms, V$TRANSPORTABLE_PLATFORM endian formats, RMAN CONVERT and DBMS_FILE_TRANSFER
+    for cross-endian moves.
+- _id: source.oracle-glossary-logminer-supplemental-logging
+  title: 'Oracle Database Utilities 19c: Using LogMiner to Analyze Redo Log Files (Supplemental Logging)'
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/sutil/oracle-logminer-utility.html
+  docVersion: Oracle Database 19c
+  retrievedAt: 2026-09-26
+  note: Why supplemental logging is needed, minimal versus identification-key and table-level logging, ALTER DATABASE ADD
+    SUPPLEMENTAL LOG DATA and V$DATABASE.SUPPLEMENTAL_LOG_DATA_MIN.
+- _id: source.oracle-glossary-intro-auditing
+  title: 'Oracle Database Security Guide 19c: Introduction to Auditing'
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/dbseg/introduction-to-auditing.html
+  docVersion: Oracle Database 19c
+  retrievedAt: 2026-09-26
+  note: Unified auditing consolidates audit records into UNIFIED_AUDIT_TRAIL, uses CREATE AUDIT POLICY / AUDIT, ships predefined
+    policies such as ORA_SECURECONFIG and ORA_LOGON_FAILURES, and differs from traditional auditing driven by AUDIT_TRAIL.
+- _id: source.oracle-glossary-intro-tde
+  title: 'Oracle Database Advanced Security Guide 19c: Introduction to Transparent Data Encryption'
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/asoag/introduction-to-transparent-data-encryption.html
+  docVersion: Oracle Database 19c
+  retrievedAt: 2026-09-26
+  note: TDE column versus tablespace encryption, the two-tier key architecture with a master key in a keystore (wallet, Oracle
+    Key Vault, OCI KMS), and the stolen-media threat model.
+- _id: source.oracle-glossary-licensing-editions
+  title: Oracle Database Licensing Information User Manual 19c
+  publisher: oracle
+  url: https://docs.oracle.com/en/database/oracle/oracle-database/19/dblic/Licensing-Information.html
+  docVersion: Oracle Database 19c
+  retrievedAt: 2026-09-26
+  note: Standard Edition 2 socket limit, RAC not available in SE2 from 19c, Data Guard as an Enterprise Edition feature, and
+    which capabilities are separately licensed options (RAC, Partitioning, Advanced Security, Active Data Guard).
+- _id: source.oracle-kb-db-at-azure-overview
+  title: 'Oracle Cloud Infrastructure documentation: Oracle AI Database@Azure'
+  publisher: oracle
+  url: https://docs.oracle.com/en-us/iaas/Content/database-at-azure/oaa.htm
+  docVersion: OCI multicloud documentation, 2026
+  retrievedAt: 2026-09-26
+  note: Lists the services offered (Exadata Database Service on Dedicated and Exascale Infrastructure, Base Database Service,
+    Autonomous Database Serverless and Dedicated, GoldenGate), that RAC is available, and that Data Guard and Zero Downtime
+    Migration are supported migration tooling.
+- _id: source.ms-kb-oracle-vm-reference-architecture
+  title: Architectures for Oracle database on Azure Virtual Machines
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/virtual-machines/workloads/oracle/oracle-reference-architecture
+  docVersion: page updated 2026-02
+  retrievedAt: 2026-09-26
+  note: Oracle does not certify or support RAC on Azure VMs; recommends Data Guard (with Fast-Start Failover and observers
+    across availability zones), Far Sync for cross-region zero loss (Active Data Guard licence), GoldenGate for active-active;
+    Enterprise Edition only.
+- _id: source.ms-kb-oracle-vm-migration
+  title: Migrate Oracle workloads to Azure VMs
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/virtual-machines/workloads/oracle/oracle-migration
+  docVersion: page updated 2025-07
+  retrievedAt: 2026-09-26
+  note: Discovery/design/deploy flow; RAC is not supported on Azure VMs; data movement with RMAN, Data Pump, Data Guard, GoldenGate
+    over VPN/ExpressRoute, AzCopy or Data Box; Data Pump not recommended for large sizes with strict downtime; cutover steps.
+- _id: source.ms-kb-sqlmi-sql-agent-jobs
+  title: 'Job Automation with SQL Agent Jobs: Azure SQL Managed Instance'
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/job-automation-managed-instance
+  docVersion: page updated 2026-07
+  retrievedAt: 2026-09-26
+  note: 'SQL Agent on Managed Instance: T-SQL, OS/PowerShell, SSIS and replication job steps; Database Mail profile requirement;
+    limitations (read-only Agent settings, no proxies, no alerts, no idle-CPU trigger, fixed job history retention).'
+- _id: source.ms-kb-pgaudit
+  title: Audit Logging in Azure Database for PostgreSQL Flexible Server (pgaudit)
+  publisher: microsoft
+  url: https://learn.microsoft.com/en-us/azure/postgresql/security/security-audit
+  docVersion: page updated 2026-07
+  retrievedAt: 2026-09-26
+  note: 'pgaudit session and object audit logging, pgaudit.log classes set individually (no minus shortcut), ROLE class redacts
+    passwords, logs flow to Azure Monitor / Log Analytics (AzureDiagnostics, PostgreSQLLogs, AUDIT: prefix), and settings
+    are lost across a major version upgrade.'

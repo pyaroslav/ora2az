@@ -1,0 +1,58 @@
+{
+  "meta": {
+    "id": "q04",
+    "type": "fact",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 21407,
+    "session_id": "206faacd-ed58-4663-86cb-b041bba5c4e9",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 9992,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 2045,
+      "output_tokens_details": {
+        "thinking_tokens": 671
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 9992,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2045,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 9992,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 9992
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q04",
+    "type": "fact",
+    "q": "Our app relies on empty string being NULL in VARCHAR2 columns. Which Azure targets keep that behaviour?",
+    "expected": "None of Azure SQL DB/MI or PostgreSQL treat '' as NULL; flags this as a semantic difference requiring code review; Oracle Database@Azure keeps Oracle semantics.",
+    "required_sources": [
+      "oracle",
+      "microsoft",
+      "community"
+    ]
+  },
+  "result": "**Only Azure targets that actually run Oracle Database keep `'' = NULL`:** Oracle Database@Azure (Exadata or Autonomous) and Oracle on Azure VMs. Azure SQL Database, Azure SQL Managed Instance, SQL Server on a VM and Azure Database for PostgreSQL all treat `''` as a real value that is not NULL. None of them has a setting to change that.\n\n| Target | `''` becomes NULL? | Notes |\n|---|---|---|\n| **Oracle Database@Azure** (Exadata Database Service, Autonomous Database) | ✅ Yes | Real Oracle running in Azure datacenters. Same behaviour, including 23ai. https://learn.microsoft.com/azure/oracle/oracle-db/database-overview |\n| **Oracle on Azure VMs** (you manage it) | ✅ Yes | Same engine, so the same behaviour. https://learn.microsoft.com/azure/virtual-machines/workloads/oracle/oracle-overview |\n| **Azure SQL Database / Managed Instance / SQL Server on a VM** | ❌ No | `''` and NULL are different values. `ANSI_NULLS` and `CONCAT_NULL_YIELDS_NULL` don't change this. |\n| **Azure Database for PostgreSQL – Flexible Server** | ❌ No | Standard PostgreSQL behaviour. The `orafce` extension adds Oracle-style functions but doesn't change how `''` is stored. https://www.postgresql.org/docs/current/functions-comparison.html |\n| **EDB Postgres Advanced Server** (on a VM or EDB's managed service) | ❌ No, as far as I know | Its Oracle-compatibility settings (e.g. `edb_redwood_strings`) change how NULL behaves in `\\|\\|` concatenation. I don't believe any of them turn stored `''` into NULL. Test it before relying on it. |\n\n**Where things break if you move to SQL Server or PostgreSQL:**\n- **`WHERE col IS NULL`** stops finding rows that were written as `''`. The same applies to `NVL`/`COALESCE`, and to NOT NULL constraints, which will now accept `''`.\n- **Length:** `LENGTH('')` returns NULL in Oracle but 0 in PostgreSQL. SQL Server's `LEN('')` also returns 0.\n- **Concatenation:** `NULL || 'x'` gives `'x'` in Oracle but NULL in PostgreSQL. In SQL Server, `+` gives NULL by default. `CONCAT()` treats NULL as empty on both.\n- **Application and ORM code** that sends `''` expecting it to be stored as NULL (common with JDBC and .NET binds).\n- **Migration tools:** Microsoft's SQL Server Migration Assistant (SSMA) and ora2pg (for PostgreSQL) convert the schema and code, but they won't rewrite this logic for you. Your existing data is fine, because Oracle never stored `''` in the first place. The risk is new rows written after cutover.\n\n**How to handle it if you still move to SQL Server or PostgreSQL:**\n1. Add a BEFORE INSERT/UPDATE trigger (on SQL Server, an INSTEAD OF trigger) that sets `col = NULLIF(col, '')`. Or do the same conversion in the data-access layer, which scales better.\n2. Add `CHECK (col <> '')` constraints so any `''` that slips through fails loudly.\n3. Search the code for `IS NULL`, `NVL`, `LENGTH`, `||` and `DECODE` on string columns, and add regression tests for the `''` cases.\n\n**Recommendation:** if this behaviour runs throughout the app and you don't want to refactor, go with Oracle Database@Azure or Oracle on VMs. If you're moving off Oracle to cut licence costs, treat `''`-vs-NULL as a separate workstream with its own tests. It's one of the most common reasons these migrations go wrong after cutover.",
+  "stderr": ""
+}

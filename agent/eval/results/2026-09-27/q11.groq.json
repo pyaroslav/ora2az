@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "id": "q11",
+    "type": "fact",
+    "cond": "groq",
+    "num_turns": 4,
+    "duration_ms": 19665,
+    "session_id": "828d111c-89ec-4555-9003-be3e2460ee1e",
+    "usage": {
+      "input_tokens": 8,
+      "cache_creation_input_tokens": 6174,
+      "cache_read_input_tokens": 26594,
+      "output_tokens": 1343,
+      "output_tokens_details": {
+        "thinking_tokens": 67
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 6174,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 890,
+          "cache_read_input_tokens": 8063,
+          "cache_creation_input_tokens": 3209,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 3209
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q11",
+    "type": "fact",
+    "q": "Does Azure SQL Database (not Managed Instance) support database links / cross-database queries like Oracle?",
+    "expected": "Azure SQL Database lacks linked servers and cross-database queries (elastic query is the partial workaround); SQL MI supports linked servers; answer must distinguish DB from MI.",
+    "required_sources": [
+      "microsoft"
+    ]
+  },
+  "result": "**Verdict: No.** Azure SQL Database (not Managed Instance) does not support Oracle-style database links, linked servers, or cross-database three-part-name queries/transactions. A partial, read-only workaround exists via Elastic Query, which is still in preview.\n\n**Scoped facts** (Oracle Database links feature — applies to Oracle 11.2 through 26ai — mapped to Azure SQL Database, fidelity: **workaround**, effort: L):\n\n- \"Azure SQL Database supports neither linked servers nor cross-database three-part-name queries or cross-database transactions; the feature comparison points to elastic query as the partial workaround for read-only cross-database access.\" — severity: **blocker** — [Compare SQL Database Engine features: Azure SQL Database vs Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/database/features-comparison)\n- Rationale: \"Azure SQL Database supports neither linked servers nor cross-database three-part-name queries. Elastic query (still in preview) exposes remote Azure SQL tables as read-only external tables and can execute remote procedures with sp_execute_remote, which covers reporting-style database links but not DML through the link or links to non-SQL targets. Many teams instead consolidate schemas into one database or move to Managed Instance.\" — [Compare SQL Database Engine features](https://learn.microsoft.com/en-us/azure/azure-sql/database/features-comparison)\n- Elastic Query caveat (severity: **major**): \"Elastic query is in preview, supports only read-only access to external tables (DML must go through sp_execute_remote), does not support LOB types other than nvarchar(max) in external table definitions, works only with SQL authentication, and its shard-map mode reaches end of support on 2027-03-31.\" — [Elastic query overview (Azure SQL Database)](https://learn.microsoft.com/en-us/azure/azure-sql/database/elastic-query-overview)\n\n**Contrast (for context, not the question asked):** Azure SQL **Managed Instance** does support linked servers and in-instance cross-database queries (fidelity: partial), but linked servers there can only target SQL Server–family endpoints (SQL MI, Azure SQL DB, Synapse SQL pools, SQL Server) — not Oracle or other non-SQL RDBMS. — [T-SQL differences between SQL Server and Azure SQL Managed Instance](https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/transact-sql-tsql-differences-sql-server)\n\nNo disputes recorded on this mapping in the dataset.",
+  "stderr": ""
+}

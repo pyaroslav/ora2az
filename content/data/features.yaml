@@ -1,0 +1,708 @@
+# Oracle features: one document per canonical slug in content/SLUGS.md.
+# deprecatedIn / desupportedIn are set only where an Oracle Upgrade Guide page states the release.
+# Numeric-looking versions are quoted so YAML keeps them as strings.
+
+# =====================================================================================
+# Obituary roster: deprecated or desupported
+# =====================================================================================
+
+- _id: feature.dbms-job
+  name: DBMS_JOB
+  slug: dbms-job
+  category: scheduler
+  introducedIn: pre-11.2
+  deprecatedIn: "12.2"
+  oracleReplacement: DBMS_SCHEDULER
+  summary: |
+    DBMS_JOB is the original PL/SQL job queue. A session submits an anonymous block together with a first run time and an interval expression, commits, and background job-queue processes execute it on that cadence. It predates Oracle Scheduler by many years and is still found in installation scripts and packaged applications, frequently created by code paths that nobody remembers.
+
+    Migrations care because each job is hidden scheduling state that does not appear in the schema DDL most tools extract. The interval is a free-form date expression rather than a calendar string, submission only takes effect on COMMIT, and jobs run with the submitting schema's privileges. All of that has to be rediscovered before it can be mapped onto Azure scheduling options.
+
+    Oracle's 12.2 Upgrade Guide lists the package as deprecated with DBMS_SCHEDULER as the replacement, and the 19c package reference says the package has been superseded and that support may be removed in a future release. It has not been desupported as of 26ai. Starting with 19c, an upgrade re-creates existing jobs as Scheduler jobs and DBMS_JOB survives only as a compatibility interface; schemas that submit jobs must hold the CREATE JOB privilege, and metadata problems surface as a JOB_TABLE_INTEGRITY precheck warning.
+  sources: [source.oracle-upgrd-122-deprecated, source.oracle-plsql-ref-19-dbms-job, source.oracle-admin-19-support-for-dbms-job, source.oracle-upgrd-19-changes]
+
+- _id: feature.traditional-auditing
+  name: Traditional (pre-Unified) Auditing
+  slug: traditional-auditing
+  category: security
+  introducedIn: pre-11.2
+  deprecatedIn: 21c
+  desupportedIn: 26ai
+  oracleReplacement: Unified Auditing
+  summary: |
+    Traditional auditing is the pre-12c audit model: AUDIT and NOAUDIT statements, the AUDIT_TRAIL initialization parameter, records written to the SYS.AUD$ and FGA_LOG$ tables or to operating-system and XML files, and fine-grained audit policies managed through DBMS_FGA. Unified auditing, introduced in 12.1, replaced all of this with policy objects and a single audit trail.
+
+    Migrations care because audit configuration is usually compliance-driven and must be reproduced on the target. Knowing which statements, privileges and objects were audited, what conditions fine-grained policies applied, and where the records were written is needed to configure Azure SQL Auditing or the pgAudit extension. Databases running in mixed mode, with both traditional and unified auditing active, are harder to inventory.
+
+    Oracle's 21c Upgrade Guide declares traditional auditing deprecated (notice dated May 2021) and recommends unified auditing. The 26ai Upgrade Guide lists it as desupported (notice dated April 2023). The same 26ai page deprecates the PL/SQL cleanup helpers tied to the old trail and removes the FLUSH_UNIFIED_AUDIT_TRAIL procedure because unified records are now written directly to their table.
+  sources: [source.oracle-upgrd-21-changes, source.oracle-upgrd-26-desupports, source.oracle-cncpt-19-topics-dba-dev]
+
+- _id: feature.non-cdb-architecture
+  name: Non-CDB architecture
+  slug: non-cdb-architecture
+  category: platform
+  introducedIn: pre-11.2
+  deprecatedIn: "12.1"
+  desupportedIn: 21c
+  oracleReplacement: Multitenant architecture (CDB with pluggable databases)
+  summary: |
+    A non-CDB is a database created in the classic single-database layout, where one instance owns one data dictionary and one set of user schemas with no container root and no pluggable databases. The multitenant architecture, introduced in 12.1, adds a root container and pluggable databases (PDBs) that can be unplugged, cloned and moved.
+
+    Migrations care because a large share of the estates being moved to Azure are 11.2 and 12.x non-CDBs. The architecture changes what assessment tools see (there is no PDB scoping), how users and services are structured (no common users or per-PDB services), and whether the source can be upgraded in place to a release that current migration tooling supports before the move.
+
+    Oracle's 12.1 Upgrade Guide lists the non-CDB architecture as deprecated, and the 12.2 guide repeats the deprecation. The 21c Upgrade Guide desupports it (notice dated May 2021): the installer can no longer create a non-CDB, and upgrading to 21c or later requires converting the database into a PDB.
+  sources: [source.oracle-upgrd-121-deprecated-desupported, source.oracle-upgrd-122-deprecated, source.oracle-upgrd-21-changes]
+
+- _id: feature.oracle-streams
+  name: Oracle Streams
+  slug: oracle-streams
+  category: replication
+  introducedIn: pre-11.2
+  deprecatedIn: "12.1"
+  desupportedIn: 19c
+  oracleReplacement: Oracle GoldenGate
+  summary: |
+    Oracle Streams was the database's built-in framework for log-based capture, propagation and apply of changes. Capture processes mined redo, staged logical change records in Advanced Queuing queues, and apply processes replayed them on the same or another database. It was used for replication, data sharing between systems and change feeds, and was configured through DBMS_STREAMS_ADM and related packages.
+
+    Migrations care because a Streams configuration rarely shows up in application code; it appears as capture and apply processes, queue tables and rules. If downstream systems depend on a Streams feed, the Azure design needs a replacement pipeline, whether GoldenGate, Azure Data Factory or another change data capture tool, and the Azure database targets cannot participate in Streams at all.
+
+    Oracle's 12.1 Upgrade Guide deprecates Streams and names GoldenGate as the replacement. The 19c Upgrade Guide desupports it starting with 19.1 (notice dated April 2019), noting that Streams never supported 12c-era features such as multitenant. The same notice states that Advanced Queuing itself is not deprecated and remains fully supported.
+  sources: [source.oracle-upgrd-121-deprecated-desupported, source.oracle-upgrd-19-changes]
+
+- _id: feature.oracle-multimedia
+  name: Oracle Multimedia
+  slug: oracle-multimedia
+  category: datatype
+  introducedIn: pre-11.2
+  deprecatedIn: 18c
+  desupportedIn: 19c
+  oracleReplacement: SecureFiles LOBs plus external media processing
+  summary: |
+    Oracle Multimedia, earlier called interMedia, supplied object types such as ORDImage, ORDAudio, ORDVideo and ORDDoc together with PL/SQL and Java APIs for storing, describing and processing media inside the database. It was installed as the ORDIM component under the ORDSYS schema and included medical imaging (DICOM) support.
+
+    Migrations care because tables with these object-typed columns cannot be moved as they are. The payloads are LOBs wrapped in object types, and the processing methods (thumbnails, format conversion, metadata extraction) must be rebuilt outside the database. Oracle's own guidance, even before any Azure move, is to store media in plain SecureFiles LOBs and process it with external tools.
+
+    The 12.1 and 12.2 Upgrade Guides deprecate parts of the feature (DICOM support, the Java APIs). The 18c Upgrade Guide deprecates Oracle Multimedia as a whole and the 19c guide desupports it (notice dated April 2019): the implementation is removed, the objects and packages remain but raise errors when used, and Oracle Locator is not affected. The 26ai guide adds that the ORDIM component is removed during the upgrade.
+  sources: [source.oracle-upgrd-18-deprecated, source.oracle-upgrd-19-changes, source.oracle-upgrd-122-deprecated, source.oracle-upgrd-26-desupports]
+
+- _id: feature.exp-utility
+  name: Original Export utility (exp)
+  slug: exp-utility
+  category: tooling
+  introducedIn: pre-11.2
+  desupportedIn: 26ai
+  oracleReplacement: Data Pump Export (expdp)
+  summary: |
+    The original Export utility, exp, is the client-side program that reads a database over a session and writes a proprietary dump file; imp is its import counterpart. Data Pump (expdp and impdp) replaced the pair in 10g with a server-side, parallel design and a different dump-file format.
+
+    Migrations care because legacy runbooks and cron jobs still call exp for backups and schema copies. Its dump files cannot be read by Data Pump import, and neither format can be loaded directly into an Azure database service, so an inventory of "exports" must distinguish old-style dumps from Data Pump dumps before deciding what to keep.
+
+    Oracle's Utilities guide says original Export has been desupported for general use since 11g, with backward migration of XMLType data to 10.2 the only remaining supported use, and recommends Data Pump. The 26ai Upgrade Guide lists the utility itself as desupported (notice dated April 2023). Because the 11g statement is phrased as a limited desupport rather than a deprecation of a named release, no deprecation release is recorded here.
+  sources: [source.oracle-upgrd-26-desupports, source.oracle-sutil-19-original-export, source.oracle-sutil-19-data-pump-overview]
+
+- _id: feature.em-express
+  name: EM Database Express
+  slug: em-express
+  category: tooling
+  introducedIn: "12.1"
+  deprecatedIn: 21c
+  desupportedIn: 26ai
+  oracleReplacement: Enterprise Manager Cloud Control, OCI Database Management, or SQL Developer
+  summary: |
+    Enterprise Manager Database Express is the browser-based console built into the database from 12.1 onward, replacing the earlier Database Control. It exposes performance, storage, configuration and security pages for a single database or container database over an HTTP or HTTPS port served by the XML DB listener.
+
+    Migrations care less about the tool than about what it implies: DBA teams that rely on it for monitoring need a replacement in Azure, whether Azure Monitor and database-level insights for the PaaS targets or Oracle's own tooling for Oracle on Azure. The port it listens on also commonly appears in firewall and inventory records.
+
+    Oracle's 19c Upgrade Guide deprecates only the Flash-based user interface (April 2019) in favor of a JET-based one, and the 21c guide desupports the Flash version. The 21c guide separately lists EM Express as deprecated and due for removal, and the 26ai guide desupports it entirely (notice dated April 2023), pointing to Enterprise Manager Cloud Control, OCI Database Management or SQL Developer. The 12.1 guide records that EM Express itself replaced Database Control.
+  sources: [source.oracle-upgrd-19-changes, source.oracle-upgrd-21-changes, source.oracle-upgrd-26-desupports, source.oracle-upgrd-121-deprecated-desupported]
+
+- _id: feature.stored-outlines
+  name: Stored outlines
+  slug: stored-outlines
+  category: performance
+  introducedIn: pre-11.2
+  oracleReplacement: SQL plan baselines
+  summary: |
+    A stored outline is a saved set of optimizer hints bound to a SQL text so that the optimizer reproduces the same execution plan every time. Outlines live in the OUTLN schema, are created with CREATE OUTLINE or captured automatically, and are activated through the USE_STORED_OUTLINES setting.
+
+    Migrations care because outlines are a form of plan pinning. Their presence tells you which statements were fragile enough to need it, and any plan stability the application depends on has to be re-created with the target's own mechanisms, such as Query Store plan forcing on Azure SQL or hint-based approaches on PostgreSQL.
+
+    The 12.1 Upgrade Guide lists stored outlines as deprecated with plan baselines as the replacement, and the 26ai guide says they were deprecated in Oracle Database 11g and that 26ai is the terminal release, instructing users to migrate to SQL plan baselines. The pages used do not state which 11g release began the deprecation, and no desupport release has been named, so neither field is set here.
+  sources: [source.oracle-upgrd-26-desupports, source.oracle-upgrd-121-deprecated-desupported]
+
+- _id: feature.liboramysql
+  name: MySQL client library driver (liboramysql)
+  slug: liboramysql
+  category: tooling
+  introducedIn: "12.1"
+  deprecatedIn: 21c
+  desupportedIn: 26ai
+  summary: |
+    The MySQL Client Library Driver for Oracle, liboramysql, was a drop-in replacement for the MySQL C client library. Applications written against the MySQL C API could be relinked to it and connect to Oracle Database instead, with the driver translating calls onto Oracle Call Interface. It shipped as a 12c-era client add-on; the introduction release recorded here is a best-effort value.
+
+    Migrations care because an application using this shim is really a MySQL-API application that happens to talk to Oracle. Moving it to Azure is not a straightforward Oracle-to-target mapping: the choice is between rewriting for the target's native driver or choosing a MySQL-compatible destination. The library is easy to miss because it lives in application deployments, not in the database.
+
+    Oracle's 21c Upgrade Guide deprecates the driver, and the 26ai guide desupports it (notice dated April 2023) with no replacement offered.
+  sources: [source.oracle-upgrd-21-changes, source.oracle-upgrd-26-desupports]
+
+- _id: feature.dotnet-stored-procedures
+  name: Oracle Database Extensions for .NET
+  slug: dotnet-stored-procedures
+  category: plsql
+  introducedIn: pre-11.2
+  deprecatedIn: 21c
+  desupportedIn: 26ai
+  oracleReplacement: Middle-tier .NET code, external procedures, or PL/SQL and Java
+  summary: |
+    Oracle Database Extensions for .NET let developers write stored procedures and functions in .NET languages, host them in a common language runtime running in an external process on a Windows database server, and publish them behind PL/SQL wrappers so SQL and PL/SQL callers could not tell the difference.
+
+    Migrations care because this code must be re-hosted rather than translated. It also signals that the source database ran on Windows, which matters for lift-and-shift planning. SQL Server has its own CLR integration, but availability differs between Azure SQL service tiers, so the .NET assemblies cannot simply be assumed to carry over.
+
+    Oracle's 21c Upgrade Guide deprecates the extensions and the 26ai guide desupports them (notice dated April 2023). Oracle recommends moving the .NET code to a middle tier, using the external procedures feature, or rewriting it in PL/SQL or Java.
+  sources: [source.oracle-upgrd-21-changes, source.oracle-upgrd-26-desupports, source.oracle-cncpt-19-server-side-programming]
+
+- _id: feature.data-recovery-advisor
+  name: RMAN Data Recovery Advisor
+  slug: data-recovery-advisor
+  category: ha
+  introducedIn: pre-11.2
+  deprecatedIn: 19c
+  desupportedIn: 26ai
+  summary: |
+    Data Recovery Advisor is the Recovery Manager component that diagnoses data failures such as missing or corrupt files and corrupt blocks, proposes repair options and can run them. It is driven through the RMAN commands LIST FAILURE, ADVISE FAILURE, REPAIR FAILURE and CHANGE FAILURE.
+
+    Migrations care mainly for estates that stay on Oracle in Azure, on virtual machines or Oracle Database@Azure, where RMAN remains the backup tool and operational runbooks referencing these commands have to be rewritten. For the PaaS targets the topic disappears, because backup and repair are platform-managed.
+
+    Oracle's 19c Upgrade Guide lists the advisor as deprecated starting with 19c (notice dated July 2023), and the 26ai guide desupports it (also July 2023). The four RMAN commands are removed and Oracle names no replacement feature.
+  sources: [source.oracle-upgrd-19-changes, source.oracle-upgrd-26-desupports]
+
+- _id: feature.dbua
+  name: Database Upgrade Assistant (DBUA)
+  slug: dbua
+  category: tooling
+  introducedIn: pre-11.2
+  deprecatedIn: 19c
+  desupportedIn: 26ai
+  oracleReplacement: AutoUpgrade
+  summary: |
+    Database Upgrade Assistant is the graphical wizard that upgraded a database to a newer Oracle release, running prechecks, the catalog upgrade and post-upgrade steps. Its alternatives were manual upgrades with the Parallel Upgrade Utility and the dbupgrade scripts.
+
+    Migrations care because upgrading the Oracle source is often a preliminary step, either to reach a release that assessment and replication tooling supports or as part of lifting the database to Oracle on Azure virtual machines or Oracle Database@Azure. The supported path for that step is now AutoUpgrade.
+
+    Oracle's 19c Upgrade Guide deprecates DBUA together with the manual upgrade methods (notice dated July 2023), and the 26ai guide desupports them (also July 2023). AutoUpgrade and Replay Upgrade are the only supported methods for upgrading to 26ai.
+  sources: [source.oracle-upgrd-19-changes, source.oracle-upgrd-26-desupports]
+
+- _id: feature.utl-file-dir
+  name: UTL_FILE_DIR initialization parameter
+  slug: utl-file-dir
+  category: plsql
+  introducedIn: pre-11.2
+  deprecatedIn: "12.2"
+  desupportedIn: 18c
+  oracleReplacement: Directory objects
+  summary: |
+    UTL_FILE_DIR was the initialization parameter that listed the operating-system directories PL/SQL code could read and write through UTL_FILE. It was static, required a restart to change, granted the same access to every PL/SQL user, and a wildcard value opened the whole file system.
+
+    Migrations care because legacy code that passes raw operating-system paths to UTL_FILE.FOPEN fails on 18c and later, and because such code marks a file-based integration (flat-file exports, log writing, inbound feeds) that has no analog on Azure database services and must move to Blob Storage or an external process.
+
+    Oracle's 12.2 Database Reference marks the parameter deprecated and recommends directory objects, which have a privilege model and can be changed online. The 18c Upgrade Guide lists it as desupported: the parameter no longer appears in the parameter views, setting it fails, and only directory object names are accepted. The same page notes that 18c also stopped following symbolic links in UTL_FILE paths.
+  sources: [source.oracle-refrn-122-utl-file-dir, source.oracle-upgrd-18-init-params, source.oracle-plsql-ref-19-utl-file]
+
+- _id: feature.oracle-change-data-capture
+  name: Oracle Change Data Capture (CDC)
+  slug: oracle-change-data-capture
+  category: replication
+  introducedIn: pre-11.2
+  desupportedIn: "12.1"
+  oracleReplacement: Oracle GoldenGate
+  summary: |
+    Oracle Change Data Capture recorded inserts, updates and deletes on source tables into change tables that subscribers consumed through DBMS_CDC_PUBLISH and DBMS_CDC_SUBSCRIBE. It offered synchronous capture via triggers and asynchronous capture built on redo mining and Streams.
+
+    Migrations care because downstream extract-transform-load jobs that read change tables must be redesigned; Azure options include Data Factory change data capture, GoldenGate or other log-based tools. The presence of CDC also tells you the source was on 11.2 or earlier, which affects which migration tools can connect to it.
+
+    Oracle's 12.1 Upgrade Guide states that Change Data Capture is not included in 12c and has been replaced by GoldenGate. That page does not name the release in which it was deprecated, so the deprecation field is left unset.
+  sources: [source.oracle-upgrd-121-deprecated-desupported]
+
+- _id: feature.advanced-replication
+  name: Oracle Advanced Replication
+  slug: advanced-replication
+  category: replication
+  introducedIn: pre-11.2
+  deprecatedIn: "12.1"
+  desupportedIn: "12.2"
+  oracleReplacement: Oracle GoldenGate
+  summary: |
+    Advanced Replication was the trigger and queue based replication family that predated Streams: multimaster replication between peer databases, updatable materialized views for disconnected sites, hierarchical materialized views and deployment templates, all administered through the DBMS_REPCAT packages.
+
+    Migrations care because updatable snapshot sites, typically at branch offices or on laptops, embody a synchronization design that must be replaced, and because replication groups and conflict-resolution methods are configuration rather than schema and are easy to miss. Read-only materialized views are unaffected and keep working.
+
+    Oracle's 12.1 Upgrade Guide deprecates Advanced Replication and the 12.2 guide desupports it in its entirety, listing multimaster replication, updatable materialized views, hierarchical materialized views and deployment templates. Read-only materialized views with basic replication remain supported, and GoldenGate is the named replacement.
+  sources: [source.oracle-upgrd-121-deprecated-desupported, source.oracle-upgrd-122-desupported]
+
+- _id: feature.dbms-xmlquery
+  name: DBMS_XMLQUERY / DBMS_XMLSAVE
+  slug: dbms-xmlquery
+  category: plsql
+  introducedIn: pre-11.2
+  deprecatedIn: 18c
+  desupportedIn: 21c
+  oracleReplacement: DBMS_XMLGEN and DBMS_XMLSTORE
+  summary: |
+    DBMS_XMLQUERY turns the result of a SQL query into an XML document, and DBMS_XMLSAVE performs inserts, updates and deletes from XML input. Both are Java-based members of the original XML SQL Utility and were kept for compatibility long after kernel-native alternatives appeared.
+
+    Migrations care because these calls usually sit inside integration code that produces or consumes XML for other systems. On Azure SQL the equivalent is FOR XML and the xml type methods; on PostgreSQL it is the SQL/XML functions. The Oracle-side replacements, DBMS_XMLGEN and DBMS_XMLSTORE, are close enough that converting to them first can simplify a later port.
+
+    Oracle's 18c Upgrade Guide deprecates both packages and recommends DBMS_XMLGEN and DBMS_XMLSTORE, which are written in C and faster. The 21c Upgrade Guide lists both as desupported. The roster hint of an 18c desupport does not match Oracle's pages, which give 18c as the deprecation release and 21c as the desupport release.
+  sources: [source.oracle-upgrd-18-deprecated, source.oracle-upgrd-21-changes, source.oracle-adxdb-19-intro]
+
+- _id: feature.oracle-wallet-manager
+  name: Oracle Wallet Manager (OWM)
+  slug: oracle-wallet-manager
+  category: security
+  introducedIn: pre-11.2
+  deprecatedIn: 21c
+  desupportedIn: 26ai
+  oracleReplacement: orapki command-line tool
+  summary: |
+    Oracle Wallet Manager is the graphical Java tool for creating and maintaining Oracle wallets, the PKCS#12 containers that hold TLS certificates, private keys and, in many deployments, the Transparent Data Encryption keystore and secure external password store entries.
+
+    Migrations care because wallets hold material the migration itself depends on: the TDE master key needed to read encrypted tablespaces during export, and the certificates used for TLS connections from migration tooling. Moving key management to Azure Key Vault starts with an inventory of wallets, and scripts that invoked the GUI must be rewritten around command-line tools.
+
+    Oracle's 21c Upgrade Guide deprecates Oracle Wallet Manager (notice dated May 2021), and the 26ai guide desupports it (notice dated April 2023), recommending the orapki command-line tool instead.
+  sources: [source.oracle-upgrd-21-changes, source.oracle-upgrd-26-desupports]
+
+- _id: feature.tls-1-0-1-1
+  name: TLS 1.0 / 1.1 network encryption
+  slug: tls-1-0-1-1
+  category: security
+  introducedIn: pre-11.2
+  deprecatedIn: 21c
+  desupportedIn: 26ai
+  oracleReplacement: TLS 1.2 or TLS 1.3
+  summary: |
+    Oracle Net can protect client connections with Transport Layer Security, negotiating the protocol version between client and server. Versions 1.0 and 1.1 are the legacy protocol levels that predate the current security baseline.
+
+    Migrations care because clients, drivers and middleware that still connect to Oracle sources over the old versions have to be upgraded before or during the move; Azure services require TLS 1.2 or later, and connections to Oracle Database@Azure or between databases over links are subject to the same limits. The list of TLS versions in sqlnet.ora and client configuration is therefore part of the inventory.
+
+    Oracle's 21c Upgrade Guide deprecates TLS 1.0 and 1.1, and the 26ai guide desupports them (notice dated April 2023) in favor of TLS 1.2 and 1.3. The 26ai page also desupports the parameter that re-enabled SSLv3 and the anonymous Diffie-Hellman cipher suites.
+  sources: [source.oracle-upgrd-21-changes, source.oracle-upgrd-26-desupports]
+
+# =====================================================================================
+# Living features that are hard to map
+# =====================================================================================
+
+- _id: feature.dbms-scheduler
+  name: DBMS_SCHEDULER
+  slug: dbms-scheduler
+  category: scheduler
+  introducedIn: pre-11.2
+  summary: |
+    Oracle Scheduler, exposed through the DBMS_SCHEDULER package, is a full job scheduler inside the database. A job combines a program (PL/SQL block, stored procedure, operating-system executable, SQL script or backup script), a schedule expressed in calendaring syntax or triggered by an event, and optional destinations and credentials. Around jobs sit job classes tied to the Resource Manager, maintenance windows, dependency chains with branching rules, file watchers, and remote or multi-destination execution through Scheduler agents.
+
+    Migrations care because no Azure target offers this breadth in one place. Simple recurring PL/SQL jobs map to SQL Server Agent on Managed Instance, Elastic Jobs for Azure SQL Database or the pg_cron extension on PostgreSQL, but chains, windows, resource plans, external executables and event-driven jobs spread across orchestration services such as Data Factory, Functions or Logic Apps. Job logging and run history views also have no direct counterpart.
+
+    The feature is fully supported and not deprecated. Since 19c it is also the engine behind legacy DBMS_JOB jobs, which are converted into Scheduler jobs at upgrade, so a Scheduler inventory taken on 19c or later should include those converted jobs.
+  sources: [source.oracle-admin-19-scheduler-concepts, source.oracle-admin-19-support-for-dbms-job]
+
+- _id: feature.autonomous-transactions
+  name: PRAGMA AUTONOMOUS_TRANSACTION
+  slug: autonomous-transactions
+  category: plsql
+  introducedIn: pre-11.2
+  summary: |
+    An autonomous transaction is an independent transaction started from inside another one. A procedure, function or trigger declared with PRAGMA AUTONOMOUS_TRANSACTION suspends the calling transaction, does its own work, commits or rolls back on its own, and then lets the caller resume. It does not see the caller's uncommitted changes and does not share its locks.
+
+    Migrations care because the pattern is common for error logging, audit trails and counters that must survive a rollback of the main work, and neither Transact-SQL nor PL/pgSQL has an equivalent construct. Emulations exist (table variables that ignore rollback on SQL Server, a loopback connection on PostgreSQL) but each changes semantics, so every autonomous unit needs a design decision rather than a mechanical rewrite.
+
+    The feature is a core part of PL/SQL and is not deprecated. Oracle's Concepts guide describes it under transactions, noting that committed changes become visible to other sessions immediately and that autonomous units can nest.
+  sources: [source.oracle-cncpt-19-transactions]
+
+- _id: feature.utl-file
+  name: UTL_FILE
+  slug: utl-file
+  category: plsql
+  introducedIn: pre-11.2
+  summary: |
+    UTL_FILE gives PL/SQL a stream-style interface for reading and writing text files on the database server: open a file in a directory object, read or write lines, copy, rename, remove and inspect files. Access is controlled by READ and WRITE privileges on directory objects, files are accessed as the database's operating-system user, line length is capped at 32767 bytes, and symbolic links are not followed.
+
+    Migrations care because file input and output from inside the database is a pattern the Azure PaaS targets do not offer. Every UTL_FILE call marks an integration point (nightly extracts, inbound feeds, application logs) that must become an external process, a Blob Storage interaction or a message. The directory objects also record which server paths the application depended on.
+
+    The package is supported and not deprecated. What changed is its configuration: since 18c only directory objects are accepted, because the UTL_FILE_DIR parameter was desupported and symbolic-link paths stopped working.
+  sources: [source.oracle-plsql-ref-19-utl-file, source.oracle-upgrd-18-init-params]
+
+- _id: feature.materialized-views-fast-refresh
+  name: Fast-refresh materialized views
+  slug: materialized-views-fast-refresh
+  category: performance
+  introducedIn: pre-11.2
+  summary: |
+    A materialized view stores the result of a query as a real segment and can be refreshed either completely, by re-running the defining query, or incrementally ("fast"), by applying only the changes recorded in materialized view logs on the base tables or by partition change tracking. Refresh can run on commit or on demand, and query rewrite lets the optimizer answer queries against base tables from a matching materialized view without changing application SQL.
+
+    Migrations care because incremental refresh and query rewrite are where the difficulty lies. SQL Server indexed views are maintained synchronously but accept only a restricted class of queries, and PostgreSQL materialized views support only complete refresh. Fast-refresh views with joins and aggregates, on-commit refresh and rewrite-dependent reporting therefore need re-engineering, often into scheduled loads or change-driven summary tables.
+
+    Read-only materialized views are supported and not deprecated. The updatable variety used for disconnected replication was removed with Advanced Replication in 12.2.
+  sources: [source.oracle-cncpt-19-schema-objects, source.oracle-cncpt-19-topics-dba-dev, source.oracle-upgrd-122-desupported]
+
+- _id: feature.vpd
+  name: Virtual Private Database (DBMS_RLS)
+  slug: vpd
+  category: security
+  introducedIn: pre-11.2
+  summary: |
+    Virtual Private Database enforces row-level and column-level security by attaching policies to tables and views through DBMS_RLS. When a statement touches a protected object, the policy function returns a predicate that the database appends to the statement's WHERE clause, typically based on values in an application context such as the user's department or tenant.
+
+    Migrations care because both major Azure targets have a row-level security feature but with different shapes: SQL Server uses security policies bound to inline predicate functions, and PostgreSQL uses per-table policies with boolean expressions. Oracle policy functions build predicate text dynamically and can differ per statement type, so each policy must be rewritten by hand, and the application context that feeds it needs a session-state replacement.
+
+    The feature is supported and not deprecated. Oracle's Concepts guide describes it alongside the other access-control mechanisms.
+  sources: [source.oracle-cncpt-19-topics-dba-dev]
+
+- _id: feature.sequences
+  name: Sequences
+  slug: sequences
+  category: sql
+  introducedIn: pre-11.2
+  summary: |
+    A sequence is a schema object that hands out unique integers to many sessions without locking, using NEXTVAL and CURRVAL pseudocolumns. Its definition fixes the start value, increment, caching, cycling and ordering behavior. Cached values that are never used and transactions that roll back both create gaps, and Oracle states plainly that gap-free numbering is not something sequences provide.
+
+    Migrations care because sequences are ubiquitous in Oracle schemas, usually feeding primary keys from BEFORE row triggers. SQL Server and PostgreSQL both have sequences, but the syntax (NEXT VALUE FOR versus nextval), the meaning of CURRVAL, caching behavior and the alternative of identity columns all differ, and the trigger-based population pattern has to be replaced by defaults or identity properties.
+
+    The feature is core SQL and is not deprecated.
+  sources: [source.oracle-cncpt-19-schema-objects]
+
+- _id: feature.rowid
+  name: ROWID / UROWID
+  slug: rowid
+  category: datatype
+  introducedIn: pre-11.2
+  summary: |
+    ROWID is the pseudocolumn and data type that gives a row's physical address in a heap table: data object number, file, block and slot. UROWID is the universal form that also covers logical rowids for index-organized tables and rowids of foreign tables. Oracle warns that a rowid can change, for example when a row moves, so storing rowids for later use yields unpredictable results.
+
+    Migrations care because rowids are used in idioms that have no target equivalent: de-duplication with MIN(ROWID), bulk-update loops that re-fetch by rowid, and application frameworks that cache rowids as row handles. SQL Server exposes no stable physical row address, and PostgreSQL's system column changes on every update, so each idiom needs a key-based rewrite.
+
+    The data type is supported and not deprecated.
+  sources: [source.oracle-sqlrf-19-data-types, source.oracle-cncpt-19-tables]
+
+- _id: feature.number-unconstrained
+  name: NUMBER without precision/scale
+  slug: number-unconstrained
+  category: datatype
+  introducedIn: pre-11.2
+  summary: |
+    NUMBER is Oracle's variable-length decimal type. With precision and scale it behaves as a fixed-point decimal; declared bare, as plain NUMBER, it accepts up to 38 significant digits with a floating decimal point and stores values exactly, from very small to very large magnitudes, in one to twenty-two bytes.
+
+    Migrations care because a bare NUMBER carries no declared intent. Mapping it to a fixed DECIMAL(38, s) forces a scale and can truncate or overflow, while mapping it to a binary float preserves range but loses exactness for money and identifiers. PostgreSQL's arbitrary-precision numeric is a natural fit, but SQL Server requires choosing, and the choice should come from data profiling rather than the declaration. This is one of the most disputed mappings between migration tools.
+
+    The type is core SQL and not deprecated.
+  sources: [source.oracle-sqlrf-19-data-types, source.oracle-cncpt-19-tables]
+
+- _id: feature.date-with-time
+  name: DATE (includes time)
+  slug: date-with-time
+  category: datatype
+  introducedIn: pre-11.2
+  summary: |
+    Oracle's DATE stores century, year, month, day, hour, minute and second in seven bytes. It has no fractional seconds and no time zone; those belong to the TIMESTAMP family. Display is governed by NLS_DATE_FORMAT, whose default hides the time portion, which is why many developers do not realize their DATE columns hold times.
+
+    Migrations care because the name is misleading on the way out. Mapping to a date-only type on the target silently drops the time component; the faithful mapping is a seconds-precision timestamp such as datetime2(0) or timestamp(0). Date arithmetic also differs: Oracle treats the difference of two DATEs as a number of days and adds numbers as days, which target dialects express with functions.
+
+    The type is core SQL and not deprecated.
+  sources: [source.oracle-sqlrf-19-data-types, source.oracle-cncpt-19-tables]
+
+- _id: feature.varchar2-byte-semantics
+  name: VARCHAR2 byte vs char length semantics
+  slug: varchar2-byte-semantics
+  category: datatype
+  introducedIn: pre-11.2
+  summary: |
+    A VARCHAR2 length can be declared in bytes or in characters. Without a qualifier the session's NLS_LENGTH_SEMANTICS decides, and the default is BYTE. The column limit is 4000 bytes, or 32767 with MAX_STRING_SIZE set to EXTENDED. In a Unicode database a byte-declared column holds fewer characters than its number suggests, and the same declaration means different things in different databases.
+
+    Migrations care because column sizing must be translated, not copied. SQL Server nvarchar lengths count UTF-16 code units and PostgreSQL varchar lengths count characters, so a VARCHAR2(100 BYTE) column in an AL32UTF8 database may need a smaller or larger target length depending on the data, and mixed semantics in one schema make blanket rules unsafe. Overlong-value errors during load are the usual symptom of getting this wrong.
+
+    The type is core SQL and not deprecated.
+  sources: [source.oracle-sqlrf-19-data-types, source.oracle-nlspg-19-choosing-character-set]
+
+- _id: feature.empty-string-null
+  name: Empty string equals NULL
+  slug: empty-string-null
+  category: sql
+  introducedIn: pre-11.2
+  summary: |
+    Oracle treats a character value of zero length as NULL. Inserting an empty string stores NULL, comparisons with an empty literal behave like comparisons with NULL, and concatenation is the one operator that tolerates null operands. Oracle's SQL reference explicitly says this may not remain true in future releases and advises applications not to depend on it.
+
+    Migrations care because SQL Server and PostgreSQL distinguish an empty string from NULL. NOT NULL constraints that Oracle accepted silently start rejecting empty values or, conversely, allow empty strings that Oracle would have stored as NULL; equality tests, LENGTH results, and COALESCE and NVL patterns all shift. Every empty-string literal and every IS NULL test on character columns in the source code is a review item.
+
+    The behavior is long-standing and unchanged as of 26ai; it is documented, not deprecated, but flagged by Oracle as something not to rely on.
+  sources: [source.oracle-sqlrf-19-nulls]
+
+- _id: feature.connect-by
+  name: CONNECT BY hierarchical queries
+  slug: connect-by
+  category: sql
+  introducedIn: pre-11.2
+  summary: |
+    Hierarchical queries walk parent-child relationships in a single table with START WITH to pick root rows and CONNECT BY PRIOR to link generations. They expose the LEVEL, CONNECT_BY_ISLEAF and CONNECT_BY_ISCYCLE pseudocolumns, the CONNECT_BY_ROOT operator, SYS_CONNECT_BY_PATH for building paths, NOCYCLE to survive loops, and ORDER SIBLINGS BY to sort within each level while keeping tree order.
+
+    Migrations care because the target dialects express hierarchies with recursive common table expressions. The core traversal converts mechanically, but LEVEL, path construction, cycle handling and especially sibling ordering must be emulated by hand, and Oracle's rule that ordinary ORDER BY destroys hierarchical order has no counterpart, so result ordering often changes unnoticed. CONNECT BY without a table, used to generate rows, is a separate idiom to replace.
+
+    The syntax is supported and not deprecated. Oracle's own reference points to recursive subquery factoring as the more powerful alternative, and code already written that way ports far more easily.
+  sources: [source.oracle-sqlrf-19-hierarchical-queries]
+
+- _id: feature.database-links
+  name: Database links
+  slug: database-links
+  category: integration
+  introducedIn: pre-11.2
+  summary: |
+    A database link is a one-way pointer from one database to another that lets SQL reference remote objects with the @link suffix. Links are private, public or global; they authenticate as a fixed user, the connected user or the current user; and through Heterogeneous Services and gateways they can reach non-Oracle systems. Statements spanning several databases become distributed transactions coordinated by two-phase commit, subject to restrictions on DDL, privilege grants and referential integrity across links.
+
+    Migrations care because links weave separate databases into one application, and Azure targets offer weaker equivalents: linked servers on SQL Managed Instance, external tables for cross-database queries on Azure SQL Database, and foreign data wrappers on PostgreSQL. Cross-database DML with atomic commit is generally unavailable, so each link must be classified as read-only lookup, data movement or transactional coupling before a design is chosen.
+
+    Links are supported and not deprecated. The 26ai Upgrade Guide desupports one variant, current-user links that rely on Enterprise User Security, recommending fixed-user or connected-user links instead.
+  sources: [source.oracle-admin-19-distributed-database-concepts, source.oracle-upgrd-26-desupports]
+
+- _id: feature.external-tables
+  name: External tables
+  slug: external-tables
+  category: storage
+  introducedIn: pre-11.2
+  summary: |
+    An external table has its metadata in the data dictionary but its data in files outside the database, accessed through a directory object and an access driver. The loader driver parses text files at query time, the Data Pump driver reads and writes Oracle's dump format, and later releases added drivers for big-data stores. The tables are queried like ordinary tables, cannot be indexed, and are the standard way to stage flat files or to build hybrid partitioned tables with some partitions in files.
+
+    Migrations care because external tables encode a file-based data flow. The files themselves usually have to move to Blob Storage or Data Lake Storage, and the query-time parsing must be replaced by bulk load statements, external data sources or a pipeline. The directory objects and file formats involved are part of the inventory, as are any dependencies on symbolic links, which 18c stopped following.
+
+    The feature is supported and not deprecated.
+  sources: [source.oracle-cncpt-19-tables, source.oracle-cncpt-19-schema-objects, source.oracle-sutil-19-data-pump-overview, source.oracle-upgrd-18-init-params]
+
+- _id: feature.advanced-queuing
+  name: Oracle Advanced Queuing (AQ)
+  slug: advanced-queuing
+  category: integration
+  introducedIn: pre-11.2
+  summary: |
+    Advanced Queuing is the message broker built into the database. Messages live in queue tables and are enqueued and dequeued with DBMS_AQ inside ordinary database transactions, so a business update and its outgoing message commit or roll back together. It supports point-to-point and publish-subscribe queues, rule-based subscribers, persistent and buffered messages, propagation between queues on different databases, asynchronous notifications, and a Java Message Service interface.
+
+    Migrations care because the transactional coupling between data and messages is exactly what external brokers lack. Moving to Azure Service Bus or Storage queues typically requires an outbox pattern to preserve atomicity, and PL/SQL consumers become functions or services. Queue tables, subscriber rules and propagation schedules are configuration that assessment tools rarely surface.
+
+    Oracle's 19c Upgrade Guide states, in the Streams desupport notice, that Advanced Queuing is not deprecated and is fully supported. The 21c guide deprecates sharded queues in favor of Transactional Event Queues, which are the evolution of the same feature.
+  sources: [source.oracle-adque-19-intro, source.oracle-upgrd-19-changes, source.oracle-upgrd-21-changes]
+
+- _id: feature.oracle-text
+  name: Oracle Text
+  slug: oracle-text
+  category: search
+  introducedIn: pre-11.2
+  summary: |
+    Oracle Text adds full-text indexing and search to the database. A CONTEXT index supports the CONTAINS operator with ranking, stemming, fuzzy matching, proximity and section searching over documents in many formats; CTXCAT indexes serve catalog-style queries that mix text with structured columns; CTXRULE indexes classify incoming documents against stored queries. CONTEXT indexes are not maintained synchronously and need periodic synchronization and optimization.
+
+    Migrations care because the query operators and index options are Oracle-specific. SQL Server full-text search and PostgreSQL text search cover basic word and phrase matching, but scoring, thesauri, section groups and document filtering differ, and richer requirements often move to Azure AI Search outside the database. The synchronization jobs that keep CONTEXT indexes current are Scheduler jobs that also need a home.
+
+    The feature is supported and not deprecated. The 19c Upgrade Guide deprecates two of its data-store types, URL_DATASTORE and FILE_DATASTORE, which fetch documents from URLs and files rather than from table columns.
+  sources: [source.oracle-ccapp-19-text-overview, source.oracle-upgrd-19-changes]
+
+- _id: feature.spatial-sdo-geometry
+  name: Oracle Spatial SDO_GEOMETRY
+  slug: spatial-sdo-geometry
+  category: datatype
+  introducedIn: pre-11.2
+  summary: |
+    SDO_GEOMETRY is the object type that stores points, lines, polygons, collections and three-dimensional solids in a single column. Its attributes encode the geometry type and dimensionality, a spatial reference system identifier, an optimized point, and two arrays that describe element structure and ordinates. Each spatial column needs a row in the geometry metadata view before an R-tree spatial index can be built, and all geometries in an indexed column must share one coordinate system.
+
+    Migrations care because the type must be converted rather than mapped. SQL Server's geometry and geography types and PostGIS on PostgreSQL both accept well-known text and binary, which SDO_GEOMETRY can emit through its methods, but spatial functions, operators, tolerance semantics and index behavior differ, and curve, compound and 3D elements do not always translate.
+
+    The feature is supported and not deprecated. The lighter-weight Oracle Locator subset shares the same type, and Oracle's 19c Upgrade Guide notes that Locator was not affected by the desupport of Oracle Multimedia.
+  sources: [source.oracle-spatl-19-datatypes, source.oracle-upgrd-19-changes]
+
+- _id: feature.xmltype
+  name: XMLType
+  slug: xmltype
+  category: datatype
+  introducedIn: pre-11.2
+  summary: |
+    XMLType is Oracle's native SQL type for XML documents, usable in columns, tables, views and PL/SQL. It can be stored as binary XML, the default since 12.1, or shredded into object-relational structures driven by a registered XML schema; the older unstructured CLOB storage is deprecated. The type is queried and updated with SQL/XML functions such as XMLQUERY, XMLTABLE and XMLEXISTS, indexed with XMLIndex, and surrounded by the XML DB Repository, which exposes documents over FTP, HTTP and WebDAV.
+
+    Migrations care because the storage model determines the work. Binary XML columns map to SQL Server's xml type, with a smaller XQuery subset, or to PostgreSQL's xml type, with fewer indexing options. Object-relational storage is really a set of generated tables and usually converts better to explicit relational design. Repository access, schema registration and XMLIndex have no equivalents.
+
+    The type is supported and not deprecated. Oracle's XML DB guide records that CLOB storage has been deprecated since 12.1, and several legacy XML packages have been retired in later releases.
+  sources: [source.oracle-adxdb-19-intro, source.oracle-upgrd-121-deprecated-desupported]
+
+- _id: feature.before-row-triggers
+  name: BEFORE row triggers
+  slug: before-row-triggers
+  category: plsql
+  introducedIn: pre-11.2
+  summary: |
+    Oracle triggers fire at statement or row level, before or after the triggering DML, or instead of it on views, and compound triggers bundle several timing points with shared state. A BEFORE row trigger runs once per affected row before the change is applied and may modify the new values, which makes it the standard place to populate keys from sequences, stamp audit columns, and validate or normalize data.
+
+    Migrations care because SQL Server has no BEFORE triggers. Its AFTER triggers fire once per statement after the change, and INSTEAD OF triggers replace the statement, so per-row pre-modification logic must move into defaults, computed columns, INSTEAD OF triggers or application code. PostgreSQL does offer BEFORE ROW triggers with modifiable new-row values, which makes that path closer, but the mutating-table rules and firing-order guarantees still differ.
+
+    Triggers are core PL/SQL and not deprecated.
+  sources: [source.oracle-cncpt-19-server-side-programming]
+
+- _id: feature.packages
+  name: PL/SQL packages
+  slug: packages
+  category: plsql
+  introducedIn: pre-11.2
+  summary: |
+    A package groups related procedures, functions, types, cursors, constants and variables into a specification that declares the public interface and a body that implements it and hides private parts. Package-level variables keep state for the life of a session, subprograms can be overloaded, the whole package loads into memory on first use, and dependents are insulated from body changes because they depend only on the specification.
+
+    Migrations care because neither SQL Server nor PostgreSQL has packages. Schemas can stand in as namespaces, but session state, overloading, private subprograms, package initialization blocks and package-defined types all need individual solutions, and the sheer volume of PL/SQL inside packages is usually the largest item in a conversion estimate.
+
+    Packages are core PL/SQL and not deprecated.
+  sources: [source.oracle-cncpt-19-server-side-programming]
+
+- _id: feature.partitioning
+  name: Table partitioning
+  slug: partitioning
+  category: storage
+  introducedIn: pre-11.2
+  summary: |
+    Partitioning splits a table or index into pieces by a partition key using range, list or hash distribution, or composites of them. Interval partitioning creates new range partitions on demand, reference partitioning aligns a child table with its parent's partitions, and indexes can be local (one partition per table partition) or global. The optimizer prunes partitions that cannot contain matching rows, and maintenance operations act on one partition at a time.
+
+    Migrations care because the target features are narrower. SQL Server partitions by range only, through partition functions and schemes, and Azure SQL Database places everything in one filegroup; PostgreSQL's declarative partitioning covers range, list and hash but does not create interval partitions automatically or partition by reference. Partition-wise maintenance jobs and pruning-dependent query performance need to be re-validated on the target.
+
+    The feature is a supported Enterprise Edition option and is not deprecated.
+  sources: [source.oracle-cncpt-19-schema-objects, source.oracle-cncpt-19-topics-dba-dev]
+
+- _id: feature.rac
+  name: Real Application Clusters
+  slug: rac
+  category: ha
+  introducedIn: pre-11.2
+  summary: |
+    Real Application Clusters runs several database instances on clustered servers against one shared database, keeping their buffer caches coherent over a private interconnect. Applications see a single database, connect through services that can be pinned to instances, and gain both scale-out and survival of a node failure.
+
+    Migrations care because the Azure PaaS targets have no shared-cache clustering. Their resilience comes from replicated replicas and zone redundancy, so applications tuned for RAC (instance affinity, service-based workload routing, sequence ordering across instances) need review, and RAC licensing is often the cost driver behind the migration in the first place. Oracle Database@Azure and Oracle on Azure virtual machines are the paths that keep RAC.
+
+    RAC is supported and not deprecated for Enterprise Edition. Oracle's 19c Upgrade Guide notes that starting with 19c it is no longer available with Standard Edition 2, which forces Standard Edition RAC estates to change architecture before upgrading.
+  sources: [source.oracle-cncpt-19-topics-dba-dev, source.oracle-upgrd-19-changes]
+
+- _id: feature.data-guard
+  name: Data Guard
+  slug: data-guard
+  category: ha
+  introducedIn: pre-11.2
+  summary: |
+    Data Guard maintains one or more standby copies of a production database by shipping and applying redo. Physical standbys are block-for-block replicas that can be opened read-only, logical standbys apply SQL, and the broker automates switchover and failover so a standby can assume the primary role when the primary fails or for planned maintenance.
+
+    Migrations care in two ways. As a feature to replace, its counterparts are failover groups and geo-replication on Azure SQL and high availability or read replicas on PostgreSQL, none of which replicate Oracle redo. As a migration tool, a standby in Azure is one of the lowest-downtime ways to move a database to Oracle on Azure virtual machines or Oracle Database@Azure.
+
+    Data Guard is supported and not deprecated. The 18c and 19c Upgrade Guides retire a few broker properties, but the feature itself continues to evolve.
+  sources: [source.oracle-cncpt-19-topics-dba-dev, source.oracle-upgrd-19-changes]
+
+- _id: feature.tde
+  name: Transparent Data Encryption
+  slug: tde
+  category: security
+  introducedIn: pre-11.2
+  summary: |
+    Transparent Data Encryption encrypts data at rest without application changes, either per column or, more commonly, per tablespace. Data is decrypted for authorized sessions on read, and the master key that wraps the table and tablespace keys lives in a keystore, historically a wallet file and optionally an external key manager.
+
+    Migrations care because encrypted tablespaces must be readable during extraction, which means the keystore must be open and its keys available to the migration tooling. On the target, Azure SQL encrypts by default with service-managed keys and can use customer-managed keys in Azure Key Vault; PostgreSQL relies on storage encryption. Column-level TDE has no direct counterpart and is usually replaced by tablespace-style encryption or client-side encryption depending on the requirement.
+
+    TDE is supported and not deprecated. The 26ai Upgrade Guide desupports several legacy pieces: PKI-based TDE master keys, the GOST and SEED algorithms, and the older wallet-location parameter in favor of the WALLET_ROOT structure.
+  sources: [source.oracle-cncpt-19-topics-dba-dev, source.oracle-upgrd-26-desupports]
+
+- _id: feature.flashback-query
+  name: Flashback Query (AS OF)
+  slug: flashback-query
+  category: sql
+  introducedIn: pre-11.2
+  summary: |
+    Flashback Query lets a SELECT read a table as it stood at an earlier point in time with the AS OF clause and a system change number or timestamp. Related forms return every version of a row over an interval (VERSIONS BETWEEN) or the transactions that changed it. All of them read undo data, so how far back they can see depends on undo retention, and Flashback Data Archive exists to keep history beyond that window.
+
+    Migrations care because application code that uses AS OF for audit, undo or reporting has no equivalent in PostgreSQL and only an approximate one in SQL Server, where system-versioned temporal tables provide FOR SYSTEM_TIME queries but require explicit history tables. Operational uses, such as recovering a mistakenly deleted row, move to backup and restore procedures on the PaaS targets.
+
+    Flashback is supported and not deprecated, and requires the FLASHBACK privilege on the objects queried.
+  sources: [source.oracle-adfns-19-flashback, source.oracle-cncpt-19-topics-dba-dev]
+
+- _id: feature.boolean-23ai
+  name: SQL BOOLEAN datatype (23ai)
+  slug: boolean-23ai
+  category: datatype
+  introducedIn: 23ai
+  summary: |
+    Oracle Database 23ai added a native SQL BOOLEAN column type after decades in which PL/SQL had booleans but tables did not. Columns accept TRUE, FALSE and NULL, plus a set of string spellings such as yes and no, on and off, t and f, y and n, and 1 and 0; numeric inputs map zero to FALSE and anything else to TRUE. Constraints, comparisons, and IS TRUE and IS FALSE tests all work on the type.
+
+    Migrations care in the reverse direction from most features: this is a convergence, since SQL Server's bit and PostgreSQL's boolean have long existed. The real work is in older schemas that emulate booleans with CHAR(1) flags or NUMBER(1) columns and check constraints, where the migration has to decide which columns become true booleans and translate the string conventions the application relied on.
+
+    The type is new and fully supported. Oracle's 23ai documentation URLs now redirect to the 26ai reference pages, which is where the current description lives.
+  sources: [source.oracle-sqlrf-26-data-types, source.oracle-sqlrf-19-data-types]
+
+- _id: feature.json-duality-views
+  name: JSON Relational Duality Views (23ai)
+  slug: json-duality-views
+  category: datatype
+  introducedIn: 23ai
+  summary: |
+    A JSON-relational duality view exposes rows from one or more related tables as a collection of JSON documents while the data itself stays in the tables. Reading the view assembles documents; inserting, updating or deleting documents is decomposed back into row changes when the view is declared updatable. The same tables can back several views with different document shapes, and the documents can be reached through SQL, REST or a document-database wire protocol.
+
+    Migrations care because nothing in Azure SQL or PostgreSQL offers this duality. Applications written against these views as a document store need either a document database on the target side, with a synchronization design, or a re-implementation on top of the targets' JSON functions and ordinary views, with updatability handled by application code. Any dependence on the document API also has to be mapped.
+
+    The feature arrived with 23ai and is fully supported. The 23ai developer-guide URLs redirect to the 26ai edition of the JSON-Relational Duality guide.
+  sources: [source.oracle-jsnvu-26-overview]
+
+- _id: feature.vector-datatype
+  name: VECTOR datatype / AI Vector Search (23ai)
+  slug: vector-datatype
+  category: datatype
+  introducedIn: 23ai
+  summary: |
+    The VECTOR type stores embeddings, the numeric arrays that machine-learning models produce from text, images and other content. A column can fix the number of dimensions and the element format (8-bit integers, 32-bit or 64-bit floats, or packed binary) or leave either flexible. Around the type sit distance functions for similarity search, approximate-search indexes based on neighbor graphs and neighbor partitions, and the ability to generate embeddings inside the database from imported ONNX models.
+
+    Migrations care because vector workloads are new and the target landscape is moving. PostgreSQL on Azure supports the pgvector extension, Azure AI Search provides vector indexes as a separate service, and Azure SQL's own vector support should be checked against current documentation at decision time. Dimension counts, formats and index parameters need to be carried across explicitly, and in-database embedding generation has no direct equivalent.
+
+    The feature shipped with 23ai and requires the COMPATIBLE parameter at 23.4.0 or higher. The 23ai documentation URLs redirect to the 26ai AI Vector Search guide, which is cited here.
+  sources: [source.oracle-vecse-26-overview, source.oracle-sqlrf-26-data-types]
+
+- _id: feature.character-set
+  name: Database character set (NLS)
+  slug: character-set
+  category: nls
+  introducedIn: pre-11.2
+  summary: |
+    The database character set governs how CHAR, VARCHAR2, CLOB and LONG data, identifiers and PL/SQL source are encoded. A separate national character set covers the NCHAR types. Oracle recommends AL32UTF8 for all new databases and has made it the installer default since 12.2; older databases frequently use single-byte Western European sets or UTF8, the older Unicode encoding. Changing the character set after creation is a migration project of its own, and client-side settings drive conversion on every connection.
+
+    Migrations care because the source character set decides whether data can be represented faithfully on the target and how column lengths translate. Single-byte databases often contain bytes that were never valid in the declared encoding, which surface as conversion errors during load; byte-length semantics interact with the target's character counting; and collation behavior differs between Oracle NLS sorting, SQL Server collations and PostgreSQL locale collations.
+
+    Globalization support is core and not deprecated. The 21c Upgrade Guide desupports the older Unicode Collation Algorithm 6.1 collations in favor of the 12.1 algorithm, which matters for applications that named collations explicitly.
+  sources: [source.oracle-nlspg-19-choosing-character-set, source.oracle-upgrd-21-changes]
+
+- _id: feature.data-pump
+  name: Data Pump (expdp/impdp)
+  slug: data-pump
+  category: tooling
+  introducedIn: pre-11.2
+  summary: |
+    Data Pump is Oracle's server-side export and import framework: the expdp and impdp clients, the DBMS_DATAPUMP job API and the DBMS_METADATA API for extracting object definitions. Jobs run inside the database, write proprietary dump files to directory objects, can run in parallel on Enterprise Edition, can move data over a database link without files, and can transport whole tablespaces by copying data files.
+
+    Migrations care in two ways. For Oracle-to-Oracle moves to Oracle Database@Azure or Oracle on Azure virtual machines, Data Pump is the workhorse. For heterogeneous moves its dump files are useless to Azure SQL or PostgreSQL, but the metadata API is a reliable way to extract DDL for conversion tools, and existing Data Pump jobs and directory objects are part of the operational inventory.
+
+    Data Pump is supported and not deprecated; it is the replacement Oracle names for the original Export utility that the 26ai Upgrade Guide desupports.
+  sources: [source.oracle-sutil-19-data-pump-overview, source.oracle-upgrd-26-desupports]
+
+- _id: feature.rman
+  name: RMAN backup and recovery
+  slug: rman
+  category: ha
+  introducedIn: pre-11.2
+  summary: |
+    Recovery Manager is Oracle's backup and recovery utility. It takes full and incremental backups of data files, control files and archived redo, tracks them in the control file or a recovery catalog, and drives restore and recovery to a point in time. It integrates with media managers, block change tracking and Data Guard, and its scripts are the backbone of most Oracle operations runbooks.
+
+    Migrations care because backup strategy changes shape. Azure SQL and PostgreSQL Flexible Server manage backups and point-in-time restore themselves, so RMAN scripts, retention policies and catalog maintenance are retired rather than converted, while Oracle on Azure virtual machines and Oracle Database@Azure keep RMAN as the recovery tool. Recovery objectives expressed in RMAN terms must be re-stated in the target's terms.
+
+    RMAN is supported and not deprecated. The 26ai Upgrade Guide desupports two of its pieces: the Data Recovery Advisor commands and the RECOVER with SNAPSHOT TIME syntax, recommending the begin and end backup approach for the latter.
+  sources: [source.oracle-cncpt-19-topics-dba-dev, source.oracle-upgrd-26-desupports]
+
+- _id: feature.edition-based-redefinition
+  name: Edition-Based Redefinition
+  slug: edition-based-redefinition
+  category: plsql
+  introducedIn: "11.2"
+  summary: |
+    Edition-Based Redefinition lets an application be upgraded while users keep running the old version. Editionable objects such as PL/SQL units, views and synonyms exist in multiple editions at once; each session sees one edition. Tables are not editionable, so editioning views present a per-edition column layout over them, and crossedition triggers keep old and new column representations in step while both versions are live. Enabling editions for a schema is irreversible.
+
+    Migrations care because none of the Azure targets has editions. Zero-downtime application upgrades must be redesigned around application-tier blue-green deployment and schema versioning. Editioning views also complicate the object inventory: the "tables" an application uses may be views over physically renamed columns, and conversion tools see both layers.
+
+    The feature arrived with 11g Release 2 and is fully supported and not deprecated.
+  sources: [source.oracle-adfns-19-editions]

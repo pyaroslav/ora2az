@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q15",
+    "type": "howto",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 25452,
+    "session_id": "0ca434a7-a4e7-4ed6-bfb1-4dd29f7d8403",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 9982,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 2585,
+      "output_tokens_details": {
+        "thinking_tokens": 976
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 9982,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2585,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 9982,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 9982
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q15",
+    "type": "howto",
+    "q": "What is the recommended path for moving Oracle Advanced Queuing workloads to Azure?",
+    "expected": "No native equivalent in Azure SQL DB; Service Broker on SQL MI (not DB) or Azure Service Bus for messaging; PostgreSQL LISTEN/NOTIFY or a queue table; cite recorded pattern.",
+    "required_sources": [
+      "microsoft",
+      "community"
+    ]
+  },
+  "result": "**Verdict:** There's no automatic conversion for Oracle AQ. Choose based on where the database is going:\n- **If Oracle stays:** keep AQ as-is on Oracle Database@Azure or Oracle on Azure VMs. This is the lowest-risk option.\n- **If you're leaving Oracle:** move to **Azure Service Bus** (Premium if you need JMS). Use a **transactional outbox** to keep the atomic \"database write + enqueue\" behaviour that AQ gives you.\n\n**Option 1: Keep Oracle and move it as-is (recommended when AQ is heavily used)**\n- AQ and Transactional Event Queues (TxEventQ) are database features. They work unchanged on Oracle Database@Azure (Exadata or Autonomous) or on Oracle running on Azure VMs.\n- Your queue tables, propagation, PL/SQL `DBMS_AQ` callers, JMS clients and the atomic enqueue in the same transaction as your data changes all keep working.\n- Migrate with Data Guard, RMAN or Zero Downtime Migration. Queue tables go with the database.\n- Microsoft guidance: https://learn.microsoft.com/azure/cloud-adoption-framework/scenarios/oracle-on-azure/\n\n**Option 2: Rebuild on Azure services (when moving to PostgreSQL, Azure SQL or cloud-native apps)**\n\n| AQ capability | Azure target |\n|---|---|\n| Point-to-point queues, publish/subscribe (multi-consumer queues), delayed messages, exception queues, message grouping | **Azure Service Bus**: queues, topics and subscriptions, scheduled messages, dead-letter queues, sessions for FIFO and grouping |\n| AQ JMS clients | **Service Bus Premium supports JMS 2.0**, so Java code needs mostly configuration changes: https://learn.microsoft.com/azure/service-bus-messaging/how-to-use-java-message-service-20 |\n| High-throughput streaming, or TxEventQ used through its Kafka API | **Azure Event Hubs** Kafka endpoint: https://learn.microsoft.com/azure/event-hubs/azure-event-hubs-kafka-overview |\n| Simple, low-feature work queues | Azure Storage Queues |\n| Target is Azure SQL Managed Instance | **Service Broker** is supported on Managed Instance but not on Azure SQL Database. Check the current Managed Instance feature differences: https://learn.microsoft.com/azure/azure-sql/managed-instance/transact-sql-tsql-differences-sql-server |\n\n**Things that will catch you out**\n1. **You lose transactional atomicity.** With AQ, the enqueue commits in the same transaction as your data changes. Service Bus and Event Hubs can't join a database transaction (no XA or distributed transactions). Fix this with the **transactional outbox pattern**: write events to an outbox table in the same transaction, then relay them with a worker, CDC or Debezium. Pattern: https://learn.microsoft.com/azure/architecture/databases/guide/transactional-outbox-cosmos\n2. **The migration tools skip AQ.** SSMA for Oracle and ora2pg don't convert `DBMS_AQ`, `DBMS_AQADM`, queue tables or propagation. Take an inventory with `DBA_QUEUES`, `DBA_QUEUE_SUBSCRIBERS` and `DBA_QUEUE_SCHEDULES`, and search your code for `DBMS_AQ` calls.\n3. **Delivery semantics differ.** Service Bus gives at-least-once delivery, so make consumers idempotent and turn on duplicate detection. Map AQ's retry count and retry delay to Service Bus max delivery count plus dead-lettering.\n4. **Size and throughput limits.** Service Bus Standard caps messages at 256 KB; Premium allows up to 100 MB. Large AQ payloads (big RAW, BLOB or ADT messages) may need the claim-check pattern, which stores the payload in Blob Storage and sends only a reference.\n5. **Payload types.** Oracle object-type (ADT) payloads have to be turned into JSON or Avro, and the schema contract has to be agreed with every consumer.\n\n**Suggested sequence:** inventory your queues and code. Lift and shift to Oracle Database@Azure or Azure VMs first if you're short on time. Then rebuild on Service Bus with the outbox pattern, running both side by side during the switchover, with a bridge that relays messages between AQ and Service Bus.\n\nOracle AQ and TxEventQ reference: https://docs.oracle.com/en/database/oracle/oracle-database/23/adque/",
+  "stderr": ""
+}

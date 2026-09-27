@@ -1,0 +1,698 @@
+# Caveats attached to mappings. Each statement is meant to be checkable against the cited evidence.
+# firsthand is false everywhere: every caveat here comes from public documentation or community posts.
+
+# ---------------------------------------------------------------- NUMBER (dispute: float vs numeric vs bigint)
+
+- _id: caveat.number-ssma-float53
+  mapping: mapping.number-unconstrained--azure-sql-db
+  severity: major
+  statement: "SSMA for Oracle's default column type mapping (and its argument, return-value and local-variable mappings) converts an unconstrained Oracle NUMBER to float[53], SQL Server's double-precision binary floating-point type, which cannot represent most decimal fractions exactly; only NUMBER with an explicit precision is mapped to numeric, so exact monetary or identifier values in unconstrained columns can be altered unless the mapping is overridden."
+  appliesTo:
+    oracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  evidence: source.ms-ssma-type-mapping
+  firsthand: false
+
+- _id: caveat.number-ora2pg-numeric
+  mapping: mapping.number-unconstrained--azure-pg-flex
+  severity: major
+  statement: "Ora2Pg's built-in Oracle-to-PostgreSQL type table maps NUMBER to numeric, PostgreSQL's exact arbitrary-precision type; however the documented PG_INTEGER_TYPE directive, which is enabled by default, routes NUMBER without precision to DEFAULT_NUMERIC (documented default bigint), so the exact numeric result is obtained only when PG_INTEGER_TYPE is disabled or DEFAULT_NUMERIC is set to numeric."
+  appliesTo:
+    oracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  evidence: source.ora2pg-docs
+  firsthand: false
+
+- _id: caveat.number-ora2pg-bigint-default
+  mapping: mapping.number-unconstrained--azure-pg-flex
+  severity: major
+  statement: "In Ora2Pg 25.0 source code, Ora2Pg.pm sets pg_integer_type to 1 when unset and default_numeric to bigint when unset, and Oracle.pm's type resolver returns default_numeric for a NUMBER with no precision and no scale when pg_integer_type is on, marking the column with # in SHOW_COLUMN output for review; an out-of-the-box run therefore emits bigint and silently drops fractional digits at load time."
+  appliesTo:
+    oracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  evidence: source.ora2pg-source
+  firsthand: false
+
+# ---------------------------------------------------------------- DBMS_JOB (dispute: still works vs removed)
+
+- _id: caveat.dbms-job-still-works
+  mapping: mapping.dbms-job--sql-agent-mi
+  severity: minor
+  statement: "DBMS_JOB is deprecated but continues to function in 19c and later: each DBMS_JOB.SUBMIT creates a paired DBMS_SCHEDULER job named DBMS_JOB$_n, existing jobs are converted during upgrade, and the legacy interface remains a supported wrapper over the scheduler."
+  appliesTo:
+    oracleVersions: [19c, 21c, 23ai]
+  evidence: source.oracle-base-dbms-job-19c
+  firsthand: false
+
+- _id: caveat.dbms-job-community-removed
+  mapping: mapping.dbms-job--sql-agent-mi
+  severity: minor
+  statement: "An Ask TOM question titled 'dbms_job.submit(v_job, ''Proc(JOB);'', sysdate) - not working anymore in 19c' claims that DBMS_JOB job submission stopped working after an upgrade to 19c (12.1.0.2 to 19.8 per the thread summary); this is the poster's claim, and the community explanations attribute such failures to the new CREATE JOB privilege requirement and scheduler conversion rather than to removal of the package."
+  appliesTo:
+    oracleVersions: [19c]
+  evidence: source.asktom-dbms-job-not-working-19c
+  firsthand: false
+
+- _id: caveat.dbms-job-create-job-privilege-19c
+  mapping: mapping.dbms-job--sql-agent-mi
+  severity: major
+  statement: "From 19c, schemas that call DBMS_JOB.SUBMIT must hold the CREATE JOB privilege; without it submissions fail with ORA-27486, which is the usual reason for reports that DBMS_JOB 'no longer works' after upgrade."
+  appliesTo:
+    oracleVersions: [19c, 21c, 23ai]
+  evidence: source.oracle-base-dbms-job-19c
+  firsthand: false
+
+- _id: caveat.dbms-job-upgrade-converts-jobs
+  mapping: mapping.dbms-job--sql-agent-mi
+  severity: minor
+  statement: "Upgrading to 19c converts existing DBMS_JOB jobs into DBMS_SCHEDULER jobs and records the mapping in a new dictionary table (scheduler$_dbmsjob_map); DBMS_JOB has been deprecated since 12.2.0.1 but Oracle had announced no desupport at the time of the post, so migration inventories should read DBA_SCHEDULER_JOBS as well as DBA_JOBS."
+  appliesTo:
+    oracleVersions: [19c, 21c, 23ai]
+  evidence: source.mikedietrich-dbms-job-19c
+  firsthand: false
+
+- _id: caveat.dbms-job-transactional-submit
+  mapping: mapping.dbms-job--elastic-jobs
+  severity: minor
+  statement: "DBMS_JOB.SUBMIT is transactional and is rolled back with the caller's transaction even in 19c, whereas DBMS_SCHEDULER.CREATE_JOB, SQL Server Agent job creation and Elastic Jobs definitions commit immediately; code that submitted jobs conditionally inside a transaction needs a different pattern."
+  appliesTo:
+    oracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  evidence: source.connor-mcdonald-dbms-job-transactions
+  firsthand: false
+
+# ---------------------------------------------------------------- scheduler targets
+
+- _id: caveat.sqldb-no-agent
+  mapping: mapping.dbms-scheduler--azure-sql-db
+  severity: blocker
+  statement: "SQL Server Agent is not available in Azure SQL Database; Microsoft's automation overview directs T-SQL job scheduling to Elastic Jobs and lists Agent only for SQL Server and Azure SQL Managed Instance."
+  appliesTo:
+    azureTiers: ["General Purpose", "Business Critical", "Hyperscale", "Basic", "Standard", "Premium"]
+  evidence: source.ms-sql-job-automation-overview
+  firsthand: false
+
+- _id: caveat.sqlmi-agent
+  mapping: mapping.dbms-scheduler--sql-agent-mi
+  severity: minor
+  statement: "Azure SQL Managed Instance includes SQL Server Agent, which is always running and cannot be disabled, with T-SQL, SSIS and transactional-replication job steps supported."
+  appliesTo:
+    azureTiers: ["General Purpose", "Next-gen General Purpose", "Business Critical"]
+  evidence: source.ms-sqlmi-tsql-differences
+  firsthand: false
+
+- _id: caveat.sqlmi-agent-step-limits
+  mapping: mapping.dbms-scheduler--sql-agent-mi
+  severity: major
+  statement: "On Managed Instance, Agent does not support CmdExec, PowerShell, Analysis Services, merge replication or Queue Reader job steps, proxies, alerts, pager or NetSend notifications, idle-CPU schedules or multi-server (MSX/TSX) administration, and email notification requires a single Database Mail profile named AzureManagedInstance_dbmail_profile."
+  appliesTo:
+    azureTiers: ["General Purpose", "Next-gen General Purpose", "Business Critical"]
+  evidence: source.ms-sqlmi-tsql-differences
+  firsthand: false
+
+- _id: caveat.elastic-jobs-tsql-only-utc
+  mapping: mapping.dbms-scheduler--elastic-jobs
+  severity: major
+  statement: "Elastic Jobs run only T-SQL job steps, evaluate all schedules in UTC, retry failed steps (so scripts must be idempotent), purge history older than 45 days, and cannot use a Hyperscale or auto-pausing serverless database as the job database."
+  appliesTo:
+    azureTiers: ["General Purpose", "Business Critical", "Hyperscale"]
+  evidence: source.ms-sqldb-elastic-jobs
+  firsthand: false
+
+- _id: caveat.pg-cron-shared-preload-database
+  mapping: mapping.dbms-scheduler--pg-cron
+  severity: major
+  statement: "On Azure Database for PostgreSQL Flexible Server, pg_cron can only be loaded through shared_preload_libraries (CREATE EXTENSION alone fails), must be allowlisted, stores metadata in the database named by cron.database_name, and cron.schedule_in_database cannot take a non-null username because that requires superuser rights the service does not grant."
+  evidence: source.ms-pg-flex-extensions-considerations
+  firsthand: false
+
+- _id: caveat.pg-cron-no-dependencies
+  mapping: mapping.dbms-scheduler--pg-cron
+  severity: minor
+  statement: "pg_cron has no job chains or dependencies, runs at most one instance of a given job at a time (queuing overlapping runs), and interprets schedules in GMT unless cron.timezone is changed."
+  evidence: source.pg-cron-readme
+  firsthand: false
+
+# ---------------------------------------------------------------- auditing
+
+- _id: caveat.azure-sql-auditing-best-effort
+  mapping: mapping.traditional-auditing--azure-sql-auditing
+  severity: major
+  statement: "Azure SQL auditing is optimized for availability and may allow transactions to proceed without recording every audited event during very high activity, truncates the statement field at 4,000 characters, does not audit tempdb or temporary tables, and does not record failed Microsoft Entra logins in the SQL audit log."
+  appliesTo:
+    azureTiers: ["General Purpose", "Business Critical", "Hyperscale"]
+  evidence: source.ms-sqldb-auditing
+  firsthand: false
+
+- _id: caveat.pgaudit-superusers-not-auditable
+  mapping: mapping.traditional-auditing--pgaudit
+  severity: major
+  statement: "pgAudit's own documentation states that audit logging is best-effort and non-transactional (entries can be lost on crash) and that superusers cannot be reliably audited, so it does not reproduce Oracle's mandatory SYSDBA auditing."
+  evidence: source.pgaudit-readme
+  firsthand: false
+
+- _id: caveat.pgaudit-config-lost-on-major-upgrade
+  mapping: mapping.traditional-auditing--pgaudit
+  severity: minor
+  statement: "During an in-place major version upgrade of a Flexible Server, pgaudit is dropped and recreated automatically but custom pgaudit.log and related parameter values are not preserved; the service also rejects the minus-sign shorthand in pgaudit.log."
+  evidence: source.ms-pg-flex-audit
+  firsthand: false
+
+# ---------------------------------------------------------------- messaging
+
+- _id: caveat.sqldb-no-service-broker
+  mapping: mapping.advanced-queuing--azure-sql-db
+  severity: blocker
+  statement: "Service Broker is not available in Azure SQL Database; it is available in Azure SQL Managed Instance with routing limited to other managed instances."
+  evidence: source.ms-sqldb-mi-feature-comparison
+  firsthand: false
+
+- _id: caveat.sqlmi-service-broker-cross-instance-only
+  mapping: mapping.advanced-queuing--azure-sql-mi
+  severity: major
+  statement: "On Managed Instance, Service Broker routes may target only LOCAL or the DNS name of another managed instance on port 4022, dialog security (CREATE REMOTE SERVICE BINDING) is not supported, and the broker is enabled for new databases and cannot be toggled with ENABLE_BROKER or DISABLE_BROKER."
+  appliesTo:
+    azureTiers: ["General Purpose", "Next-gen General Purpose", "Business Critical"]
+  evidence: source.ms-sqlmi-tsql-differences
+  firsthand: false
+
+- _id: caveat.service-bus-transactions-single-entity
+  mapping: mapping.advanced-queuing--service-bus
+  severity: major
+  statement: "Service Bus transactions group operations against a single messaging entity (one queue, topic or subscription) and cannot include database DML, so the Oracle pattern of enqueueing in the same transaction as table changes needs an outbox table or idempotent consumers."
+  evidence: source.ms-service-bus-overview
+  firsthand: false
+
+# ---------------------------------------------------------------- LOB and files
+
+- _id: caveat.sqlmi-no-filestream
+  mapping: mapping.oracle-multimedia--azure-sql-db
+  severity: major
+  statement: "FILESTREAM data and FileTables are not supported on Azure SQL Managed Instance or Azure SQL Database, and a backup containing FILESTREAM filegroups cannot be restored to Managed Instance, so large media must use varbinary(max) or external Blob Storage."
+  evidence: source.ms-sqlmi-tsql-differences
+  firsthand: false
+
+- _id: caveat.sqlmi-no-file-system-access
+  mapping: mapping.utl-file--azure-sql-mi
+  severity: blocker
+  statement: "Managed Instance cannot access file shares or Windows folders: BULK INSERT and OPENROWSET require a DATASOURCE pointing at Azure Blob Storage, xp_cmdshell and extended stored procedures are not supported, and CREATE ASSEMBLY FROM FILE is not allowed."
+  appliesTo:
+    azureTiers: ["General Purpose", "Next-gen General Purpose", "Business Critical"]
+  evidence: source.ms-sqlmi-tsql-differences
+  firsthand: false
+
+# ---------------------------------------------------------------- autonomous transactions
+
+- _id: caveat.ssma-autonomous-tx-extended-proc
+  mapping: mapping.autonomous-transactions--azure-sql-mi
+  severity: major
+  statement: "SSMA does not convert PRAGMA AUTONOMOUS_TRANSACTION in anonymous blocks (error O2SS0205); for procedures and functions it emulates the pragma by calling the extended stored procedure xp_ora2ms_exec2_ex in master, which opens a second connection to run the split-out implementation procedure and is documented as slow compared with Oracle."
+  appliesTo:
+    oracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai]
+  evidence: source.ms-ssma-o2ss0205
+  firsthand: false
+
+- _id: caveat.sqlmi-no-extended-procs-for-ssma-emulator
+  mapping: mapping.autonomous-transactions--azure-sql-mi
+  severity: blocker
+  statement: "Azure SQL Managed Instance does not support extended stored procedures (sp_addextendedproc and sp_dropextendedproc are unavailable), so SSMA's extended-procedure based autonomous transaction emulator cannot be installed there and converted routines that depend on it must be rewritten."
+  appliesTo:
+    azureTiers: ["General Purpose", "Next-gen General Purpose", "Business Critical"]
+  evidence: source.ms-sqlmi-tsql-differences
+  firsthand: false
+
+- _id: caveat.pg-no-autonomous-transactions
+  mapping: mapping.autonomous-transactions--azure-pg-flex
+  severity: major
+  statement: "PL/pgSQL allows COMMIT and ROLLBACK only inside procedures invoked with CALL (or DO blocks) at the top of the call stack, never inside functions or blocks with exception handlers, and offers no autonomous transaction; emulations run the body over a second connection with dblink or pg_background."
+  evidence: source.postgres-docs-plpgsql-transactions
+  firsthand: false
+
+# ---------------------------------------------------------------- strings, dates, identifiers
+
+- _id: caveat.empty-string-sqlserver-not-null
+  mapping: mapping.empty-string-null--azure-sql-db
+  severity: major
+  statement: "In SQL Server and Azure SQL an empty string '' is a stored zero-length value that is distinct from NULL; Microsoft's NULL documentation states that a null value is different from an empty or zero value, so Oracle code that relied on '' being NULL changes behaviour."
+  evidence: source.ms-sql-null-and-unknown
+  firsthand: false
+
+- _id: caveat.empty-string-postgres-not-null
+  mapping: mapping.empty-string-null--azure-pg-flex
+  severity: major
+  statement: "PostgreSQL treats '' as a non-NULL value; Ora2Pg's NULL_EQUAL_EMPTY directive exists to rewrite IS NULL tests into coalesce()-based checks precisely because PostgreSQL differentiates empty strings from NULL, and its documentation recommends converting empty strings to NULL when the application can be changed."
+  evidence: source.ora2pg-docs
+  firsthand: false
+
+- _id: caveat.varchar2-ssma-varchar-default
+  mapping: mapping.varchar2-byte-semantics--azure-sql-db
+  severity: major
+  statement: "SSMA's default column mapping converts varchar2(n) to varchar(n) (and nvarchar2 to nvarchar), so Unicode data from an AL32UTF8 Oracle database is preserved only if the mapping is changed to nvarchar or the target database uses a UTF-8 (_UTF8) collation."
+  appliesTo:
+    oracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  evidence: source.ms-ssma-type-mapping
+  firsthand: false
+
+- _id: caveat.sqlserver-utf8-collation-for-varchar
+  mapping: mapping.varchar2-byte-semantics--azure-sql-db
+  severity: minor
+  statement: "With a UTF-8 enabled collation (_UTF8, SQL Server 2019 and later, available in Azure SQL) char and varchar columns store Unicode encoded as UTF-8 while nchar and nvarchar keep UTF-16, and characters outside the basic plane need two to four bytes in UTF-8 or two 16-bit code units in UTF-16, so declared lengths may need widening compared with Oracle CHAR semantics."
+  evidence: source.ms-sql-collation-unicode
+  firsthand: false
+
+- _id: caveat.pg-varchar-counts-characters
+  mapping: mapping.varchar2-byte-semantics--azure-pg-flex
+  severity: minor
+  statement: "PostgreSQL varchar(n) and char(n) limit length in characters, not bytes, so Oracle VARCHAR2 columns declared with BYTE semantics on a multibyte character set accept more data in PostgreSQL than in Oracle, and orafce's varchar2 type must be used if byte semantics are required."
+  evidence: source.postgres-docs-character-types
+  firsthand: false
+
+- _id: caveat.ssma-date-datetime2-0
+  mapping: mapping.date-with-time--azure-sql-db
+  severity: minor
+  statement: "SSMA maps Oracle DATE to datetime2(0), keeping the time portion at whole-second precision; TIMESTAMP maps to datetime2 with the source fractional precision and TIMESTAMP WITH (LOCAL) TIME ZONE to datetimeoffset."
+  evidence: source.ms-ssma-type-mapping
+  firsthand: false
+
+- _id: caveat.pg-date-has-no-time
+  mapping: mapping.date-with-time--azure-pg-flex
+  severity: major
+  statement: "PostgreSQL date stores only a calendar date with one-day resolution, so mapping Oracle DATE to date discards the time of day; Ora2Pg's default maps DATE to timestamp(0) to avoid this."
+  evidence: source.postgres-docs-datetime
+  firsthand: false
+
+- _id: caveat.rowid-ssma-uniqueidentifier
+  mapping: mapping.rowid--azure-sql-db
+  severity: major
+  statement: "SSMA maps ROWID and UROWID to uniqueidentifier, a 16-byte GUID generated by newid(), which is not a physical row address and cannot be used to locate or order rows by storage position."
+  appliesTo:
+    oracleVersions: [11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai]
+  evidence: source.ms-ssma-type-mapping
+  firsthand: false
+
+- _id: caveat.ssma-rowid-column-generation
+  mapping: mapping.rowid--azure-sql-db
+  severity: minor
+  statement: "SSMA's Generate ROWID column setting defaults to adding a ROWID uniqueidentifier column only to tables that have triggers (Default and Optimistic modes) and to all tables in Full mode, with a unique index on that column generated by default; the SSMA Tester requires the column on all tables."
+  evidence: source.ms-ssma-project-settings-conversion
+  firsthand: false
+
+- _id: caveat.ora2pg-rowid-oid-import-error
+  mapping: mapping.rowid--azure-pg-flex
+  severity: major
+  statement: "Ora2Pg converts ROWID and UROWID to oid by default and its documentation warns that this causes an error during data import because there is no equivalent type; it recommends overriding DATA_TYPE to bigserial, text or uuid."
+  evidence: source.ora2pg-docs
+  firsthand: false
+
+- _id: caveat.pg-ctid-not-stable
+  mapping: mapping.rowid--azure-pg-flex
+  severity: major
+  statement: "PostgreSQL's ctid identifies the physical location of a row version but changes whenever the row is updated or moved by VACUUM FULL, so the documentation says it must not be used as a row identifier; Oracle code that stored or compared ROWIDs across statements cannot use ctid."
+  evidence: source.postgres-docs-system-columns
+  firsthand: false
+
+- _id: caveat.boolean-ssma-bit
+  mapping: mapping.boolean-23ai--azure-sql-db
+  severity: minor
+  statement: "SSMA maps Oracle BOOLEAN to bit for arguments, return values and local variables (bit stores 0, 1 or NULL), so boolean expressions used directly as predicates or in SELECT lists must be rewritten as comparisons."
+  appliesTo:
+    oracleVersions: [23ai, 26ai]
+  evidence: source.ms-ssma-type-mapping
+  firsthand: false
+
+# ---------------------------------------------------------------- materialized views, sequences, hierarchy, security, partitioning
+
+- _id: caveat.pg-no-fast-refresh-mv
+  mapping: mapping.materialized-views-fast-refresh--azure-pg-flex
+  severity: major
+  statement: "PostgreSQL REFRESH MATERIALIZED VIEW completely replaces the view's contents by re-running its query; the CONCURRENTLY option (which requires a unique index on plain columns) avoids blocking readers but still recomputes everything, and there is no incremental or fast refresh, no materialized view log and no refresh on commit."
+  evidence: source.postgres-docs-refresh-matview
+  firsthand: false
+
+- _id: caveat.ssma-mview-indexed-view-restrictions
+  mapping: mapping.materialized-views-fast-refresh--azure-sql-db
+  severity: major
+  statement: "SSMA converts Oracle materialized views to indexed views and fails the conversion when the definition uses user-defined functions, nondeterministic expressions, float columns in SELECT/WHERE/GROUP BY, custom types, COUNT(DISTINCT), FETCH, outer joins, subqueries or other views, window functions, MIN/MAX, UNION/MINUS/INTERSECT or HAVING."
+  evidence: source.ms-ssma-converting-schemas
+  firsthand: false
+
+- _id: caveat.indexed-views-synchronous-dml-cost
+  mapping: mapping.materialized-views-fast-refresh--azure-sql-db
+  severity: minor
+  statement: "Indexed views are maintained synchronously inside every INSERT, UPDATE and DELETE on their base tables, require SCHEMABINDING, COUNT_BIG with GROUP BY and fixed SET options, and Microsoft warns that DML against tables referenced by many or complex indexed views can degrade significantly or fail to produce a plan."
+  evidence: source.ms-sql-indexed-views
+  firsthand: false
+
+- _id: caveat.sql-sequence-no-currval
+  mapping: mapping.sequences--azure-sql-db
+  severity: major
+  statement: "SSMA's sequence conversion notes that SQL Server does not support obtaining the current sequence value in the session the way Oracle CURRVAL does, so code using CURRVAL after NEXTVAL must be rewritten to capture the NEXT VALUE FOR result."
+  evidence: source.ms-ssma-project-settings-conversion
+  firsthand: false
+
+- _id: caveat.sql-sequence-cache-gaps
+  mapping: mapping.sequences--azure-sql-db
+  severity: minor
+  statement: "SQL Server sequences default to CACHE with an engine-chosen size; on an unexpected shutdown the unused cached numbers are lost, and values are consumed outside the transaction scope, so gaps appear just as with Oracle CACHE sequences; NO CACHE writes every value to the system tables."
+  evidence: source.ms-sql-create-sequence
+  firsthand: false
+
+- _id: caveat.recursive-cte-maxrecursion-100
+  mapping: mapping.connect-by--azure-sql-db
+  severity: minor
+  statement: "T-SQL recursive CTEs stop after 100 recursion levels by default and raise an error unless OPTION (MAXRECURSION n) is set (0 removes the limit), and the recursive member may not contain GROUP BY, TOP, DISTINCT, outer joins or subqueries."
+  evidence: source.ms-sql-recursive-cte
+  firsthand: false
+
+- _id: caveat.sql-rls-applies-to-owners
+  mapping: mapping.vpd--azure-sql-db
+  severity: minor
+  statement: "SQL Server row-level security policies filter and block rows even for dbo, db_owner members and the table owner, so any administrative or troubleshooting access must be written into the predicate function itself."
+  evidence: source.ms-sql-row-level-security
+  firsthand: false
+
+- _id: caveat.pg-rls-owner-bypass
+  mapping: mapping.vpd--azure-pg-flex
+  severity: major
+  statement: "PostgreSQL row security policies are bypassed by superusers, roles with BYPASSRLS and, by default, the table owner unless ALTER TABLE ... FORCE ROW LEVEL SECURITY is applied; referential integrity checks always bypass policies."
+  evidence: source.postgres-docs-row-security
+  firsthand: false
+
+- _id: caveat.sql-partitioning-single-column
+  mapping: mapping.partitioning--azure-sql-db
+  severity: major
+  statement: "SQL Server partitioning uses exactly one partitioning column per table (a persisted computed column can concatenate several), supports up to 15,000 partitions, and in Azure SQL Database all partitions must reside on the PRIMARY filegroup; list, hash, interval and reference partitioning are not native features."
+  evidence: source.ms-sql-partitioned-tables
+  firsthand: false
+
+- _id: caveat.pg-partition-unique-key-rule
+  mapping: mapping.partitioning--azure-pg-flex
+  severity: major
+  statement: "In PostgreSQL declarative partitioning, primary key and unique constraints on a partitioned table must include all partition key columns, indexes are per-partition (no global indexes), new partitions are never created automatically, and BEFORE ROW INSERT triggers cannot change the destination partition."
+  evidence: source.postgres-docs-partitioning
+  firsthand: false
+
+# ---------------------------------------------------------------- links, external access, triggers
+
+- _id: caveat.sqldb-no-linked-servers
+  mapping: mapping.database-links--azure-sql-db
+  severity: blocker
+  statement: "Azure SQL Database supports neither linked servers nor cross-database three-part-name queries or cross-database transactions; the feature comparison points to elastic query as the partial workaround for read-only cross-database access."
+  evidence: source.ms-sqldb-mi-feature-comparison
+  firsthand: false
+
+- _id: caveat.elastic-query-read-only-preview
+  mapping: mapping.database-links--azure-sql-db
+  severity: major
+  statement: "Elastic query is in preview, supports only read-only access to external tables (DML must go through sp_execute_remote), does not support LOB types other than nvarchar(max) in external table definitions, works only with SQL authentication, and its shard-map mode reaches end of support on 2027-03-31."
+  evidence: source.ms-sqldb-elastic-query
+  firsthand: false
+
+- _id: caveat.sqlmi-linked-servers
+  mapping: mapping.database-links--azure-sql-mi
+  severity: minor
+  statement: "Azure SQL Managed Instance supports linked servers with SQL and Microsoft Entra authentication, with supported targets being SQL Managed Instance, Azure SQL Database, Azure Synapse SQL pools and SQL Server instances."
+  evidence: source.ms-sqlmi-tsql-differences
+  firsthand: false
+
+- _id: caveat.sqlmi-linked-server-targets-sql-only
+  mapping: mapping.database-links--azure-sql-mi
+  severity: major
+  statement: "Linked servers on Managed Instance cannot target files, Analysis Services or other RDBMS such as Oracle, and OPENROWSET/OPENDATASOURCE can query only SQL Server family instances, so an Oracle database link to a remaining Oracle system has no linked-server equivalent."
+  evidence: source.ms-sqlmi-tsql-differences
+  firsthand: false
+
+- _id: caveat.oracle-fdw-available-on-flex
+  mapping: mapping.database-links--azure-pg-flex
+  severity: minor
+  statement: "Azure Database for PostgreSQL Flexible Server lists oracle_fdw (extension version 1.2) as available for PostgreSQL 12 through 18 and not supported on 11, so a link back to a remaining Oracle system can be kept as a foreign server during coexistence."
+  evidence: source.ms-pg-flex-extensions
+  firsthand: false
+
+- _id: caveat.sql-triggers-no-before-row
+  mapping: mapping.before-row-triggers--azure-sql-db
+  severity: major
+  statement: "SQL Server DML triggers are FOR/AFTER or INSTEAD OF only, fire once per statement (even when no rows are affected) and expose changed rows through the inserted and deleted tables; there is no BEFORE trigger, and INSTEAD OF DELETE/UPDATE triggers cannot be defined on tables whose foreign keys cascade on DELETE/UPDATE."
+  evidence: source.ms-sql-create-trigger
+  firsthand: false
+
+- _id: caveat.ssma-before-triggers-instead-of
+  mapping: mapping.before-row-triggers--azure-sql-db
+  severity: major
+  statement: "SSMA converts Oracle BEFORE triggers to INSTEAD OF triggers, AFTER triggers to AFTER triggers, emulates row-level triggers with cursors, merges multiple INSTEAD OF or compound triggers on the same operation into one trigger, and splits cascading triggers into individual triggers."
+  evidence: source.ms-ssma-converting-schemas
+  firsthand: false
+
+- _id: caveat.ssma-packages-flattened
+  mapping: mapping.packages--azure-sql-db
+  severity: major
+  statement: "SSMA converts an Oracle package into a set of separate stored procedures and functions unified only by naming, converts user-defined types to varchar(8000) with conversion errors, and may turn a function into a stored procedure plus a wrapper function when the body contains statements invalid in a T-SQL function."
+  evidence: source.ms-ssma-converting-schemas
+  firsthand: false
+
+# ---------------------------------------------------------------- newer datatypes and tooling
+
+- _id: caveat.sql-json-type-mi-update-policy
+  mapping: mapping.json-duality-views--azure-sql-db
+  severity: minor
+  statement: "The native json type is generally available in Azure SQL Database and SQL Server 2025, but on Azure SQL Managed Instance only under the SQL Server 2025 or Always-up-to-date update policy; json columns cannot be index keys and OPENJSON does not accept the json type on every platform."
+  evidence: source.ms-sql-json-type
+  firsthand: false
+
+- _id: caveat.sql-vector-1998-dims
+  mapping: mapping.vector-datatype--azure-sql-db
+  severity: major
+  statement: "The Azure SQL vector type supports at most 1998 dimensions with float32 storage (float16 is preview behind PREVIEW_FEATURES), disallows B-tree and columnstore indexes, key constraints and Always Encrypted on vector columns, and is available on Managed Instance only with the Always-up-to-date update policy."
+  appliesTo:
+    oracleVersions: [23ai, 26ai]
+  evidence: source.ms-sql-vector-type
+  firsthand: false
+
+- _id: caveat.pgvector-dimension-limits
+  mapping: mapping.vector-datatype--azure-pg-flex
+  severity: minor
+  statement: "pgvector's vector type holds up to 2,000 dimensions and halfvec up to 4,000, with HNSW and IVFFlat approximate indexes; embeddings wider than that must be reduced or stored as arrays without index support."
+  appliesTo:
+    oracleVersions: [23ai, 26ai]
+  evidence: source.pgvector-readme
+  firsthand: false
+
+- _id: caveat.dms-oracle-offline-preview-via-ssma
+  mapping: mapping.data-pump--azure-dms
+  severity: major
+  statement: "Azure Database Migration Service lists Oracle as a source only for offline migrations to Azure SQL Database, Azure SQL Managed Instance and SQL Server on Azure VMs, each marked 'Yes [using DMS via SSMA]' with Preview status, and lists no Oracle online migration scenario."
+  evidence: source.ms-azure-dms-oracle
+  firsthand: false
+
+- _id: caveat.dms-no-oracle-to-postgres
+  mapping: mapping.data-pump--azure-dms
+  severity: blocker
+  statement: "Neither the Azure Database Migration Service scenario table nor the migration service in Azure Database for PostgreSQL lists Oracle as a source for Azure Database for PostgreSQL Flexible Server; the PostgreSQL migration service accepts only PostgreSQL sources (on-premises, Azure VM, Amazon RDS, Aurora, Google Cloud SQL)."
+  evidence: source.ms-pg-migration-service
+  firsthand: false
+
+- _id: caveat.sqlmi-backup-copy-only-url
+  mapping: mapping.rman--azure-sql-mi
+  severity: major
+  statement: "On Managed Instance user backups must be COPY_ONLY full backups TO URL (Blob Storage) with up to 32 stripes and a 195 GB stripe limit; differential, log and file-snapshot backups are not user-initiated, databases under service-managed TDE cannot be backed up with COPY_ONLY, and native backups restore only to SQL Server 2022/2025 or another managed instance."
+  appliesTo:
+    azureTiers: ["General Purpose", "Next-gen General Purpose", "Business Critical"]
+  evidence: source.ms-sqlmi-tsql-differences
+  firsthand: false
+
+- _id: caveat.tde-byok-key-revocation
+  mapping: mapping.tde--azure-sql-db
+  severity: major
+  statement: "With customer-managed TDE, deleting or disabling the Key Vault key or revoking the server's get, wrapKey and unwrapKey permissions makes encrypted databases inaccessible (permission changes can take about ten minutes to apply), and older backups remain restorable only while the key versions that protected them are retained; soft-delete and purge protection are mandatory on the vault."
+  evidence: source.ms-sql-tde-byok
+  firsthand: false
+
+- _id: caveat.sqlmi-rac-no-scale-out
+  mapping: mapping.rac--azure-sql-mi
+  severity: major
+  statement: "Managed Instance has one writable primary: General Purpose tiers provide zero read-only replicas and Business Critical provides one built-in readable replica out of three secondaries, so RAC-style multi-writer scale-out is not reproducible and capacity is limited to 128 vCores per instance."
+  appliesTo:
+    azureTiers: ["General Purpose", "Next-gen General Purpose", "Business Critical"]
+  evidence: source.ms-sqlmi-service-tiers
+  firsthand: false
+
+- _id: caveat.oracle-text-no-third-party-filters
+  mapping: mapping.oracle-text--azure-sql-db
+  severity: minor
+  statement: "Full-text search is available on both Azure SQL Database and Azure SQL Managed Instance, but non-Microsoft (third-party) filters and word breakers are not supported on either, so custom Oracle Text lexers and filters have no drop-in equivalent."
+  evidence: source.ms-sqldb-mi-feature-comparison
+  firsthand: false
+
+# ---------------------------------------------------------------- obituary roster follow-up
+
+- _id: caveat.adf-no-oracle-native-cdc
+  mapping: mapping.oracle-streams--data-factory
+  severity: major
+  statement: "Azure Data Factory's native change data capture in mapping data flows lists SAP CDC, Azure SQL Database, SQL Server, Azure SQL Managed Instance, Azure Cosmos DB and Snowflake as supported sources, and its auto-incremental extraction list also excludes Oracle, so Oracle deltas require a customer-managed watermark pipeline; pipelines are batch and only the CDC factory resource runs continuously."
+  evidence: source.ms-adf-change-data-capture
+  firsthand: false
+
+- _id: caveat.fabric-oracle-mirroring-prereqs
+  mapping: mapping.oracle-streams--fabric
+  severity: major
+  statement: "Fabric mirroring for Oracle requires LogMiner, archive log mode and supplemental logging on the source, an on-premises data gateway, and a database open in write mode; it supports Oracle 10 and later on-premises, on Azure VMs, on OCI, on Oracle Database@Azure and on Exadata."
+  evidence: source.ms-fabric-mirroring-oracle
+  firsthand: false
+
+- _id: caveat.fabric-mirroring-analytics-only
+  mapping: mapping.oracle-change-data-capture--fabric
+  severity: major
+  statement: "Database mirroring replicates changes one way into Delta tables in OneLake (published as fast as every 15 seconds) for analytics through a SQL analytics endpoint; it is not a database-to-database replication technology and mirrored data cannot be written back to the source."
+  evidence: source.ms-fabric-mirroring-overview
+  firsthand: false
+
+- _id: caveat.dms-no-oracle-online
+  mapping: mapping.oracle-streams--azure-dms
+  severity: blocker
+  statement: "The Azure Database Migration Service scenario table marks Oracle as 'No' for online (continuous sync) migration to Azure SQL Database, Managed Instance and SQL VM, and lists no Oracle source at all for PostgreSQL targets."
+  evidence: source.ms-azure-dms-oracle
+  firsthand: false
+
+- _id: caveat.odaa-goldengate-not-included
+  mapping: mapping.oracle-streams--oracle-db-at-azure
+  severity: major
+  statement: "Microsoft's Oracle Database@Azure guidance says GoldenGate is not included in the service and might incur extra licensing costs, while positioning it as the tool for active-active replication with application-level conflict handling."
+  evidence: source.ms-oracle-db-at-azure-bcdr
+  firsthand: false
+
+- _id: caveat.sql-cdc-agent-jobs-retention
+  mapping: mapping.oracle-change-data-capture--azure-sql-mi
+  severity: minor
+  statement: "SQL Server change data capture on Managed Instance depends on SQL Server Agent capture and cleanup jobs, keeps change rows for 4320 minutes (3 days) by default, allows at most two capture instances per source table, and prevents log truncation until the capture process has read the pending changes."
+  evidence: source.ms-sql-change-data-capture
+  firsthand: false
+
+- _id: caveat.pg-logical-slots-fill-storage
+  mapping: mapping.oracle-change-data-capture--azure-pg-flex
+  severity: major
+  statement: "On Flexible Server logical replication and decoding require wal_level set to logical and a restart, do not replicate DDL, and an unconsumed replication slot retains WAL until storage fills; the server switches to read-only at 95 percent storage use and may drop an unused slot automatically, and slots are not preserved across HA failover before PostgreSQL 17 without pg_failover_slots."
+  evidence: source.ms-pg-flex-logical-replication
+  firsthand: false
+
+- _id: caveat.sqlmi-replication-no-merge-p2p
+  mapping: mapping.advanced-replication--azure-sql-mi
+  severity: major
+  statement: "Managed Instance supports transactional, snapshot and bidirectional replication but not merge replication, peer-to-peer replication or updatable subscriptions; replication requires SQL authentication and an Azure Storage file share for the working directory, and at most 30 distribution agents may run continuously."
+  appliesTo:
+    azureTiers: ["General Purpose", "Next-gen General Purpose", "Business Critical"]
+  evidence: source.ms-sqlmi-transactional-replication
+  firsthand: false
+
+- _id: caveat.pglogical-no-ddl-replication
+  mapping: mapping.advanced-replication--azure-pg-flex
+  severity: major
+  statement: "pglogical on Flexible Server does not replicate DDL automatically; the initial schema must be copied with pg_dump --schema-only and later DDL applied on both sides (or through pglogical.replicate_ddl_command), and the replication user must belong to azure_pg_admin with the REPLICATION attribute."
+  evidence: source.ms-pg-flex-logical-replication
+  firsthand: false
+
+- _id: caveat.exadata-cloud-cdb-only-console
+  mapping: mapping.non-cdb-architecture--oracle-db-at-azure
+  severity: major
+  statement: "On Exadata Database Service on Dedicated Infrastructure the console and OCI APIs create only container databases with an initial PDB; a non-CDB can be created only with the dbaascli command line and only for release 19.x and earlier, and TDE encryption is mandatory for all cloud databases."
+  appliesTo:
+    oracleVersions: [11.2, 12.1, 12.2, 18c, 19c]
+  evidence: source.oracle-exadata-cloud-manage-databases
+  firsthand: false
+
+- _id: caveat.autoupgrade-noncdb-to-pdb
+  mapping: mapping.non-cdb-architecture--oracle-on-azure-vm
+  severity: minor
+  statement: "AutoUpgrade can upgrade a non-CDB and convert it into a PDB in a new CDB in a single operation, or upgrade and then plug it into an existing CDB, and can also perform unplug-plug upgrades between CDBs of different releases."
+  appliesTo:
+    oracleVersions: [11.2, 12.1, 12.2, 18c, 19c]
+  evidence: source.oracle-autoupgrade-23
+  firsthand: false
+
+- _id: caveat.odaa-database-ops-in-oci-console
+  mapping: mapping.em-express--oracle-db-at-azure
+  severity: minor
+  statement: "In Oracle Database@Azure, Exadata infrastructure and VM clusters are managed from the Azure portal, while container and pluggable database management is performed in the OCI console; only Exadata X9M shapes are supported and the client subnet reserves 13 IP addresses."
+  evidence: source.ms-oracle-db-at-azure-exadata
+  firsthand: false
+
+- _id: caveat.caf-oracle-monitoring-guidance-deprecated
+  mapping: mapping.em-express--oracle-on-azure-vm
+  severity: minor
+  statement: "Microsoft's Cloud Adoption Framework articles on managing and monitoring Oracle on Azure VMs and Oracle Database@Azure carry a deprecation notice stating they are no longer updated and will be removed on 2026-10-30, pointing readers to Oracle on Azure architecture and product documentation instead."
+  evidence: source.ms-caf-oracle-vm-monitoring
+  firsthand: false
+
+- _id: caveat.sqlmi-dbcc-repair-not-allowed
+  mapping: mapping.data-recovery-advisor--azure-sql-mi
+  severity: major
+  statement: "On Managed Instance DBCC CHECKDB cannot be run with REPAIR_ALLOW_DATA_LOSS, REPAIR_FAST or REPAIR_REBUILD because the database cannot be placed in SINGLE_USER mode; Microsoft states that potential corruption is handled by the Azure support team."
+  appliesTo:
+    azureTiers: ["General Purpose", "Next-gen General Purpose", "Business Critical"]
+  evidence: source.ms-sqlmi-tsql-differences
+  firsthand: false
+
+- _id: caveat.exadata-cloud-backup-policies
+  mapping: mapping.data-recovery-advisor--oracle-db-at-azure
+  severity: minor
+  statement: "Automatic backups on Exadata Database Service go either to Autonomous Recovery Service (requires Oracle Database 19.18 or later; Bronze 14, Silver 35, Gold 65 and Platinum 95 day policies) or to Object Storage (7 to 60 day retention with weekly L0 and daily L1 backups); PDBs are backed up at the CDB level from the console."
+  evidence: source.oracle-exadata-cloud-manage-databases
+  firsthand: false
+
+- _id: caveat.query-store-force-retained-plans-only
+  mapping: mapping.stored-outlines--azure-sql-db
+  severity: major
+  statement: "Query Store can force only plans that it captured and still retains, collects plans for DML statements (not DDL) and not for natively compiled procedures by default, is enabled by default on new Azure SQL Database and Managed Instance databases, and cannot be enabled on master or tempdb."
+  evidence: source.ms-sql-query-store
+  firsthand: false
+
+- _id: caveat.pg-hint-plan-needs-preload
+  mapping: mapping.stored-outlines--azure-pg-flex
+  severity: minor
+  statement: "pg_hint_plan on Flexible Server must be allowlisted, loaded through shared_preload_libraries and created in each database, and steers the planner through hint phrases inside a comment beginning with /*+ in the SQL text."
+  evidence: source.ms-pg-flex-extensions-considerations
+  firsthand: false
+
+- _id: caveat.openxml-document-handles
+  mapping: mapping.dbms-xmlquery--azure-sql-db
+  severity: minor
+  statement: "OPENXML operates on a document handle produced by sp_xml_preparedocument that must be released with sp_xml_removedocument, and returns an edge-table representation when no WITH clause is supplied."
+  evidence: source.ms-sql-openxml
+  firsthand: false
+
+- _id: caveat.pg-xml-xpath-1-0-only
+  mapping: mapping.dbms-xmlquery--azure-pg-flex
+  severity: minor
+  statement: "PostgreSQL's xpath, xpath_exists and XMLTABLE support only XPath 1.0 expressions, the XML functions require a server built with libxml, and generated documents follow the SQL/XML standard element names rather than Oracle's ROWSET/ROW layout."
+  evidence: source.postgres-docs-functions-xml
+  firsthand: false
+
+- _id: caveat.sqldb-no-clr
+  mapping: mapping.dotnet-stored-procedures--azure-sql-mi
+  severity: blocker
+  statement: "Common language runtime integration is not available in Azure SQL Database; on Azure SQL Managed Instance it is available but assemblies can be created only FROM BINARY because CREATE ASSEMBLY FROM FILE has no file system to read from."
+  evidence: source.ms-sqldb-mi-feature-comparison
+  firsthand: false
+
+- _id: caveat.liboramysql-no-mysql-protocol
+  mapping: mapping.liboramysql--azure-sql-db
+  severity: minor
+  statement: "Azure SQL Database is accessed through the same connection libraries as SQL Server (Microsoft lists Python, Java, Node.js, PHP, Ruby and .NET), so applications built on the MySQL client API must change drivers; there is no MySQL-protocol endpoint on Azure SQL."
+  evidence: source.ms-sqldb-overview
+  firsthand: false
+
+- _id: caveat.tde-byok-identity-permissions
+  mapping: mapping.oracle-wallet-manager--key-vault
+  severity: major
+  statement: "For customer-managed TDE the logical server or managed instance identity needs get, wrapKey and unwrapKey on the Key Vault key (or the Managed HSM Crypto User role), the TDE protector is set at server or instance level and inherited by all databases, and key rotation re-wraps only the database encryption key while old backups keep needing the key version that protected them."
+  evidence: source.ms-sql-tde-byok
+  firsthand: false
+
+- _id: caveat.sqldb-tls-min-1-2
+  mapping: mapping.tls-1-0-1-1--azure-sql-db
+  severity: minor
+  statement: "For Azure SQL Database TLS 1.0 and 1.1 are retired and no longer available, the lowest configurable minimum TLS version is 1.2, the default accepts TLS 1.2 and above, enforcing a minimum of 1.3 may break drivers that lack TLS 1.3 support, and since November 2024 the minimum for SQL Database and Managed Instance cannot be set below 1.2."
+  evidence: source.ms-sqldb-connectivity-tls
+  firsthand: false
+
+- _id: caveat.pg-flex-tls-1-2-1-3-only
+  mapping: mapping.tls-1-0-1-1--azure-pg-flex
+  severity: minor
+  statement: "Azure Database for PostgreSQL Flexible Server accepts only TLS 1.2 and 1.3 and denies TLS 1.0 and 1.1 by default, enforces TLS through require_secure_transport (which can be turned off but is not recommended), and does not support mutual TLS client certificates or custom server certificates."
+  evidence: source.ms-pg-flex-tls
+  firsthand: false

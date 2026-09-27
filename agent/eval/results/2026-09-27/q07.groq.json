@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q07",
+    "type": "howto",
+    "cond": "groq",
+    "num_turns": 6,
+    "duration_ms": 27129,
+    "session_id": "9f41e502-1c36-4574-a237-4b3516ae3d8d",
+    "usage": {
+      "input_tokens": 10,
+      "cache_creation_input_tokens": 7313,
+      "cache_read_input_tokens": 38658,
+      "output_tokens": 2141,
+      "output_tokens_details": {
+        "thinking_tokens": 104
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 7313,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1330,
+          "cache_read_input_tokens": 11960,
+          "cache_creation_input_tokens": 451,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 451
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q07",
+    "type": "howto",
+    "q": "How do we replace fast-refresh materialized views when moving to Azure Database for PostgreSQL?",
+    "expected": "PostgreSQL has no incremental (fast) refresh; options: REFRESH MATERIALIZED VIEW (full, optionally CONCURRENTLY), trigger-maintained summary tables, or pg_cron scheduling; effort and caveats cited.",
+    "required_sources": [
+      "community",
+      "microsoft"
+    ]
+  },
+  "result": "No pattern doc references this mapping. Here's what the dataset supports.\n\n**Verdict:** Partial fidelity, no direct replacement — Azure Database for PostgreSQL Flexible Server has no fast-refresh/incremental materialized views; you must re-engineer to full refresh (optionally via `pg_ivm`) or scheduled/change-driven summary tables.\n\n**Scoped facts (Oracle 11.2–26ai, all editions per `appliesToOracleVersions`):**\n\n- Oracle's fast-refresh materialized views use materialized view logs (or partition change tracking) to apply only changed rows, can refresh on commit or on demand, and support query rewrite so the optimizer transparently redirects base-table queries to the MV. [Fast-refresh materialized views feature summary](internal — no external url in this entry)\n- **Azure Database for PostgreSQL Flexible Server** (mapping fidelity: **partial**, effort: **M**): PostgreSQL materialized views only support `REFRESH MATERIALIZED VIEW`, which recomputes the entire result set. `CONCURRENTLY` avoids blocking readers but still recomputes everything — there is no materialized view log, no incremental/fast refresh, and no refresh-on-commit. [PostgreSQL documentation: REFRESH MATERIALIZED VIEW](https://www.postgresql.org/docs/current/sql-refreshmaterializedview.html), [PostgreSQL documentation: CREATE MATERIALIZED VIEW](https://www.postgresql.org/docs/current/sql-creatematerializedview.html)\n  - The `pg_ivm` extension, available on Flexible Server for PostgreSQL 13+, adds incrementally maintained views for a subset of query shapes — this is the closest workaround to fast refresh. [Extensions and modules by name in Azure Database for PostgreSQL flexible server](https://learn.microsoft.com/en-us/azure/postgresql/extensions/concepts-extensions-versions)\n  - Caveat (severity: **major**): confirms no incremental/fast refresh path exists natively in PostgreSQL. [PostgreSQL documentation: REFRESH MATERIALIZED VIEW](https://www.postgresql.org/docs/current/sql-refreshmaterializedview.html)\n\n**Practical re-engineering options recorded in the rationale** (not a separate `pattern` document — none in the dataset references this mapping):\n1. Use `pg_ivm` where the query shape is supported (subset of joins/aggregates).\n2. Otherwise, re-engineer to scheduled full-refresh jobs (`REFRESH MATERIALIZED VIEW CONCURRENTLY`) or change-driven summary tables maintained by triggers/application logic.\n\n**Side note — if you're also considering Azure SQL Database instead:** the dataset maps the same Oracle feature there too (fidelity: partial, effort: L) via indexed views, but that path is unrelated to PostgreSQL and comes with its own SSMA conversion restrictions (outer joins, DISTINCT, MIN/MAX, UNION, HAVING, window functions, nondeterministic expressions all fail conversion). [SSMA for Oracle: Converting Oracle Schemas](https://learn.microsoft.com/en-us/sql/ssma/oracle/converting-oracle-schemas-oracletosql), [Create indexed views (SQL Server, Azure SQL)](https://learn.microsoft.com/en-us/sql/relational-databases/views/create-indexed-views) — only relevant if you're comparing targets, not for a PostgreSQL Flexible Server migration.\n\n**Gaps:** No `dispute` document touches this feature. No `pattern` document is linked to the PostgreSQL mapping, so there's no dataset-recorded step-by-step migration playbook beyond the rationale above — the dataset has no evidence on a detailed runbook.",
+  "stderr": ""
+}
