@@ -25,5 +25,5 @@ export default defineCliConfig({
     entry: './src/App.tsx',
     title: "Mortician's Desk",
   },
-  // `deployment.appId` is written here by the CLI on the first `sanity deploy`.
+  deployment: {appId: 'mnuftqiwykngiwbua6tj9xrr'},
 })
