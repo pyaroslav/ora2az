@@ -155,7 +155,7 @@ The CLI prints local times, which are UTC-5 here. Stored timestamps are UTC.
 
 ## Desk integration
 
-`desk/src/workflow.ts` builds an engine from the App SDK client with `createEngine`. It finds the feature's open instance with `engine.instancesForDocument` and fires `certify` or `retract` after the desk's publish. This adds one dependency, `@sanity/workflow-engine` 0.35.0. It type-checks with `npx tsc --noEmit`. **The live desk has not been redeployed**, so it does not do this yet. Until it is, fire `certify` from the CLI after certifying in the desk.
+`desk/src/workflow.ts` builds an engine from the App SDK client with `createEngine`. It finds the feature's open instance with `engine.instancesForDocument` and fires `certify` or `retract` after the desk's publish. This adds one dependency, `@sanity/workflow-engine` 0.35.0. It type-checks with `npx tsc --noEmit`. The live desk has been redeployed with this change (2026-09-27), so certifying in the desk also fires `certify`, and un-certifying fires `retract`.
 
 The docs also describe a richer route: `@sanity/workflow-sdk` with `useWorkflowSession` renders the stage, activities and action verdicts live in an App SDK app. That needs `@sanity/workflow-react`, `@sanity/workflow-components`, `@sanity/ui` and `styled-components`, so it was left out.
 

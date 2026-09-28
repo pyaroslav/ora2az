@@ -77,7 +77,7 @@ const sum = (xs, k) => xs.reduce((s, x) => s + (typeof x[k] === 'number' ? x[k] 
 const cnt = (xs, k) => xs.filter((x) => typeof x[k] === 'number').length
 const rows = CONDS.map((c) => {
   const xs = out.filter((x) => x.cond === c)
-  const med = (k) => { const v = xs.map((x) => x[k]).filter((n) => typeof n === 'number').sort((a, b) => a - b); return v.length ? v[Math.floor(v.length / 2)] : '—' }
+  const med = (k) => { const v = xs.map((x) => x[k]).filter((n) => typeof n === 'number').sort((a, b) => a - b); if (!v.length) return '—'; const m = v.length >> 1; return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2 }
   return `| ${c} | ${sum(xs, 'verdict')}/${cnt(xs, 'verdict')} | ${sum(xs, 'citations')}/${cnt(xs, 'citations')} | ${sum(xs, 'grounded')}/${cnt(xs, 'grounded')} | ${sum(xs, 'refusal')}/${cnt(xs, 'refusal')} | ${med('turns')} | ${med('ms') === '—' ? '—' : Math.round(med('ms') / 1000) + ' s'} |`
 })
 const table = ['| condition | verdict correct | required citations | grounded | refused when it should | median turns | median time |', '|---|---|---|---|---|---|---|', ...rows].join('\n')

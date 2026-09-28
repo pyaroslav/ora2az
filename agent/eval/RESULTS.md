@@ -17,7 +17,13 @@ Report turns and tokens per condition (no dollar cost: subscription).
 | none | 10/18 | 11/16 | 0/18 | 0/2 | 1 | 22 s |
 | bm25 | 14/18 | 4/16 | 16/18 | 2/2 | 1 | 10 s |
 | groq | 17/18 | 12/16 | 18/18 | 2/2 | 5 | 28 s |
-| groq+kb | 17/18 | 12/16 | 18/18 | 2/2 | 7 | 34 s |
+| groq+kb | 17/18 | 12/16 | 18/18 | 2/2 | 7 | 33 s |
+
+## Run settings
+
+- Runner: `node eval/run.mjs --conditions … --max-turns 14` (the runner's default is 12; this run passed 14 explicitly). The most turns any run used was 10.
+- Models: the two Sanity Context conditions ran on the *smaller* model (`--model` alias passed by `lib/runtime.mjs` via `AGENT_MODEL`); the two baselines ran without a `--model` flag and so on the CLI's default, the *larger* model. The grader ran on the larger model. Exact model ids were read from each run's session transcript (not committed); the DEV posts name them.
+- Medians are true medians (mean of the two middle values for 18 runs).
 
 **Reading it.**
 - The graph earns its keep on **grounding**: 18/18 for both Sanity Context conditions vs 0/18 with no tools, and on **verdicts**: 17/18 vs 14/18 for keyword search and 10/18 from memory.
