@@ -89,69 +89,22 @@ npx sanity-workflows fire-action <instanceId> --activity certification --action 
 
 The order matters. Publish first, then fire `certify`. Entering `certified` deploys the freeze guard, and the publish that carries the new obituary would change `obituary`.
 
-## Current state (2026-09-27)
+## Current state (2026-09-27, later)
 
-`notice-lifecycle` v1 is deployed. The three queued drafts each have an instance. The fact check passed all three, and they are waiting in `fact-checked` for a human to certify. The script has not certified or published anything.
+One notice has gone the whole way, and one front-page notice now waits in the queue:
 
 ```
-$ npx sanity-workflows definition list
-workflow              title                       tag          stages   in flight   instances   created
-notice-lifecycle v1   Obituary notice lifecycle   production   3        3           3           2026-09-28T01:28:17Z
-
 $ npx sanity-workflows list
-instance                              workflow           tag          stage          status      updated
-production.wf-instance.2e9f8b706af0   notice-lifecycle   production   fact-checked   in-flight   14 seconds ago
-production.wf-instance.1739bb2d4543   notice-lifecycle   production   fact-checked   in-flight   22 seconds ago
-production.wf-instance.3c0dea974deb   notice-lifecycle   production   fact-checked   in-flight   30 seconds ago
-
-$ node scripts/fact-check.mjs
-production.wf-instance.3c0dea974deb (feature_flashback-query): PASS - Checked 1 release/ORA- mention(s) against the feature's data: 11.2. All supported.
-  -> now at fact-checked
-production.wf-instance.1739bb2d4543 (feature_vector-datatype): PASS - Checked 1 release/ORA- mention(s) against the feature's data: 23ai. All supported.
-  -> now at fact-checked
-production.wf-instance.2e9f8b706af0 (feature_xmltype): PASS - Checked 1 release/ORA- mention(s) against the feature's data: 11.2. All supported.
-  -> now at fact-checked
-
-$ npx sanity-workflows show production.wf-instance.2e9f8b706af0 --include history
-notice-lifecycle v1  production.wf-instance.2e9f8b706af0
-  Stage:     fact-checked
-  Started:   2026-09-27 20:28:26
-  Completed: —
-  Tag:       production
-
-Stages:
-  • drafted (exited 2026-09-27 20:30:17)
-      ✔ fact-check  [done]
-  • fact-checked (current)
-      ● certification  [active]
-
-History:
-  [2026-09-27 20:28:26] Stage entered
-  [2026-09-27 20:30:16] Action fired
-  [2026-09-27 20:30:16] Op applied
-  [2026-09-27 20:30:16] Op applied
-  [2026-09-27 20:30:16] Op applied
-  [2026-09-27 20:30:16] Op applied
-  [2026-09-27 20:30:16] Activity status changed
-  [2026-09-27 20:30:16] Op applied
-  [2026-09-27 20:30:17] Stage exited
-  [2026-09-27 20:30:17] Transition fired
-  [2026-09-27 20:30:17] Stage entered
-
-$ npx sanity-workflows fire-action production.wf-instance.2e9f8b706af0
-Actions on stage 'fact-checked':
-  ✔ certification → certify  (Certify) [activity active]
-  ✔ certification → send-back  (Send back to draft) [activity active]
-      params: reason:string
+instance                              workflow           tag          stage          status
+production.wf-instance.c87d984a87de   notice-lifecycle   production   fact-checked   in-flight   (feature_exp-utility, on the front page)
+production.wf-instance.2e9f8b706af0   notice-lifecycle   production   certified      in-flight   (feature_xmltype)
+production.wf-instance.1739bb2d4543   notice-lifecycle   production   fact-checked   in-flight   (feature_vector-datatype)
+production.wf-instance.3c0dea974deb   notice-lifecycle   production   fact-checked   in-flight   (feature_flashback-query)
 ```
 
-| Instance | Feature | Stage | Fact check |
-| --- | --- | --- | --- |
-| `production.wf-instance.2e9f8b706af0` | `feature_xmltype` | fact-checked | passed, mentions 11.2 |
-| `production.wf-instance.1739bb2d4543` | `feature_vector-datatype` | fact-checked | passed, mentions 23ai |
-| `production.wf-instance.3c0dea974deb` | `feature_flashback-query` | fact-checked | passed, mentions 11.2 |
-
-The CLI prints local times, which are UTC-5 here. Stored timestamps are UTC.
+- `feature_xmltype`: draft published as certified, then `certify` fired, so the instance sits in `certified` with the obituary freeze in force.
+- `feature_exp-utility` (desupported in 26ai, one of the 28 front-page notices): obituary moved back to draft, instance started, fact check PASS (mentions 11.2 and 26ai, both in its data), waiting for a human in `fact-checked`.
+- The instance's `certified` stage is not terminal on purpose, so `retract` stays available and the guard stays live.
 
 ## Desk integration
 
