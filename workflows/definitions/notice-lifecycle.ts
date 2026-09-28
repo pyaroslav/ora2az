@@ -63,7 +63,7 @@ export const noticeLifecycle = defineWorkflow({
               name: 'pass',
               title: 'Fact check passed',
               status: 'done',
-              params: [{type: 'string', name: 'note', title: 'Note'}],
+              params: [{type: 'string', name: 'note', title: 'What was checked', required: true}],
               ops: [
                 defineOp({type: 'field.set', target: {field: 'factCheck'}, value: {type: 'literal', value: 'passed'}}),
                 defineOp({type: 'field.set', target: {field: 'factCheckNote'}, value: {type: 'param', param: 'note'}}),
@@ -109,10 +109,9 @@ export const noticeLifecycle = defineWorkflow({
               name: 'certify',
               title: 'Certify',
               status: 'done',
-              params: [{type: 'string', name: 'note', title: 'Note'}],
               ops: [
                 defineOp({type: 'field.set', target: {field: 'decision'}, value: {type: 'literal', value: 'certified'}}),
-                defineOp({type: 'field.set', target: {field: 'decisionNote'}, value: {type: 'param', param: 'note'}}),
+                defineOp({type: 'field.unset', target: {field: 'decisionNote'}}),
                 defineOp({type: 'field.set', target: {field: 'certifiedBy'}, value: {type: 'actor'}}),
               ],
             }),

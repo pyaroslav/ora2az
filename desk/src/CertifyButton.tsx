@@ -2,10 +2,12 @@ import {
   editDocument,
   publishDocument,
   useApplyDocumentActions,
+  useClient,
   type DocumentHandle,
 } from '@sanity/sdk-react'
 import {useState} from 'react'
 import type {ReviewStatus} from './FeatureRow'
+import {syncWorkflow} from './workflow'
 
 interface CertifyButtonProps {
   handle: DocumentHandle
@@ -15,6 +17,7 @@ interface CertifyButtonProps {
 
 export function CertifyButton({handle, status, hasObituary}: CertifyButtonProps) {
   const apply = useApplyDocumentActions()
+  const client = useClient({apiVersion: '2026-04-29'})
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -30,6 +33,11 @@ export function CertifyButton({handle, status, hasObituary}: CertifyButtonProps)
         publishDocument(handle),
       ])
       await result.submitted()
+      // Publish first, then move the workflow: entering `certified` deploys a guard that
+      // freezes the obituary, so the publish that carries it must land before that.
+      await syncWorkflow(client, handle.documentId, next).catch((err) => {
+        setError(`Saved, but the workflow did not move: ${err instanceof Error ? err.message : String(err)}`)
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {

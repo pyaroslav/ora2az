@@ -17,6 +17,7 @@
   "dependencies": {
     "@sanity/sdk": "^3.5.0",
     "@sanity/sdk-react": "^3.5.0",
+    "@sanity/workflow-engine": "^0.35.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
