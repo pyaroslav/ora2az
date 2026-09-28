@@ -1,4 +1,5 @@
 import type {Metadata} from 'next'
+import type {ReactNode} from 'react'
 import {Playfair_Display, Source_Serif_4} from 'next/font/google'
 import Link from 'next/link'
 import './globals.css'
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
   description: 'Notices of desupport and departure for Oracle Database features that did not survive the move to Azure, generated from a structured migration knowledge graph on Sanity.',
 }
 
-export default function RootLayout({children}: LayoutProps<'/'>) {
+export default function RootLayout({children}: {children: ReactNode}) {
   const today = new Date().toLocaleDateString('en-GB', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'})
   return (
     <html lang="en" className={`${playfair.variable} ${serif.variable} h-full antialiased`}>
