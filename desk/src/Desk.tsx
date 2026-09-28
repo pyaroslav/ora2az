@@ -1,4 +1,5 @@
 import {Suspense, useState} from 'react'
+import {useQuery} from '@sanity/sdk-react'
 import {CountsStrip} from './CountsStrip'
 import {FeatureTable, type StatusFilter} from './FeatureTable'
 
@@ -9,7 +10,10 @@ const FILTER_LABELS: Record<StatusFilter, string> = {
 }
 
 export function Desk() {
-  const [filter, setFilter] = useState<StatusFilter>('draft')
+  // Land on Drafts when something awaits review; otherwise show everything. A clicked tab wins.
+  const [chosen, setFilter] = useState<StatusFilter | null>(null)
+  const {data: pending} = useQuery<number>({query: 'count(*[_type == "oracleFeature" && reviewStatus != "certified"])'})
+  const filter: StatusFilter = chosen ?? (pending ? 'draft' : 'all')
 
   return (
     <main className="desk">
