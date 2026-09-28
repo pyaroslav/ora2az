@@ -1,0 +1,170 @@
+[
+  {
+    "id": "q19",
+    "type": "howto",
+    "cond": "bm25",
+    "label": "W",
+    "verdict": 0,
+    "grounded": 1,
+    "refusal": null,
+    "note": "XTTS is right but it puts edition before downtime",
+    "citations": 0,
+    "cited": {
+      "oracle": true,
+      "microsoft": false,
+      "community": false,
+      "firsthand": false
+    },
+    "urls": 1,
+    "turns": 1,
+    "ms": 17713,
+    "out_tokens": 1613
+  },
+  {
+    "id": "q19",
+    "type": "howto",
+    "cond": "groq",
+    "label": "X",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Correct gate order, explains Data Guard exclusion, XTTS or GoldenGate",
+    "citations": 0,
+    "cited": {
+      "oracle": false,
+      "microsoft": true,
+      "community": false,
+      "firsthand": true
+    },
+    "urls": 6,
+    "turns": 11,
+    "ms": 109343,
+    "out_tokens": 9256
+  },
+  {
+    "id": "q19",
+    "type": "howto",
+    "cond": "none",
+    "label": "Y",
+    "verdict": 0,
+    "grounded": 0,
+    "refusal": null,
+    "note": "No target or edition gates; unsupported MOS and licensing claims",
+    "citations": 0,
+    "cited": {
+      "oracle": true,
+      "microsoft": true,
+      "community": false,
+      "firsthand": false
+    },
+    "urls": 2,
+    "turns": 1,
+    "ms": 30119,
+    "out_tokens": 2869
+  },
+  {
+    "id": "q19",
+    "type": "howto",
+    "cond": "groq+kb",
+    "label": "Z",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Correct gate order and Data Guard reason; some citation labels wrong",
+    "citations": 1,
+    "cited": {
+      "oracle": true,
+      "microsoft": true,
+      "community": false,
+      "firsthand": true
+    },
+    "urls": 8,
+    "turns": 12,
+    "ms": 99124,
+    "out_tokens": 8916
+  },
+  {
+    "id": "q20",
+    "type": "howto",
+    "cond": "bm25",
+    "label": "W",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Switchover and broker pre-flight covered; omits observer placement",
+    "citations": 1,
+    "cited": {
+      "oracle": false,
+      "microsoft": false,
+      "community": false,
+      "firsthand": true
+    },
+    "urls": 1,
+    "turns": 1,
+    "ms": 8025,
+    "out_tokens": 686
+  },
+  {
+    "id": "q20",
+    "type": "howto",
+    "cond": "groq",
+    "label": "X",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Covers every expected element, including keeping the observer off the primary",
+    "citations": 1,
+    "cited": {
+      "oracle": false,
+      "microsoft": true,
+      "community": false,
+      "firsthand": true
+    },
+    "urls": 5,
+    "turns": 12,
+    "ms": 54870,
+    "out_tokens": 4585
+  },
+  {
+    "id": "q20",
+    "type": "howto",
+    "cond": "groq+kb",
+    "label": "Y",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Switchover and full pre-flight correct; omits observer placement",
+    "citations": 1,
+    "cited": {
+      "oracle": true,
+      "microsoft": true,
+      "community": false,
+      "firsthand": true
+    },
+    "urls": 9,
+    "turns": 12,
+    "ms": 52393,
+    "out_tokens": 3892
+  },
+  {
+    "id": "q20",
+    "type": "howto",
+    "cond": "none",
+    "label": "Z",
+    "verdict": 1,
+    "grounded": 0,
+    "refusal": null,
+    "note": "Correct verdict; 12c, port 1521, V$ views unsupported by passages",
+    "citations": 0,
+    "cited": {
+      "oracle": true,
+      "microsoft": true,
+      "community": false,
+      "firsthand": false
+    },
+    "urls": 4,
+    "turns": 1,
+    "ms": 20038,
+    "out_tokens": 1883
+  }
+]

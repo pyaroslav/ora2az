@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q13",
+    "type": "dispute",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 16492,
+    "session_id": "429ba170-f9e1-44fa-8dec-870f05da637b",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 9975,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 1708,
+      "output_tokens_details": {
+        "thinking_tokens": 599
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 9975,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1708,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 9975,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 9975
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q13",
+    "type": "dispute",
+    "q": "Some posts say DBMS_JOB was removed in 19c. True?",
+    "expected": "No: deprecated, still functional (Oracle doc) vs community 'removed' claims — present both and the resolution (jobs are converted to scheduler jobs under the hood; package still works).",
+    "required_sources": [
+      "oracle",
+      "community"
+    ]
+  },
+  "result": "**No, DBMS_JOB was not removed in 19c.** It has been deprecated since 12.2 and is still in 19c, 21c and 23ai. What changed in 19c is how it works underneath.\n\n**What changed in 19c**\n- **It runs on the Scheduler now.** Each `DBMS_JOB.SUBMIT` call creates a DBMS_SCHEDULER job behind the scene. When you upgrade to 19c, existing DBMS_JOB jobs are converted to Scheduler jobs automatically.\n- **The old API still works.** `DBMS_JOB.SUBMIT`, `RUN`, `BROKEN`, `REMOVE` and similar calls still run, and `DBA_JOBS` / `USER_JOBS` still return data.\n- **Jobs still wait for COMMIT.** Oracle kept the old behavior where a submitted job doesn't exist until you commit. `DBMS_SCHEDULER.CREATE_JOB` normally commits on its own, so this is a real difference.\n- **You need the `CREATE JOB` privilege.** Users that submit jobs through DBMS_JOB must have it, or submissions fail with ORA-27486. This is the most common problem after an upgrade.\n- **`JOB_QUEUE_PROCESSES` must be greater than 0**, because DBMS_JOB now depends on the Scheduler's job slaves.\n\n**Why people think it was removed**\n- Oracle marks it \"deprecated\" and tells you to use DBMS_SCHEDULER. People often read \"deprecated\" as \"desupported.\"\n- The upgrade guides for 19c and later describe the job conversion, which can look like removal at a glance.\n\n**What this means for an Azure migration**\n- **Oracle stays Oracle** (Oracle Database@Azure, or Oracle on Azure VMs): DBMS_JOB keeps working. Still, plan to rewrite the jobs with DBMS_SCHEDULER, since Oracle may desupport DBMS_JOB in a future release.\n- **Moving to a different database** (Azure SQL / SQL MI or Azure Database for PostgreSQL): Neither DBMS_JOB nor DBMS_SCHEDULER exists there. Rebuild the jobs with SQL Server Agent (SQL MI), Elastic Jobs (Azure SQL DB), or `pg_cron` (PostgreSQL Flexible Server). If you use SSMA or ora2pg, check their reports: they flag these calls but don't convert them into working schedules.\n\n**Sources** (all from memory, not checked this session, so verify the exact wording):\n- Oracle 19c Upgrade Guide, sections on behavior changes and deprecated features (\"DBMS_JOB jobs converted to DBMS_SCHEDULER jobs\"): https://docs.oracle.com/en/database/oracle/oracle-database/19/upgrd/\n- Oracle 19c PL/SQL Packages and Types Reference, DBMS_JOB chapter: https://docs.oracle.com/en/database/oracle/oracle-database/19/arpls/DBMS_JOB.html\n- My Oracle Support note 2380601.1 (DBMS_JOB behavior change in 19c). Treat the note number as approximate and search MOS by title if it doesn't match.",
+  "stderr": ""
+}

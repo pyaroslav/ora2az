@@ -1,6 +1,6 @@
 import type {Metadata} from 'next'
 import Link from 'next/link'
-import {CONDITIONS, coroner} from '@/lib/coroner'
+import {CONDITIONS, coroner, frozenQuestions, addedQuestions, type Question} from '@/lib/coroner'
 
 export const metadata: Metadata = {title: "The Coroner's Reports — Legacy Obituaries"}
 
@@ -8,7 +8,7 @@ const mark = (v: number | null | undefined) => (v === 1 ? '✓' : v === 0 ? '✗
 
 export default function Coroner() {
   const totals = CONDITIONS.map((c) => {
-    const rs = coroner.questions.map((q) => q.runs.frozen[c.key])
+    const rs = frozenQuestions().map((q) => q.runs.frozen?.[c.key])
     const n = (k: 'verdict' | 'grounded' | 'citations') => rs.filter((r) => r?.grade[k] === 1).length
     const d = (k: 'verdict' | 'grounded' | 'citations') => rs.filter((r) => typeof r?.grade[k] === 'number').length
     return {c, v: `${n('verdict')}/${d('verdict')}`, g: `${n('grounded')}/${d('grounded')}`, s: `${n('citations')}/${d('citations')}`}
@@ -40,12 +40,12 @@ export default function Coroner() {
         <table className="coroner-table">
           <thead><tr><th>#</th><th>Question</th>{CONDITIONS.map((c) => <th key={c.key}>{c.label}</th>)}</tr></thead>
           <tbody>
-            {coroner.questions.map((q) => (
+            {frozenQuestions().map((q) => (
               <tr key={q.id}>
                 <td className="muted">{q.id}</td>
                 <td><Link href={`/coroner/${q.id}`}>{q.q}</Link> <span className="badge">{q.type}</span></td>
                 {CONDITIONS.map((c) => {
-                  const g = q.runs.frozen[c.key]?.grade
+                  const g = q.runs.frozen?.[c.key]?.grade
                   return <td key={c.key} className="mono" title={g?.note ?? ''}>{mark(g?.verdict)}{mark(g?.grounded)}{mark(g?.citations)}</td>
                 })}
               </tr>
@@ -53,7 +53,35 @@ export default function Coroner() {
           </tbody>
         </table>
       </div>
-      <p className="muted" style={{fontSize: '0.85rem'}}>Each cell: verdict · grounded · cited. Hover for the grader&rsquo;s note. Raw runs: <a href="https://github.com/pyaroslav/ora2az/tree/main/agent/eval">agent/eval</a>.</p>
+      <p className="muted" style={{fontSize: '0.85rem'}}>Cases q04 and q13 were re-run after a fix; open them to see both runs. Each cell: verdict · grounded · cited. Hover for the grader&rsquo;s note. Raw runs: <a href="https://github.com/pyaroslav/ora2az/tree/main/agent/eval">agent/eval</a>.</p>
+      <AddedCases qs={addedQuestions()} />
     </article>
+  )
+}
+
+function AddedCases({qs}: {qs: Question[]}) {
+  if (!qs.length) return null
+  return (
+    <>
+      <h2 className="rule">Added after the freeze</h2>
+      <p className="muted">How-to questions written after the frozen run to test the Knowledge Base on the prose it holds. Same conditions and models; not counted in the totals above.</p>
+      <div style={{overflowX: 'auto'}}>
+        <table className="coroner-table">
+          <thead><tr><th>#</th><th>Question</th>{CONDITIONS.map((c) => <th key={c.key}>{c.label}</th>)}</tr></thead>
+          <tbody>
+            {qs.map((q) => (
+              <tr key={q.id}>
+                <td className="muted">{q.id}</td>
+                <td><Link href={`/coroner/${q.id}`}>{q.q}</Link> <span className="badge">{q.type}</span></td>
+                {CONDITIONS.map((c) => {
+                  const g = q.runs.added?.[c.key]?.grade
+                  return <td key={c.key} className="mono" title={g?.note ?? ''}>{mark(g?.verdict)}{mark(g?.grounded)}{mark(g?.citations)}</td>
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   )
 }

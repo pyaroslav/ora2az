@@ -1,0 +1,58 @@
+{
+  "meta": {
+    "id": "q19",
+    "type": "howto",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 30119,
+    "session_id": "7b65a41c-04c3-47e7-a421-990a444ffd12",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 16493,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 2869,
+      "output_tokens_details": {
+        "thinking_tokens": 1479
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 16493,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2869,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 16493,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 16493
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q19",
+    "type": "howto",
+    "added_after_freeze": true,
+    "q": "We're moving a 19c Enterprise Edition database from IBM AIX to Oracle Database@Azure (Exadata) with a 2-hour outage window. Which migration method should we use, and in what order should we rule the options out?",
+    "expected": "Apply the gates in order: (1) the target (Exadata on Database@Azure) allows physical methods; (2) AIX is big-endian and every Azure target is little-endian Linux, so a straight RMAN restore and a Data Guard physical standby are ruled out; (3) a 2-hour window rules out a volume-bound Data Pump or offline copy for a large database, leaving incremental cross-platform transportable tablespaces (XTTS with RMAN CONVERT) or a logical-online method (GoldenGate / ZDM logical-online); (4) EE has no edition limit here. Answer must state the order of the gates and why Data Guard is excluded.",
+    "required_sources": [
+      "firsthand",
+      "oracle"
+    ]
+  },
+  "result": "# Migrating 19c EE from AIX to Oracle Database@Azure (Exadata) in a 2-hour window\n\n**Verdict:** Use Oracle Zero Downtime Migration (ZDM) in **logical online** mode, which does a Data Pump initial load and then keeps the target in sync with GoldenGate. Cutover takes minutes, well inside your 2 hours. If GoldenGate can't handle your schema, use cross-platform transportable tablespaces with incremental backups (XTTS). Physical methods won't work because AIX and Exadata store data in opposite byte orders.\n\n## Rule the options out in this order\n\n**1. Byte order: this removes every physical-copy method first.**\n- AIX on POWER stores data big-endian. Exadata runs Oracle Linux on x86-64, which is little-endian.\n- A physical standby can't cross byte orders, so these are out:\n  - Data Guard switchover\n  - RMAN restore or duplicate\n  - Transportable database\n  - ZDM physical online and physical offline\n- Confirm it with `V$TRANSPORTABLE_PLATFORM` / `V$DATABASE.PLATFORM_NAME`. A physical standby is only supported between the platform pairs listed in MOS 413484.1.\n\n**2. Outage time: this removes a plain Data Pump export and import, unless the database is small.**\n- A full expdp, transfer to Azure and impdp (including index builds and statistics) almost never fits in 2 hours beyond a few hundred GB.\n- That limit depends on your network throughput to Azure (ExpressRoute) and your CPU.\n- ZDM logical offline is this same method, so it's out too.\n\n**3. XTTS (MOS 2471245.1, the V4 scripts): keep it as the fallback.**\n- You copy and roll forward incremental backups while the source stays up, and the cross-endian conversion happens during the restore.\n- The outage covers four steps:\n  - Set tablespaces read-only\n  - Take and apply the last incremental backup\n  - Run the full transportable metadata export and import\n  - Validate\n- **The risk is the metadata import.** Databases with many objects, PL/SQL, partitions or grants can take hours at this step. Time it in a rehearsal before you rely on this path.\n- The main advantage is that it copies data at block level, so GoldenGate's data-type limits don't apply.\n\n**4. ZDM logical online: this is the one to pick.**\n- ZDM runs Data Pump for the initial load, then GoldenGate replicates changes. ZDM supports AIX as a source and Exadata on Oracle Database@Azure as a target.\n- Cutover means stopping the application, letting GoldenGate catch up, and switching connections. That usually takes minutes.\n- You can set up reverse replication so you can fall back to AIX after cutover.\n- **Licensing:** GoldenGate use for ZDM migrations into Oracle Cloud targets has historically been covered by a limited-term migration license. Confirm the current terms with Oracle for your contract.\n\n## Check these before you commit to logical online\n- Query `DBA_GOLDENGATE_SUPPORT_MODE`. Look for tables with no primary or unique key and data types that are unsupported or only supported by fetching from the source. If there are a lot of these, XTTS becomes the better choice.\n- Plan how sequences, jobs, database links, DDL during replication and character set will be handled. The target should use AL32UTF8.\n- Set up network connectivity between on-premises, the ZDM host and the delegated subnet of the Oracle Database@Azure VM cluster. Check the latency the GoldenGate extract and replicat will see.\n- Run at least one full rehearsal and measure how long the actual cutover takes.\n\n## Sources\n- ZDM documentation: https://docs.oracle.com/en/database/oracle/zero-downtime-migration/\n- Oracle Database@Azure migration guidance: https://learn.microsoft.com/en-us/azure/oracle/oracle-db/\n- My Oracle Support notes: 2471245.1 (V4 XTTS) and 413484.1 (platforms supported for mixed Data Guard)",
+  "stderr": ""
+}

@@ -26,9 +26,10 @@ def trace(sid):
                 res[c.get('tool_use_id')]=len(t)
     for c in calls: c['resultChars']=res.get(c.pop('id'),0)
     return calls,model
+AFTER_FIX={'q04':'The dataset had no mapping from empty-string-equals-NULL to Oracle Database@Azure. The mapping was added and the question re-run.','q13':'With the Knowledge Base available, the agent read prose instead of the dispute documents. A rule was added: query disputes before reading Knowledge Base prose. Both Sanity conditions were re-run; the baselines are the frozen runs.'}
 out={'frozen':'2026-09-27','graderModel':LABELS.get(os.environ.get('GRADER_MODEL_ID',''),'larger model'),'questions':[]}
 runs={}
-for d,tag in [(f'{E}/results/2026-09-27','frozen'),(f'{E}/results/2026-09-27-q04-after-fix','afterFix')]:
+for d,tag in [(f'{E}/results/2026-09-27','frozen'),(f'{E}/results/2026-09-27-q04-after-fix','afterFix'),(f'{E}/results/2026-09-27-q13-after-fix','afterFix'),(f'{E}/results/2026-09-27-additions','added')]:
     G=load_grades(d)
     for f in sorted(glob.glob(f'{d}/q*.json')):
         o=json.load(open(f)); m=o['meta']; qid,cond=m['id'],m['cond']
@@ -42,9 +43,9 @@ for d,tag in [(f'{E}/results/2026-09-27','frozen'),(f'{E}/results/2026-09-27-q04
           'answer':o.get('result') or '','calls':calls,
           'bm25':[{'id':p['id'],'score':p.get('score')} for p in (o.get('passages') or [])]}
 for qid in sorted(runs):
-    q=Q[qid]; out['questions'].append({'id':qid,'type':q['type'],'q':q['q'],'expected':q['expected'],'required':q.get('required_sources',[]),'runs':runs[qid]})
-ms=[r['model'] for q in out['questions'] for r in q['runs']['frozen'].values() if r['model']]
+    q=Q[qid]; out['questions'].append({'id':qid,'type':q['type'],'q':q['q'],'expected':q['expected'],'required':q.get('required_sources',[]),'addedAfterFreeze':bool(q.get('added_after_freeze')),'afterFixNote':AFTER_FIX.get(qid),'runs':runs[qid]})
+ms=[r['model'] for q in out['questions'] for r in q['runs'].get('frozen',{}).values() if r['model']]
 out['models']=sorted(set(ms))
 json.dump(out,open(f'{R}/app/src/data/coroner.json','w'),ensure_ascii=False)
-tot=sum(len(q['runs']['frozen']) for q in out['questions'])
+tot=sum(len(q['runs'].get('frozen',{})) for q in out['questions'])
 print('questions',len(out['questions']),'frozen runs',tot,'models',out['models'],'size KB',os.path.getsize(f'{R}/app/src/data/coroner.json')//1024)

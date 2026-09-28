@@ -1,0 +1,86 @@
+[
+  {
+    "id": "q13",
+    "type": "dispute",
+    "cond": "groq+kb",
+    "label": "W",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Deprecated, functional; Ask TOM claim resolved via CREATE JOB privilege.",
+    "citations": 1,
+    "cited": {
+      "oracle": true,
+      "microsoft": false,
+      "community": true,
+      "firsthand": false
+    },
+    "urls": 6,
+    "turns": 7,
+    "ms": 29758,
+    "out_tokens": 2532
+  },
+  {
+    "id": "q13",
+    "type": "dispute",
+    "cond": "bm25",
+    "label": "X",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Correct; covers dispute and resolution. Cites [5],[7],[8] not listed.",
+    "citations": 1,
+    "cited": {
+      "oracle": true,
+      "microsoft": false,
+      "community": true,
+      "firsthand": false
+    },
+    "urls": 4,
+    "turns": 1,
+    "ms": 10390,
+    "out_tokens": 1074
+  },
+  {
+    "id": "q13",
+    "type": "dispute",
+    "cond": "none",
+    "label": "Y",
+    "verdict": 1,
+    "grounded": 0,
+    "refusal": null,
+    "note": "Correct verdict, but sources from memory; MOS note likely invented.",
+    "citations": 0,
+    "cited": {
+      "oracle": true,
+      "microsoft": false,
+      "community": false,
+      "firsthand": false
+    },
+    "urls": 2,
+    "turns": 1,
+    "ms": 16492,
+    "out_tokens": 1708
+  },
+  {
+    "id": "q13",
+    "type": "dispute",
+    "cond": "groq",
+    "label": "Z",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Deprecated, functional; presents both claims and the privilege-based resolution.",
+    "citations": 1,
+    "cited": {
+      "oracle": true,
+      "microsoft": false,
+      "community": true,
+      "firsthand": false
+    },
+    "urls": 6,
+    "turns": 9,
+    "ms": 32020,
+    "out_tokens": 2708
+  }
+]

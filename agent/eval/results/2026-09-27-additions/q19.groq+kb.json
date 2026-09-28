@@ -1,0 +1,58 @@
+{
+  "meta": {
+    "id": "q19",
+    "type": "howto",
+    "cond": "groq+kb",
+    "num_turns": 12,
+    "duration_ms": 99124,
+    "session_id": "58d44436-f954-4f8f-b038-1acdd56e628d",
+    "usage": {
+      "input_tokens": 16,
+      "cache_creation_input_tokens": 44664,
+      "cache_read_input_tokens": 250230,
+      "output_tokens": 8916,
+      "output_tokens_details": {
+        "thinking_tokens": 5569
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 44664,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 4377,
+          "cache_read_input_tokens": 48050,
+          "cache_creation_input_tokens": 4088,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 4088
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q19",
+    "type": "howto",
+    "added_after_freeze": true,
+    "q": "We're moving a 19c Enterprise Edition database from IBM AIX to Oracle Database@Azure (Exadata) with a 2-hour outage window. Which migration method should we use, and in what order should we rule the options out?",
+    "expected": "Apply the gates in order: (1) the target (Exadata on Database@Azure) allows physical methods; (2) AIX is big-endian and every Azure target is little-endian Linux, so a straight RMAN restore and a Data Guard physical standby are ruled out; (3) a 2-hour window rules out a volume-bound Data Pump or offline copy for a large database, leaving incremental cross-platform transportable tablespaces (XTTS with RMAN CONVERT) or a logical-online method (GoldenGate / ZDM logical-online); (4) EE has no edition limit here. Answer must state the order of the gates and why Data Guard is excluded.",
+    "required_sources": [
+      "firsthand",
+      "oracle"
+    ]
+  },
+  "result": "## Verdict\n\nFor a 19c **Enterprise Edition** source on **IBM AIX** moving to **Oracle Database@Azure (Exadata)** with a **2‑hour outage window**, the dataset's decision framework eliminates options in a fixed gate order — and the AIX→Azure move is **cross‑endian**, which is the gate that does the most work here. Depending on database size, the framework points to **XTTS with RMAN CONVERT** (large DB) or **Data Pump** (small/medium DB) as the outage-acceptable candidates; plain RMAN restore and Data Guard switchover are ruled out before downtime is even considered. [Choose the Oracle-to-Azure migration method by target, downtime budget, endianness and edition](https://uptimearchitect.com/blog/oracle-cloud-migration-methods/)\n\n## Elimination order (Gates 1→4, as specified)\n\n**Gate 1 — Target capability: nothing ruled out.**\nOracle Database@Azure's Exadata/Base services run unmodified Oracle Database, so both physical methods (RMAN, transportable tablespaces, Data Guard) and logical methods (Data Pump, GoldenGate) are permitted targets. RMAN and Data Pump both map to ODAA at **fidelity: exact, effort: S**, applicable to 19c. [Overview: Oracle Database@Azure](https://learn.microsoft.com/en-us/azure/oracle/oracle-db/database-overview); [Business continuity and disaster recovery for Oracle Database@Azure](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/scenarios/oracle-on-azure/oracle-disaster-recovery-oracle-database-azure) — no caveats are recorded against either mapping in the dataset.\n\n**Gate 2 — Endianness: this rules out RMAN restore and Data Guard switchover.**\nAIX is big-endian; every Azure target, including Oracle Database@Azure, runs little-endian Linux x86-64. That makes this a cross-endian move, and a plain RMAN restore or a physical Data Guard standby copies blocks verbatim — neither can cross endianness. Confirm with `V$TRANSPORTABLE_PLATFORM` on both sides. What survives this gate: **XTTS with RMAN CONVERT**, or a logical method (Data Pump / GoldenGate). [glossary: XTTS / cross-endian transport](https://docs.oracle.com/en/database/oracle/oracle-database/19/admin/transporting-data.html); [Move an Oracle database with RMAN to Azure VMs or Oracle Database@Azure](https://uptimearchitect.com/blog/oracle-cloud-migration-methods/)\n\n**Gate 3 — Downtime budget: 2 hours is \"outage acceptable,\" not \"near-zero,\" and this is where size decides the branch.**\n- Very large database → **XTTS with RMAN CONVERT, incremental-backup variant**: datafiles are copied and rolled forward with RMAN incrementals while the source stays online; only the final increment requires the tablespaces read-only, which is what keeps a cross-endian move inside a short window. Enterprise Edition only; undo-bearing datafiles can't be converted; objects outside datafiles (external tables, directories, BFILEs) must be recreated manually.\n- Small/medium database → **Data Pump**, since outage scales with data volume and may fit inside 2 hours.\n- If the actual data volume makes neither fit in 2 hours, the framework's fallback for a mandatory near-zero-downtime cross-endian move is **GoldenGate after a Data Pump initial load** (ZDM logical-online mode) — but this is separately licensed and the most operationally complex option, to be used only if forced.\n\n[Move an Oracle database with RMAN to Azure VMs or Oracle Database@Azure](https://uptimearchitect.com/blog/oracle-cloud-migration-methods/); [glossary: XTTS / cross-endian transport](https://docs.oracle.com/en/database/oracle/oracle-database/19/admin/transporting-data.html)\n\n**Gate 4 — Edition/licensing: not a blocker here.**\nSource is 19c Enterprise Edition, which satisfies XTTS's EE-only requirement and would have satisfied Data Guard's EE requirement had Gate 2 not already ruled it out. GoldenGate licensing only becomes relevant if Gate 3 forces that branch. [glossary: Logical vs physical migration](https://uptimearchitect.com/blog/oracle-cloud-migration-methods/)\n\n## Gaps\n- The dataset has no recorded caveats or blockers against RMAN or Data Pump specifically for the Oracle Database@Azure target.\n- None of the 5 disputes in the dataset touch migration-method selection, endianness, or downtime budgeting — the recorded disputes concern data-type mapping (NUMBER, ROWID, VARCHAR2) and DBMS_JOB behavior, unrelated to this question.\n- Database size wasn't given, so the final choice between XTTS and Data Pump can't be pinned down from evidence alone — that's the one input the framework needs that this conversation hasn't supplied.",
+  "stderr": ""
+}

@@ -60,11 +60,10 @@ export default async function Case({params}: Props) {
         <h1 style={{fontSize: 'clamp(1.5rem,4vw,2.3rem)'}}>{q.q}</h1>
         <p className="epitaph">Expected: {q.expected}</p>
       </header>
-      {q.runs.afterFix && (
-        <p className="card">This case exposed a hole in the dataset: a missing mapping. It was fixed after the frozen run; the re-run is shown at the bottom. The frozen totals are not updated.</p>
-      )}
+      {q.addedAfterFreeze && <p className="card">Added after the frozen run to test the Knowledge Base on how-to prose. Not counted in the frozen totals.</p>}
+      {q.afterFixNote && <p className="card">{q.afterFixNote} The re-run is shown at the bottom; the frozen totals are not updated.</p>}
       <div className="witnesses">
-        {CONDITIONS.map((c) => <Witness key={c.key} label={c.label} blurb={c.blurb} run={q.runs.frozen[c.key]} />)}
+        {CONDITIONS.map((c) => <Witness key={c.key} label={c.label} blurb={c.blurb} run={(q.runs.frozen ?? q.runs.added)?.[c.key]} />)}
       </div>
       {q.runs.afterFix && (
         <>

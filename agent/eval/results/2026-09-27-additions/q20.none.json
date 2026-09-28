@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q20",
+    "type": "howto",
+    "cond": "none",
+    "num_turns": 1,
+    "duration_ms": 20038,
+    "session_id": "ecff0a8c-3a51-4a79-935f-88261848ae50",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 10006,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 1883,
+      "output_tokens_details": {
+        "thinking_tokens": 497
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 10006,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1883,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 10006,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 10006
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q20",
+    "type": "howto",
+    "added_after_freeze": true,
+    "q": "Our Azure standby is in sync and the on-premises primary is healthy. For the cutover, should we do a Data Guard switchover or a failover, and what do we check first?",
+    "expected": "Switchover, because the primary is healthy: zero data loss and the old primary stays as a standby for switch-back. Pre-flight with the Broker (SHOW CONFIGURATION success; VALIDATE DATABASE ready for switchover; zero transport/apply lag; Flashback Database on both), test client redirection first; failover only if the primary is gone; keep any observer off the primary host.",
+    "required_sources": [
+      "firsthand"
+    ]
+  },
+  "result": "**Do a switchover, not a failover.** The primary is healthy and the standby is in sync, which is exactly the case switchover is for. It's a planned role swap with zero data loss. The old on-prem primary becomes a standby that stays in sync, so you can switch back if the cutover goes wrong. Failover is for when the primary is lost. It can lose data, and the old primary has to be reinstated (Flashback) or rebuilt before you have a fallback again. Using failover here would give up your rollback path for no benefit.\n\n**Check these first (T-24h, then again right before the switchover):**\n\n1. **Broker readiness.** In DGMGRL, run `SHOW CONFIGURATION` and look for `SUCCESS` with no warnings. Then run `VALIDATE DATABASE VERBOSE <azure_stby>` and look for `Ready for Switchover: Yes`. It also checks standby redo logs, the apply process and log file mismatches.\n2. **Lag.** Transport lag and apply lag should both be at or near 0. Check with `SHOW DATABASE <azure_stby>` or `V$DATAGUARD_STATS`. Confirm there are no archive gaps with `V$ARCHIVE_GAP`.\n3. **Standby redo logs.** Both sides need SRLs that are the same size as the online redo logs, with at least one more group per thread than the online logs have. The on-prem side needs them because it becomes the standby afterward.\n4. **Dry run without the broker.** `ALTER DATABASE SWITCHOVER TO <azure_stby> VERIFY;` (12c and later) reports blockers without changing any roles.\n5. **Flashback Database on both sides.** You don't strictly need it for a switchover, but it's your safety net if you later have to fail over or reinstate a database.\n6. **Redo transport in the new direction.** Check that Azure-to-on-prem redo will work: the `LogXptMode` properties, Oracle Net and TNS entries in both directions, NSG, firewall and ExpressRoute/VPN rules for port 1521 (or whatever port you use), and latency if you plan to run SYNC.\n7. **Keys and passwords.** The TDE wallet or keystore must be open and current on Azure (Key Vault or OKV if you use one). The password file must match on both sides.\n8. **Application cutover.** Clients should connect through role-based services (`srvctl` or `DBMS_SERVICE` with `-role PRIMARY`). Check DNS and SCAN changes, connection-string timeouts and retries, and FAN/TAC/AC if you use them. Also plan for jobs, schedulers and DB links that still point at on-prem.\n9. **Operational hygiene.** Take a fresh backup, pause heavy batch and RMAN jobs, check that no long-running transactions or conflicting `ALTER SYSTEM` work are in flight, and decide who can declare a go/no-go.\n10. **Rollback plan.** Write down the exact `SWITCHOVER TO <onprem>` switch-back steps and the time limit for using them. Test the whole sequence in non-prod first.\n\n**Execute:** `DGMGRL> SWITCHOVER TO <azure_stby>;`. Then check `SHOW CONFIGURATION`, open services on the new primary, and confirm that redo is flowing to the on-prem standby before you declare done. Keep on-prem as the standby until you've passed your stability window.\n\n**References:**\n- Role transitions (switchover vs failover): https://docs.oracle.com/en/database/oracle/oracle-database/19/sbydb/managing-oracle-data-guard-role-transitions.html\n- Broker `VALIDATE DATABASE` / `SWITCHOVER`: https://docs.oracle.com/en/database/oracle/oracle-database/19/dgbkr/\n- MAA role-transition best practices: https://docs.oracle.com/en/database/oracle/oracle-database/19/haovw/\n- Oracle on Azure reference architecture: https://learn.microsoft.com/en-us/azure/virtual-machines/workloads/oracle/oracle-reference-architecture",
+  "stderr": ""
+}

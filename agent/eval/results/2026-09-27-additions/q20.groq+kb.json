@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q20",
+    "type": "howto",
+    "cond": "groq+kb",
+    "num_turns": 12,
+    "duration_ms": 52393,
+    "session_id": "7b67992f-e303-48ac-bbdd-79503c6299b6",
+    "usage": {
+      "input_tokens": 16,
+      "cache_creation_input_tokens": 33132,
+      "cache_read_input_tokens": 217198,
+      "output_tokens": 3892,
+      "output_tokens_details": {
+        "thinking_tokens": 892
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 33132,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1646,
+          "cache_read_input_tokens": 40169,
+          "cache_creation_input_tokens": 437,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 437
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q20",
+    "type": "howto",
+    "added_after_freeze": true,
+    "q": "Our Azure standby is in sync and the on-premises primary is healthy. For the cutover, should we do a Data Guard switchover or a failover, and what do we check first?",
+    "expected": "Switchover, because the primary is healthy: zero data loss and the old primary stays as a standby for switch-back. Pre-flight with the Broker (SHOW CONFIGURATION success; VALIDATE DATABASE ready for switchover; zero transport/apply lag; Flashback Database on both), test client redirection first; failover only if the primary is gone; keep any observer off the primary host.",
+    "required_sources": [
+      "firsthand"
+    ]
+  },
+  "result": "**Verdict: Switchover, not failover.** Since your on-premises primary is healthy and the Azure standby is in sync, this is a planned role transition — the definition of a switchover, not a failover, which is reserved for a lost/unreachable primary. [Cut over with a Data Guard switchover, and reserve failover for a lost primary](https://uptimearchitect.com/blog/oracle-data-guard-switchover-vs-failover/); [Architectures for Oracle database on Azure Virtual Machines](https://learn.microsoft.com/en-us/azure/virtual-machines/workloads/oracle/oracle-reference-architecture)\n\n**Why it matters:** A switchover ships the primary's final redo, reverses roles with **zero data loss**, and leaves the old (on-prem) primary as a valid standby — reversible if problems surface. A failover promotes the standby with whatever redo it already has (zero loss only in synchronous Maximum Availability/Protection mode, seconds of loss in Maximum Performance), and the old primary is excluded from the configuration until reinstated via Flashback Database or a rebuild. Calling a failover against a healthy source throws away the zero-loss hand-off and the built-in rollback for no reason. [Data Guard Switchover vs Failover: Which Role Transition, and When](https://uptimearchitect.com/blog/oracle-data-guard-switchover-vs-failover/)\n\n**What to check first — pre-flight checklist via Data Guard Broker, before opening the cutover window:**\n1. `SHOW CONFIGURATION` reports success\n2. `VALIDATE DATABASE` on the Azure standby shows ready for switchover\n3. Transport and apply lag are at **zero**\n4. Flashback Database is enabled on **both** databases (this is also your fallback path if something forces an actual failover later)\n5. Client redirection to the Azure primary has been tested\n\nCommon pre-flight failures to rule out: archive gap, missing standby redo logs, apply lag, and firewalls blocking client redirection — fix these before the window, not during it. [Cut over with a Data Guard switchover, and reserve failover for a lost primary](https://uptimearchitect.com/blog/oracle-data-guard-switchover-vs-failover/)\n\n**Cutover sequence once checks pass:** quiesce/drain the app → run the switchover through Broker → verify the new (Azure) primary shows role `PRIMARY` and open mode `READ WRITE` → confirm redo is now flowing back to the old on-prem instance (reverse redo flow, proving it's a valid standby) → keep the old primary as standby for an agreed fallback window before decommissioning. Rehearse at least one full switchover before the real event — an untested standby is \"a hope, not a plan.\" [Cut over with a Data Guard switchover, and reserve failover for a lost primary](https://uptimearchitect.com/blog/oracle-data-guard-switchover-vs-failover/)\n\n**Scope caveats:**\n- This switchover-based cutover pattern assumes a **physical Data Guard standby actually running in Azure** (Oracle on Azure VM or Oracle Database@Azure). It does **not** apply to cross-endian/cross-version moves, Standard Edition 2 sources (SE2 has no Data Guard), Autonomous Database targets, or any Azure SQL/PostgreSQL target — those use a GoldenGate drain-and-reconnect or Data Pump outage instead. [Decide RAC versus Data Guard for Oracle on Azure](https://uptimearchitect.com/blog/oracle-ha-decision-tree-rac-vs-data-guard/); [Cut over with a Data Guard switchover](https://uptimearchitect.com/blog/oracle-data-guard-switchover-vs-failover/)\n- Oracle does not certify/support RAC on Azure VMs, so if your on-prem primary is RAC, moving to an Azure VM standby means single-instance + Data Guard (RAC option licence is lost, but you gain site-level protection). Oracle Database@Azure is the exception that supports RAC. [Decide RAC versus Data Guard for Oracle on Azure](https://uptimearchitect.com/blog/oracle-ha-decision-tree-rac-vs-data-guard/); [Oracle Cloud Infrastructure documentation: Oracle AI Database@Azure](https://docs.oracle.com/en-us/iaas/Content/database-at-azure/oaa.htm)\n\n**Disputes:** None of the dataset's 5 recorded disputes touch Data Guard, switchover/failover, or RAC — no conflicting claims to present here.",
+  "stderr": ""
+}

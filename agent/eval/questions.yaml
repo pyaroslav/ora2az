@@ -92,3 +92,16 @@
   q: "We are on Oracle 12.2 and use Oracle Multimedia for images. What are our options on Azure?"
   expected: "Oracle Multimedia deprecated in 18c, desupported in 19c; images should move to Blob Storage with metadata in the database; note that any lift to 19c+ loses the feature."
   required_sources: [oracle, microsoft]
+# --- Added after the freeze (2026-09-27, evening). Not part of the frozen 18; reported separately. ---
+- id: q19
+  type: howto
+  added_after_freeze: true
+  q: "We're moving a 19c Enterprise Edition database from IBM AIX to Oracle Database@Azure (Exadata) with a 2-hour outage window. Which migration method should we use, and in what order should we rule the options out?"
+  expected: "Apply the gates in order: (1) the target (Exadata on Database@Azure) allows physical methods; (2) AIX is big-endian and every Azure target is little-endian Linux, so a straight RMAN restore and a Data Guard physical standby are ruled out; (3) a 2-hour window rules out a volume-bound Data Pump or offline copy for a large database, leaving incremental cross-platform transportable tablespaces (XTTS with RMAN CONVERT) or a logical-online method (GoldenGate / ZDM logical-online); (4) EE has no edition limit here. Answer must state the order of the gates and why Data Guard is excluded."
+  required_sources: [firsthand, oracle]
+- id: q20
+  type: howto
+  added_after_freeze: true
+  q: "Our Azure standby is in sync and the on-premises primary is healthy. For the cutover, should we do a Data Guard switchover or a failover, and what do we check first?"
+  expected: "Switchover, because the primary is healthy: zero data loss and the old primary stays as a standby for switch-back. Pre-flight with the Broker (SHOW CONFIGURATION success; VALIDATE DATABASE ready for switchover; zero transport/apply lag; Flashback Database on both), test client redirection first; failover only if the primary is gone; keep any observer off the primary host."
+  required_sources: [firsthand]

@@ -1,0 +1,108 @@
+{
+  "meta": {
+    "id": "q19",
+    "type": "howto",
+    "cond": "bm25",
+    "num_turns": 1,
+    "duration_ms": 17713,
+    "session_id": "b00b51a1-f0eb-4245-a3d3-89bd629c7df4",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 12914,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 1613,
+      "output_tokens_details": {
+        "thinking_tokens": 519
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12914,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1613,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 12914,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 12914
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q19",
+    "type": "howto",
+    "added_after_freeze": true,
+    "q": "We're moving a 19c Enterprise Edition database from IBM AIX to Oracle Database@Azure (Exadata) with a 2-hour outage window. Which migration method should we use, and in what order should we rule the options out?",
+    "expected": "Apply the gates in order: (1) the target (Exadata on Database@Azure) allows physical methods; (2) AIX is big-endian and every Azure target is little-endian Linux, so a straight RMAN restore and a Data Guard physical standby are ruled out; (3) a 2-hour window rules out a volume-bound Data Pump or offline copy for a large database, leaving incremental cross-platform transportable tablespaces (XTTS with RMAN CONVERT) or a logical-online method (GoldenGate / ZDM logical-online); (4) EE has no edition limit here. Answer must state the order of the gates and why Data Guard is excluded.",
+    "required_sources": [
+      "firsthand",
+      "oracle"
+    ]
+  },
+  "passages": [
+    {
+      "id": "glossary_se2-vs-ee",
+      "type": "glossary",
+      "text": "Standard Edition 2, Enterprise Edition, edition gating | Oracle Database Standard Edition 2 is the lower-cost edition limited to servers with at most two sockets and to a fixed feature set; from 19c it no longer includes RAC, and it never included Data Guard, Partitioning, Active Data Guard or the other separately licensed Enterprise Edition options. Enterprise Edition has no socket limit, includes physical Data Guard, and is the base for extra-cost options such as RAC, Partitioning and Advanced Security. Edition gates the migration method: an SE2 source cannot be moved with a Data Guard standby or the physical-online path of Zero Downtime Migration and is limited to outage methods (Data Pump, offline RMAN restore) unless GoldenGate is licensed. It also shapes fidelity: an SE2 estate rarely uses the EE-only features that are hardest to map to Azure SQL or PostgreSQL. | SE2 vs EE (Standard Edition 2 vs Enterprise Edition)",
+      "score": 29.381
+    },
+    {
+      "id": "pattern_choose-migration-method",
+      "type": "pattern",
+      "text": "The author's migration-methods lab and the companion post organise the decision as four gates applied in a fixed order. The order matters because each gate eliminates methods before the next one is considered, and most wrong plans come from applying the gates in the wrong order (for example choosing Data Guard for its near-zero downtime before checking whether the target can host a standby at all). Gate 1: what does the target allow? Physical methods (RMAN restore or duplicate, transportable tablespaces, a Data Guard standby) need SYSDBA, file-system access and a database you can mount and recover. The Exadata and Base services of Oracle Database@Azure and Oracle on Azure VMs give you that, so every method is on the table there; Oracle's own service page lists Data Guard and Zero Downtime Migration among the supported tooling. Autonomous Database, including the Autonomous flavour offered through Oracle Database@Azure, does not: the blog is explicit that into Autonomous it is logical only, meaning Data Pump from object storage run as ADMIN with the ADB-managed object classes excluded, or GoldenGate. Azure SQL Database, Azure SQL Managed Instance and PostgreSQL Flexible Server are lo",
+      "score": 27.206
+    },
+    {
+      "id": "pattern_rman-moves-to-oracle-on-azure",
+      "type": "pattern",
+      "text": "Confirm RMAN is the right tool before planning it. The migration-methods post places RMAN restore among the outage methods for same-endian moves where the architecture does not change; its answer key uses RMAN \"restore from service\" or active duplication to seed a standby in the cloud, and names an offline RMAN restore (Zero Downtime Migration's physical-offline mode) as the physical path available to a Standard Edition 2 source that cannot build a Data Guard standby. Check V$TRANSPORTABLE_PLATFORM first: a big-endian source cannot be restored onto Linux x86-64 without transportable tablespaces and RMAN CONVERT, and no RMAN method can target Autonomous Database, Azure SQL or PostgreSQL. Plan the transport. Microsoft's Azure VM migration guidance describes the RMAN scenarios as a backup taken on premises, moved to Azure and restored on the VM, with the network between the two as the constraint: VPN or ExpressRoute for online copies, AzCopy into Blob Storage or Azure Files as the staging area, and Data Box when the volume makes shipping a device faster than sending it. For Oracle Database@Azure the same shape applies with OCI object storage as the staging area, and Oracle's tooling a",
+      "score": 24.251
+    },
+    {
+      "id": "mapping_non-cdb-architecture--oracle-db-at-azure",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c | M | workaround | Exadata Database Service, which underpins Oracle Database@Azure, creates databases from the console and APIs only as container databases with an initial pluggable database. A non-CDB can be created only through the dbaascli command line and only for release 19.x and earlier, so a non-CDB estate should be converted to PDBs (AutoUpgrade does this in one step) before or during the move rather than preserved. | Inventory non-CDB databases and their release. Create a target CDB on the Exadata VM cluster from the Azure portal and OCI console. Use AutoUpgrade or Data Pump to upgrade and plug each non-CDB in as a PDB. Reserve dbaascli non-CDB creation for temporary 19c compatibility only.",
+      "score": 23.257
+    },
+    {
+      "id": "glossary_xtts-cross-endian",
+      "type": "glossary",
+      "text": "cross-platform transportable tablespaces, TTS, endianness conversion | Endianness is the byte order a platform uses, and Oracle datafiles carry it, so a physical move from a big-endian platform (AIX, Solaris SPARC, HP-UX) to little-endian Linux x86-64, which is what every Azure target runs, is a cross-endian move that a plain RMAN restore or a Data Guard standby cannot do. V$TRANSPORTABLE_PLATFORM lists each platform's endian format. Cross-platform transportable tablespaces (XTTS) copy the datafiles and a small Data Pump metadata export and use RMAN CONVERT (or DBMS_FILE_TRANSFER) to flip byte order on the destination; the incremental-backup variant rolls the target copy forward with RMAN incrementals while the source stays online, so only the final increment needs the tablespaces read-only. Enterprise Edition only; undo-bearing datafiles cannot be converted, and objects that live outside datafiles (external tables, directories, BFILEs) must be recreated. | XTTS / cross-endian transport",
+      "score": 23.073
+    },
+    {
+      "id": "pattern_rac-vs-data-guard-on-azure",
+      "type": "pattern",
+      "text": "Start with the failure, not the feature. The author's decision-tree post maps four failure modes to what survives them: an instance or node failure is absorbed by RAC without any role change; a site or region loss is survived only by an independent copy, which is Data Guard; block corruption is handled by Data Guard (the standby has its own writes, and Active Data Guard can repair blocks from the other side) and by validated backups; and human or logical error, the bad DELETE or dropped table, is survived by neither RAC nor Data Guard because both faithfully replicate the mistake. Only backups, point-in-time recovery and Flashback cover that row, so they are mandatory in every branch of the tree. Then apply the Azure target constraints. Microsoft's reference architecture for Oracle on Azure Virtual Machines states that Oracle does not currently certify or support RAC on Azure VMs, that RAC alone protects only against instance-level failure anyway, and that the recommended high-availability design is Data Guard (with Fast-Start Failover and observers spread across availability zones) for a 99.99 percent uptime SLA, Far Sync for zero-loss protection across regions (which needs an Act",
+      "score": 22.981
+    },
+    {
+      "id": "source_oracle-glossary-licensing-editions",
+      "type": "source",
+      "text": "Oracle Database 19c | Standard Edition 2 socket limit, RAC not available in SE2 from 19c, Data Guard as an Enterprise Edition feature, and which capabilities are separately licensed options (RAC, Partitioning, Advanced Security, Active Data Guard). | oracle | 2026-09-26 | Oracle Database Licensing Information User Manual 19c | https://docs.oracle.com/en/database/oracle/oracle-database/19/dblic/Licensing-Information.html",
+      "score": 22.06
+    },
+    {
+      "id": "feature_rac",
+      "type": "oracleFeature",
+      "text": "ha | pre-11.2 | Real Application Clusters | Real Application Clusters runs several database instances on clustered servers against one shared database, keeping their buffer caches coherent over a private interconnect. Applications see a single database, connect through services that can be pinned to instances, and gain both scale-out and survival of a node failure. Migrations care because the Azure PaaS targets have no shared-cache clustering. Their resilience comes from replicated replicas and zone redundancy, so applications tuned for RAC (instance affinity, service-based workload routing, sequence ordering across instances) need review, and RAC licensing is often the cost driver behind the migration in the first place. Oracle Database@Azure and Oracle on Azure virtual machines are the paths that keep RAC. RAC is supported and not deprecated for Enterprise Edition. Oracle's 19c Upgrade Guide notes that starting with 19c it is no longer available with Standard Edition 2, which forces Standard Edition RAC estates to change architecture before upgrading.",
+      "score": 20.699
+    }
+  ],
+  "result": "**Recommendation:** use cross-platform transportable tablespaces with incremental backups (XTTS), converting the byte order with RMAN CONVERT. It is the only physical method in these passages that works from AIX to Exadata. It also fits a 2-hour window, because the source stays online until the last incremental.\n\n**The order to rule options out**\n\nThe passages only partly answer the ordering question. Passage [2] says the decision uses four gates in a fixed order, but the excerpt stops after Gate 1, so I can't quote Gates 2–4. The order below uses Gate 1 as written and fills in the rest from the other passages.\n\n1. **Gate 1: what the target allows.** Oracle Database@Azure Exadata gives you SYSDBA and file-system access, so \"every method is on the table,\" including Data Guard and Zero Downtime Migration (ZDM) [2]. Nothing is ruled out yet. Don't stop here and pick Data Guard for its near-zero downtime; [2] names that as the classic mistake of taking the gates in the wrong order.\n2. **Endianness: this removes the most options.** AIX is big-endian and every Azure target runs little-endian Linux x86-64. That makes this a cross-endian move, which a plain RMAN restore or a Data Guard standby cannot do [5]. Confirm it in V$TRANSPORTABLE_PLATFORM [3][5]. This rules out:\n   - RMAN restore or duplicate\n   - A Data Guard standby\n   - The physical paths that rely on them. [3] identifies ZDM physical-offline as an offline RMAN restore. For physical-online, the passages only imply that it depends on a standby.\n3. **Edition.** Enterprise Edition keeps XTTS available, since XTTS is EE-only [5]. It is also the base for GoldenGate, the online logical option [1][7]. (Oracle's 19c licensing guide: https://docs.oracle.com/en/database/oracle/oracle-database/19/dblic/Licensing-Information.html)\n4. **Outage window.** A full Data Pump export and import is an outage method [1]. Whether it fits in 2 hours depends on data volume, which the passages don't cover. Incremental XTTS keeps the target copy rolled forward while the source runs, and the tablespaces only go read-only for the final increment [5]. That makes it the best fit. GoldenGate is the fallback if even the final increment plus the metadata import won't fit, and you would need a GoldenGate licence.\n\n**XTTS caveats to plan for [5]**\n- Undo datafiles can't be converted. XTTS moves only the user tablespaces, plus a small Data Pump export of their metadata.\n- External tables, directories and BFILEs live outside the datafiles, so you have to recreate them on the target.\n- If the source is a non-CDB, plan to plug it into an Exadata CDB as a PDB. The Exadata service creates databases as CDBs by default, and it can create a non-CDB only through dbaascli for 19c and earlier. Keep that for temporary compatibility only [4].\n\n**Before committing to the window:** time a full rehearsal of the final incremental, the conversion, the metadata import and validation. None of the passages give throughput figures, so only a rehearsal will show whether it fits in 2 hours.",
+  "stderr": ""
+}

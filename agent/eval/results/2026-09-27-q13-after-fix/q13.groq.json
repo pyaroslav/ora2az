@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "q13",
+    "type": "dispute",
+    "cond": "groq",
+    "num_turns": 9,
+    "duration_ms": 32020,
+    "session_id": "7c0baa8c-7a86-480d-91f5-45f7b72abb6c",
+    "usage": {
+      "input_tokens": 12,
+      "cache_creation_input_tokens": 24768,
+      "cache_read_input_tokens": 121302,
+      "output_tokens": 2708,
+      "output_tokens_details": {
+        "thinking_tokens": 258
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 24768,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1218,
+          "cache_read_input_tokens": 26792,
+          "cache_creation_input_tokens": 4441,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 4441
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q13",
+    "type": "dispute",
+    "q": "Some posts say DBMS_JOB was removed in 19c. True?",
+    "expected": "No: deprecated, still functional (Oracle doc) vs community 'removed' claims — present both and the resolution (jobs are converted to scheduler jobs under the hood; package still works).",
+    "required_sources": [
+      "oracle",
+      "community"
+    ]
+  },
+  "result": "**Verdict: False.** DBMS_JOB was not removed in 19c — it was deprecated in Oracle 12.2 and remains functional through 26ai as a wrapper over DBMS_SCHEDULER. [`DBMS_JOB (PL/SQL Packages and Types Reference 19c)`](https://docs.oracle.com/en/database/oracle/oracle-database/19/arpls/DBMS_JOB.html)\n\n**Scoped facts:**\n- Deprecated in: **12.2** (Oracle Database 12c Release 2). No `desupportedIn` value is recorded in the dataset — [`Deprecated Features in Oracle Database 12c Release 2 (12.2)`](https://docs.oracle.com/en/database/oracle/oracle-database/12.2/upgrd/deprecated-features-oracle-database-12c-r2.html)\n- **From 19c**, each `DBMS_JOB.SUBMIT` call creates a paired `DBMS_SCHEDULER` job (`DBMS_JOB$_n`), and existing jobs are converted on upgrade — [ORACLE-BASE: DBMS_JOB jobs converted to DBMS_SCHEDULER jobs in Oracle Database 19c](https://oracle-base.com/articles/19c/dbms_job-jobs-converted-to-dbms_scheduler-jobs-19c)\n- **From 19c**, a schema calling `DBMS_JOB.SUBMIT` must hold the `CREATE JOB` privilege, or it fails with **ORA-27486** — this privilege requirement, not removal, is the documented cause of \"stopped working\" reports — [same source](https://oracle-base.com/articles/19c/dbms_job-jobs-converted-to-dbms_scheduler-jobs-19c)\n- Oracle-side replacement: **DBMS_SCHEDULER**.\n\n**Dispute on record — \"Did DBMS_JOB stop working in 19c?\"**\n- **Claim A** (Oracle/ORACLE-BASE): DBMS_JOB is deprecated but continues to function in 19c+, wrapped over DBMS_SCHEDULER.\n- **Claim B** (community, Ask TOM thread): a poster reported `DBMS_JOB.SUBMIT` \"not working anymore\" after upgrading 12.1.0.2 → 19.8.\n- **Resolution** (per [`DBMS_JOB (PL/SQL Packages and Types Reference 19c)`](https://docs.oracle.com/en/database/oracle/oracle-database/19/arpls/DBMS_JOB.html)): Both are compatible — the 19c `CREATE JOB` privilege requirement (ORA-27486 if missing) explains the \"not working\" reports; it was a privilege change, not removal. The package is deprecated and functional through 26ai. For an Azure migration, the practical consequence is unchanged either way: job bodies must be re-homed to SQL Server Agent (Managed Instance), Azure SQL Elastic Jobs, or pg_cron (PostgreSQL Flexible Server) — but that move isn't forced by any removal in 19c.\n\nAdditional caveat: DBMS_JOB.SUBMIT remains **transactional** even in 19c (rolled back with the caller's transaction), unlike DBMS_SCHEDULER.CREATE_JOB or the Azure targets, which commit immediately — [Connor McDonald: DBMS_JOB - the joy of transactions](https://connor-mcdonald.com/2019/05/28/dbms_job-the-joy-of-transactions/)",
+  "stderr": ""
+}

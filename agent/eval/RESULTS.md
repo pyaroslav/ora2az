@@ -43,4 +43,24 @@ Report turns and tokens per condition (no dollar cost: subscription).
 - No dollar cost is reported: runs used a flat-rate subscription, so only turns and time are measured.
 - The Knowledge Base Issues tab flagged 2 "conflicts" on build; both are gaps (one entry states a desupport release, a neighbouring entry mentions the feature without it), not contradictions.
 
+## After the freeze (2026-09-27, evening)
 
+Everything below ran after the frozen table above and does not change it. Same runner settings (`--max-turns 14`), same models per condition, same blind grader. These runs show the CLI calling its built-in `ToolSearch` to load the MCP tool definitions before the first Sanity call; the frozen runs made no non-MCP calls.
+
+**q13 re-run after an agent-rule fix.** In the frozen run, the GROQ + Knowledge Base agent read Knowledge Base prose about scheduler jobs, never queried the `dispute` documents, and dropped one side of the dispute. Fix: `persona.md` now says to query disputes before reading Knowledge Base prose. Re-run (`results/2026-09-27-q13-after-fix/`, baselines copied from the frozen run for the blind grade):
+
+| Condition | Verdict | Grounded | Cited |
+|---|---|---|---|
+| GROQ | 1 | 1 | 1 |
+| GROQ + KB | 1 | 1 | 1 (was 0) |
+
+**Two how-to questions added to test the Knowledge Base** (`q19` method selection for a cross-endian move to Oracle Database@Azure, `q20` switchover vs failover at cutover; `results/2026-09-27-additions/`):
+
+| Condition | q19 verdict / grounded / cited | q20 verdict / grounded / cited |
+|---|---|---|
+| Model alone | 0 / 0 / 0 | 1 / 0 / 0 |
+| Keyword search | 0 / 1 / 0 | 1 / 1 / 1 |
+| GROQ | 1 / 1 / **0** | 1 / 1 / 1 |
+| GROQ + KB | 1 / 1 / **1** | 1 / 1 / 1 |
+
+On q19 the Knowledge Base agent read the three relevant entries in one `knowledge_base_read` call and cited every required publisher; the GROQ-only agent reached the same verdict by walking `pattern` documents through eight calls and missed the Oracle citation. Two questions are a signal, not a result: the `pattern` documents are also in the dataset, so GROQ can reach the same prose, just less directly.

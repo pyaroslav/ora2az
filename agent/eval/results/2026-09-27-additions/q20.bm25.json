@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "id": "q20",
+    "type": "howto",
+    "cond": "bm25",
+    "num_turns": 1,
+    "duration_ms": 8025,
+    "session_id": "984ce853-f6cb-476d-bed7-845507d6cf12",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 12825,
+      "cache_read_input_tokens": 6468,
+      "output_tokens": 686,
+      "output_tokens_details": {
+        "thinking_tokens": 43
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 12825,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 686,
+          "cache_read_input_tokens": 6468,
+          "cache_creation_input_tokens": 12825,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 12825
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "is_error": false,
+    "exit": 0
+  },
+  "question": {
+    "id": "q20",
+    "type": "howto",
+    "added_after_freeze": true,
+    "q": "Our Azure standby is in sync and the on-premises primary is healthy. For the cutover, should we do a Data Guard switchover or a failover, and what do we check first?",
+    "expected": "Switchover, because the primary is healthy: zero data loss and the old primary stays as a standby for switch-back. Pre-flight with the Broker (SHOW CONFIGURATION success; VALIDATE DATABASE ready for switchover; zero transport/apply lag; Flashback Database on both), test client redirection first; failover only if the primary is gone; keep any observer off the primary host.",
+    "required_sources": [
+      "firsthand"
+    ]
+  },
+  "passages": [
+    {
+      "id": "pattern_data-guard-switchover-vs-failover-at-cutover",
+      "type": "pattern",
+      "text": "Apply the author's one-sentence test: is the primary still healthy and reachable? For a migration the answer is normally yes, so the cutover is a switchover. In a switchover the primary stops accepting transactions, ships its final redo and becomes a standby; the standby in Azure applies that redo and becomes the primary. Because the old primary participated in the hand-off there is no data loss, and it is left as a valid standby of the new Azure primary, so if the cloud database misbehaves in the first days you switch back with no data loss. That reversibility is why the migration-methods post calls Data Guard the method with the best rollback story, and it is exactly what Zero Downtime Migration's physical-online mode performs. Pre-flight the configuration the way the post's worked example does, through the Broker. SHOW CONFIGURATION should report success; VALIDATE DATABASE on the standby should say it is ready for switchover, with transport and apply lag at zero and Flashback Database on for both databases. If it is not ready, the usual causes are an archive gap, missing standby redo logs or apply lag, and the fix comes before the cutover, not during it. Test client redirection ",
+      "score": 42.909
+    },
+    {
+      "id": "glossary_switchover-vs-failover",
+      "type": "glossary",
+      "text": "role transition, FSFO, reinstate | Two Data Guard role transitions that both end with a standby acting as primary. A switchover is planned: the healthy primary ships its final redo, the roles reverse with zero data loss, and the old primary is left as a valid standby, so the operation is reversible; it is the cutover move of a Data Guard based migration and the rehearsal that proves a standby works. A failover is a response to a lost primary: the standby is promoted with whatever redo it has, data loss depends on the protection mode (none in a synchronized synchronous mode, seconds in Maximum Performance), and the old primary drops out of the configuration until it is reinstated with Flashback Database or rebuilt. Fast-Start Failover automates the failover through a Broker observer that must run on a host independent of the primary. | Switchover vs failover (Data Guard)",
+      "score": 39.301
+    },
+    {
+      "id": "pattern_rac-vs-data-guard-on-azure",
+      "type": "pattern",
+      "text": "Start with the failure, not the feature. The author's decision-tree post maps four failure modes to what survives them: an instance or node failure is absorbed by RAC without any role change; a site or region loss is survived only by an independent copy, which is Data Guard; block corruption is handled by Data Guard (the standby has its own writes, and Active Data Guard can repair blocks from the other side) and by validated backups; and human or logical error, the bad DELETE or dropped table, is survived by neither RAC nor Data Guard because both faithfully replicate the mistake. Only backups, point-in-time recovery and Flashback cover that row, so they are mandatory in every branch of the tree. Then apply the Azure target constraints. Microsoft's reference architecture for Oracle on Azure Virtual Machines states that Oracle does not currently certify or support RAC on Azure VMs, that RAC alone protects only against instance-level failure anyway, and that the recommended high-availability design is Data Guard (with Fast-Start Failover and observers spread across availability zones) for a 99.99 percent uptime SLA, Far Sync for zero-loss protection across regions (which needs an Act",
+      "score": 32.885
+    },
+    {
+      "id": "feature_data-guard",
+      "type": "oracleFeature",
+      "text": "ha | pre-11.2 | Data Guard | Data Guard maintains one or more standby copies of a production database by shipping and applying redo. Physical standbys are block-for-block replicas that can be opened read-only, logical standbys apply SQL, and the broker automates switchover and failover so a standby can assume the primary role when the primary fails or for planned maintenance. Migrations care in two ways. As a feature to replace, its counterparts are failover groups and geo-replication on Azure SQL and high availability or read replicas on PostgreSQL, none of which replicate Oracle redo. As a migration tool, a standby in Azure is one of the lowest-downtime ways to move a database to Oracle on Azure virtual machines or Oracle Database@Azure. Data Guard is supported and not deprecated. The 18c and 19c Upgrade Guides retire a few broker properties, but the feature itself continues to evolve.",
+      "score": 31.83
+    },
+    {
+      "id": "mapping_data-guard--azure-sql-mi",
+      "type": "mapping",
+      "text": "11.2, 12.1, 12.2, 18c, 19c, 21c, 23ai, 26ai | M | partial | Data Guard's standby database for disaster recovery corresponds to a Managed Instance failover group, which keeps a geo-secondary instance in another region with read-only access and listener endpoints that redirect after failover, and Microsoft offers a license-free DR-only replica. Synchronous zero-data-loss protection like Maximum Availability mode is not offered across regions, and there is no equivalent of snapshot standby, Far Sync or Active Data Guard rolling upgrades. | Create a failover group between a primary and a secondary managed instance in the paired region. Point applications at the failover group read-write listener; send reports to the read-only listener. Recreate instance-level objects (logins, Agent jobs) on the secondary, since system databases are not replicated. Test planned and forced failover and document the expected RPO.",
+      "score": 28.801
+    },
+    {
+      "id": "pattern_choose-migration-method",
+      "type": "pattern",
+      "text": "The author's migration-methods lab and the companion post organise the decision as four gates applied in a fixed order. The order matters because each gate eliminates methods before the next one is considered, and most wrong plans come from applying the gates in the wrong order (for example choosing Data Guard for its near-zero downtime before checking whether the target can host a standby at all). Gate 1: what does the target allow? Physical methods (RMAN restore or duplicate, transportable tablespaces, a Data Guard standby) need SYSDBA, file-system access and a database you can mount and recover. The Exadata and Base services of Oracle Database@Azure and Oracle on Azure VMs give you that, so every method is on the table there; Oracle's own service page lists Data Guard and Zero Downtime Migration among the supported tooling. Autonomous Database, including the Autonomous flavour offered through Oracle Database@Azure, does not: the blog is explicit that into Autonomous it is logical only, meaning Data Pump from object storage run as ADMIN with the ADB-managed object classes excluded, or GoldenGate. Azure SQL Database, Azure SQL Managed Instance and PostgreSQL Flexible Server are lo",
+      "score": 26.673
+    },
+    {
+      "id": "source_ua-blog-dg-switchover-vs-failover",
+      "type": "source",
+      "text": "blog post, 2026-06 | Establishes the planned/unplanned distinction, zero-loss and reversibility of a switchover, protection-mode-dependent loss on failover, reinstate via Flashback Database, and Fast-Start Failover observer placement. | firsthand | 2026-09-26 | Data Guard Switchover vs Failover: Which Role Transition, and When | https://uptimearchitect.com/blog/oracle-data-guard-switchover-vs-failover/",
+      "score": 24.29
+    },
+    {
+      "id": "pattern_rman-moves-to-oracle-on-azure",
+      "type": "pattern",
+      "text": "Confirm RMAN is the right tool before planning it. The migration-methods post places RMAN restore among the outage methods for same-endian moves where the architecture does not change; its answer key uses RMAN \"restore from service\" or active duplication to seed a standby in the cloud, and names an offline RMAN restore (Zero Downtime Migration's physical-offline mode) as the physical path available to a Standard Edition 2 source that cannot build a Data Guard standby. Check V$TRANSPORTABLE_PLATFORM first: a big-endian source cannot be restored onto Linux x86-64 without transportable tablespaces and RMAN CONVERT, and no RMAN method can target Autonomous Database, Azure SQL or PostgreSQL. Plan the transport. Microsoft's Azure VM migration guidance describes the RMAN scenarios as a backup taken on premises, moved to Azure and restored on the VM, with the network between the two as the constraint: VPN or ExpressRoute for online copies, AzCopy into Blob Storage or Azure Files as the staging area, and Data Box when the volume makes shipping a device faster than sending it. For Oracle Database@Azure the same shape applies with OCI object storage as the staging area, and Oracle's tooling a",
+      "score": 22.48
+    }
+  ],
+  "result": "**Do a switchover, not a failover.** Your primary is healthy and reachable, so this is a planned role transition. A switchover loses no data and can be reversed.\n\n**Why a switchover** [1][2]\n- The on-premises primary stops accepting transactions and ships its final redo. The Azure standby applies that redo and becomes the primary.\n- No data is lost because the old primary takes part in the hand-off.\n- The old on-premises primary stays on as a valid standby of the new Azure primary. If the cloud database misbehaves in the first few days, you can switch back without losing data. This is why Data Guard has the best rollback story of the migration methods. It's also what Zero Downtime Migration's physical-online mode does.\n- A failover is for when the primary has been lost. The standby is promoted with whatever redo it already has, so you could lose data: none in synchronized synchronous mode, seconds in Maximum Performance. The old primary also drops out of the configuration until you reinstate it with Flashback Database or rebuild it. There's no reason to accept that when your primary is healthy.\n\n**Check first, through the Broker** [1]\n1. `SHOW CONFIGURATION` reports **SUCCESS**.\n2. `VALIDATE DATABASE <standby>` says the standby is **ready for switchover**.\n3. Transport lag and apply lag are both **zero**.\n4. **Flashback Database is on** for both databases.\n5. If the standby isn't ready, the usual causes are an archive gap, missing standby redo logs or apply lag. Fix these before the cutover, not during it.\n6. Test that clients get redirected to the new primary. The passage is cut off at this point, so it doesn't give the details of how to test this.\n\n**Source:** Uptime Architect, *Data Guard Switchover vs Failover: Which Role Transition, and When*: https://uptimearchitect.com/blog/oracle-data-guard-switchover-vs-failover/ [7]",
+  "stderr": ""
+}
