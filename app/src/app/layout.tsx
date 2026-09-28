@@ -24,6 +24,7 @@ export default function RootLayout({children}: {children: ReactNode}) {
               <span>Notices of desupport &amp; departure</span>
               <span>Oracle Database → Azure</span>
               <span>{today}</span>
+              <Link href="/coroner">The Coroner&rsquo;s Reports</Link>
               <Link href="/about">About this paper</Link>
             </div>
           </header>

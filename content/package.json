@@ -5,7 +5,8 @@
   "scripts": {
     "validate": "node validate.mjs",
     "seed": "node seed.mjs",
-    "seed:dry": "node seed.mjs --dry"
+    "seed:dry": "node seed.mjs --dry",
+    "test": "node --test \"test/*.test.mjs\""
   },
   "dependencies": {
     "@sanity/client": "^7",
