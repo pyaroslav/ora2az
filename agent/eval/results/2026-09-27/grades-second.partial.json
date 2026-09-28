@@ -1,0 +1,578 @@
+[
+  {
+    "id": "q01",
+    "type": "version-scope",
+    "cond": "groq",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Fully matches rubric including 12.2 deprecation release and SQL Agent mapping.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q01",
+    "type": "version-scope",
+    "cond": "groq+kb",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Complete answer identifying 12.2 deprecation, DBMS_SCHEDULER, and SQL Agent.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q01",
+    "type": "version-scope",
+    "cond": "bm25",
+    "grader": "gemini-3.8-flash",
+    "verdict": 0,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Fails to state the Oracle 12.2 deprecation release.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 0,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q01",
+    "type": "version-scope",
+    "cond": "none",
+    "grader": "gemini-3.8-flash",
+    "verdict": 0,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Omits the 12.2 deprecation release; incorrectly implies deprecated in 19c.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 0,
+      "grounded": 0,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q02",
+    "type": "dispute",
+    "cond": "none",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Covers SSMA float(53), Ora2Pg bigint default, and profiling resolution.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 0,
+      "grounded": 0,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q02",
+    "type": "dispute",
+    "cond": "bm25",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Covers both tool defaults, discrepancies, and profiling resolution accurately.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q02",
+    "type": "dispute",
+    "cond": "groq+kb",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Explicitly details the dispute and recorded resolution cleanly.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q02",
+    "type": "dispute",
+    "cond": "groq",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Accurately presents the dispute claims and the recorded resolution.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q03",
+    "type": "fact",
+    "cond": "none",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Correctly states desupport in 19c and names GoldenGate replacement.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 0,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q03",
+    "type": "fact",
+    "cond": "groq+kb",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Accurately identifies 19c desupport, 12.1 deprecation, and GoldenGate replacement.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q03",
+    "type": "fact",
+    "cond": "groq",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Fully identifies desupport in 19c, deprecation in 12.1, and replacements.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q03",
+    "type": "fact",
+    "cond": "bm25",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Identifies 19c desupport, 12.1 deprecation, and replacement options.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 0,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q04",
+    "type": "fact",
+    "cond": "bm25",
+    "grader": "gemini-3.8-flash",
+    "verdict": 0,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Cannot confirm whether Oracle Database@Azure keeps Oracle semantics.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 0,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q04",
+    "type": "fact",
+    "cond": "groq+kb",
+    "grader": "gemini-3.8-flash",
+    "verdict": 0,
+    "grounded": 1,
+    "refusal": null,
+    "note": "States no evidence either way for Oracle Database@Azure.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 0,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q04",
+    "type": "fact",
+    "cond": "none",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Correctly identifies non-Oracle targets fail and Oracle Database@Azure preserves behavior.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 0,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q04",
+    "type": "fact",
+    "cond": "groq",
+    "grader": "gemini-3.8-flash",
+    "verdict": 0,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Concludes none natively support it and hedges on Oracle Database@Azure.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 0,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q05",
+    "type": "refusal",
+    "cond": "bm25",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": 1,
+    "note": "Correctly states passages lack evidence and refuses to answer from memory.",
+    "citations": null,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": 1
+    }
+  },
+  {
+    "id": "q05",
+    "type": "refusal",
+    "cond": "none",
+    "grader": "gemini-3.8-flash",
+    "verdict": 0,
+    "grounded": 0,
+    "refusal": 0,
+    "note": "Answered from memory instead of refusing due to lack of evidence.",
+    "citations": null,
+    "firstGrader": {
+      "verdict": 0,
+      "grounded": 0,
+      "refusal": 0
+    }
+  },
+  {
+    "id": "q05",
+    "type": "refusal",
+    "cond": "groq",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": 1,
+    "note": "Correctly identifies lack of evidence in dataset and refuses.",
+    "citations": null,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": 1
+    }
+  },
+  {
+    "id": "q05",
+    "type": "refusal",
+    "cond": "groq+kb",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": 1,
+    "note": "Correctly identifies lack of evidence in dataset and refuses.",
+    "citations": null,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": 1
+    }
+  },
+  {
+    "id": "q06",
+    "type": "version-scope",
+    "cond": "none",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 0,
+    "refusal": null,
+    "note": "Reaches expected verdict but hallucinates that 23ai was renamed 26ai.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 0,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q06",
+    "type": "version-scope",
+    "cond": "groq+kb",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Accurately covers 21c desupport, Azure targets, and non-Oracle target irrelevance.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q06",
+    "type": "version-scope",
+    "cond": "bm25",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Correctly addresses 21c desupport, PDB conversion, and target platforms.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q06",
+    "type": "version-scope",
+    "cond": "groq",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Accurately covers 21c desupport, Azure targets, and non-Oracle target irrelevance.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q07",
+    "type": "howto",
+    "cond": "groq",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Accurately covers full refresh, CONCURRENTLY, summary tables, effort, and caveats.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q07",
+    "type": "howto",
+    "cond": "none",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Covers CONCURRENTLY, pg_cron, triggers, and key caveats in detail.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 0,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q07",
+    "type": "howto",
+    "cond": "groq+kb",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Identifies lack of fast refresh, CONCURRENTLY, pg_cron, effort, and caveats.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q07",
+    "type": "howto",
+    "cond": "bm25",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Correctly states full refresh limitations, pg_cron, summary tables, and caveats.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q08",
+    "type": "fact",
+    "cond": "groq+kb",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Accurately identifies Unified Auditing, 26ai desupport, and Azure SQL Auditing details.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q08",
+    "type": "fact",
+    "cond": "groq",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Correctly names Unified Auditing, 26ai desupport timing, and Azure SQL equivalents.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q08",
+    "type": "fact",
+    "cond": "bm25",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Accurately identifies Unified Auditing and Azure SQL Auditing limits.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q08",
+    "type": "fact",
+    "cond": "none",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Identifies Unified Auditing and Azure SQL Auditing with comprehensive mapping.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 0,
+      "grounded": 0,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q09",
+    "type": "fact",
+    "cond": "groq+kb",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Fully matches expected verdict, highlighting SSMA blockers and workarounds.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q09",
+    "type": "fact",
+    "cond": "none",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Accurately details lack of T-SQL equivalent and practical workarounds.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 0,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q09",
+    "type": "fact",
+    "cond": "groq",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Detailed answer correctly identifying MI limitations and alternatives.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q09",
+    "type": "fact",
+    "cond": "bm25",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Accurate verdict covering SSMA emulation issues and workarounds.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 0,
+      "refusal": null
+    }
+  }
+]

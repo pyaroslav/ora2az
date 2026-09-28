@@ -24,7 +24,7 @@ const seeded = (s) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^
 
 async function ask(prompt) {
   for (const m of MODELS) {
-    for (let attempt = 0; attempt < 8; attempt++) {
+    for (let attempt = 0; attempt < Number(process.env.GRADER2_RETRIES ?? 8); attempt++) {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${KEY}`, {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({contents: [{role: 'user', parts: [{text: prompt}]}], generationConfig: {temperature: 0, responseMimeType: 'application/json'}}),

@@ -64,3 +64,16 @@ Everything below ran after the frozen table above and does not change it. Same r
 | GROQ + KB | 1 / 1 / **1** | 1 / 1 / 1 |
 
 On q19 the Knowledge Base agent read the three relevant entries in one `knowledge_base_read` call and cited every required publisher; the GROQ-only agent reached the same verdict by walking `pattern` documents through eight calls and missed the Oracle citation. Two questions are a signal, not a result: the `pattern` documents are also in the dataset, so GROQ can reach the same prose, just less directly.
+
+## Second grader (another vendor), partial
+
+`eval/grade_second.mjs` regrades the frozen answers with `gemini-3.8-flash` (Google free tier), using the same shuffle seed, labels and rubric; citations reuse the deterministic check. Google's free tier allows 20 requests per model per day and was overloaded (HTTP 503) for much of 2026-09-28, so the run covers q01–q09 so far (36 answers); it resumes from `results/2026-09-27/grades-second.partial.json`.
+
+| Condition | Verdicts agreed | Grounding agreed | Second grader: verdict correct |
+|---|---|---|---|
+| Model alone | 7/9 | 2/9 | 7/9 |
+| Keyword search | 9/9 | 7/9 | 7/9 |
+| GROQ | 9/9 | 9/9 | 8/9 |
+| GROQ + KB | 9/9 | 9/9 | 8/9 |
+
+Overall 34/36 verdicts agreed. Every disagreement is on a baseline answer; most are the second grader marking a correct answer from memory as "grounded", which the rubric does not allow without retrieved evidence.
