@@ -8,8 +8,11 @@ const playfair = Playfair_Display({variable: '--font-playfair', subsets: ['latin
 const serif = Source_Serif_4({variable: '--font-serif', subsets: ['latin'], weight: ['400', '600'], style: ['normal', 'italic']})
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://ora2az.vercel.app'),
   title: 'Legacy Obituaries',
   description: 'Notices of desupport and departure for Oracle Database features that did not survive the move to Azure, generated from a structured migration knowledge graph on Sanity.',
+  openGraph: {type: 'website', siteName: 'The Legacy Obituaries'},
+  twitter: {card: 'summary_large_image'},
 }
 
 export default function RootLayout({children}: {children: ReactNode}) {
