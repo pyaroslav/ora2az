@@ -1,7 +1,7 @@
 import type {Fidelity, Publisher, Severity} from '@/sanity/types'
 
 const FIDELITY: Record<Fidelity, string> = {
-  exact: 'Lives on under a new name',
+  exact: 'Lives on unchanged in Azure',
   partial: 'Survived, partially',
   workaround: 'Survived by a workaround',
   none: 'No forwarding address in Azure',
