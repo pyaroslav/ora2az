@@ -1,0 +1,19 @@
+{
+  "name": "ora2az-workflows",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "sanity-workflows deploy --check",
+    "deploy": "sanity-workflows deploy --deployment production",
+    "fact-check": "node scripts/fact-check.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sanity/client": "^7",
+    "@sanity/workflow-cli": "0.35.0",
+    "@sanity/workflow-engine": "0.35.0"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}

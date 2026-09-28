@@ -30,7 +30,7 @@ export default function RootLayout({children}: {children: ReactNode}) {
           </header>
           <main>{children}</main>
           <footer className="colophon">
-            Every notice is generated from a public Sanity dataset in which each claim carries a source. Nothing here is written from memory.
+            Every notice is assembled from a public Sanity dataset in which each claim carries a source. Summaries are written by the editor; obituary paragraphs are machine-drafted from the dataset and certified before they appear.
             <br />
             <a href="https://github.com/pyaroslav/ora2az">Source code and dataset</a>
           </footer>
