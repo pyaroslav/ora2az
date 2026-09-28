@@ -11,7 +11,9 @@ import {loadEnv} from '../lib/runtime.mjs'
 loadEnv()
 const KEY = process.env.GEMINI_API_KEY
 if (!KEY) { console.error('GEMINI_API_KEY missing in ~/.config/ora2az/env'); process.exit(2) }
-const MODELS = (process.env.GRADER2_MODELS ?? 'gemini-2.5-pro,gemini-flash-latest').split(',')
+// One model for every question, so grades are comparable. Free tier: 3.8 Flash (2.5 models are closed to new keys; 3.1 Pro has no free quota).
+const MODELS = (process.env.GRADER2_MODELS ?? 'gemini-3.8-flash').split(',')
+const PACE_MS = Number(process.env.GRADER2_PACE_MS ?? 20000)
 const here = dirname(fileURLToPath(import.meta.url))
 const argv = process.argv.slice(2)
 const dir = argv.includes('--dir') ? argv[argv.indexOf('--dir') + 1] : join(here, 'results', '2026-09-27')
@@ -22,13 +24,13 @@ const seeded = (s) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^
 
 async function ask(prompt) {
   for (const m of MODELS) {
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < 8; attempt++) {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${KEY}`, {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({contents: [{role: 'user', parts: [{text: prompt}]}], generationConfig: {temperature: 0, responseMimeType: 'application/json'}}),
       })
       if (r.ok) { const j = await r.json(); return {model: m, text: j.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') ?? ''} }
-      if (r.status === 429 || r.status >= 500) { await new Promise((s) => setTimeout(s, 15000 * (attempt + 1))); continue }
+      if (r.status === 429 || r.status >= 500) { const wait = Math.min(120000, 20000 * (attempt + 1)); console.error(`  ${m}: HTTP ${r.status}, retrying in ${wait / 1000}s`); await new Promise((s) => setTimeout(s, wait)); continue }
       break // other errors: try next model
     }
   }
@@ -36,8 +38,10 @@ async function ask(prompt) {
 }
 
 const first = existsSync(join(dir, 'grades.json')) ? JSON.parse(readFileSync(join(dir, 'grades.json'), 'utf8')) : []
-const out = []
+const progressFile = join(dir, 'grades-second.partial.json')
+const out = existsSync(progressFile) ? JSON.parse(readFileSync(progressFile, 'utf8')) : []
 for (const q of questions) {
+  if (out.some((x) => x.id === q.id)) continue
   const runs = CONDS.map((c) => { const f = join(dir, `${q.id}.${c}.json`); return existsSync(f) ? {cond: c, text: JSON.parse(readFileSync(f, 'utf8')).result ?? '(no answer)'} : null }).filter(Boolean)
   if (!runs.length) continue
   const rnd = seeded(q.id)
@@ -49,6 +53,8 @@ for (const q of questions) {
     const f = first.find((g) => g.id === q.id && g.cond === r.cond) ?? {}
     out.push({id: q.id, type: q.type, cond: r.cond, grader: model, ...(s[r.label] ?? {}), citations: f.citations ?? null, firstGrader: {verdict: f.verdict, grounded: f.grounded, refusal: f.refusal}})
   }
+  writeFileSync(progressFile, JSON.stringify(out, null, 2))
+  await new Promise((s) => setTimeout(s, PACE_MS))
   console.log(q.id, model, order.map((r) => `${r.cond}:${s[r.label]?.verdict ?? '?'}${s[r.label]?.grounded ?? '?'}`).join(' '))
 }
 writeFileSync(join(dir, 'grades-second.json'), JSON.stringify(out, null, 2))

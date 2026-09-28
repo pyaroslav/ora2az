@@ -8,3 +8,4 @@ dist/
 !.env.example
 .DS_Store
 agent/eval/results/**/*.raw.json
+agent/eval/results/**/*.partial.json
