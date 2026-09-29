@@ -91,18 +91,19 @@ The order matters. Publish first, then fire `certify`. Entering `certified` depl
 
 ## Current state (2026-09-27, later)
 
-One notice has gone the whole way, and one front-page notice now waits in the queue:
+Two notices have gone the whole way, and one front-page notice waits in the queue:
 
 ```
 $ npx sanity-workflows list
 instance                              workflow           tag          stage          status
 production.wf-instance.c87d984a87de   notice-lifecycle   production   fact-checked   in-flight   (feature_exp-utility, on the front page)
 production.wf-instance.2e9f8b706af0   notice-lifecycle   production   certified      in-flight   (feature_xmltype)
-production.wf-instance.1739bb2d4543   notice-lifecycle   production   fact-checked   in-flight   (feature_vector-datatype)
+production.wf-instance.1739bb2d4543   notice-lifecycle   production   certified      in-flight   (feature_vector-datatype)
 production.wf-instance.3c0dea974deb   notice-lifecycle   production   fact-checked   in-flight   (feature_flashback-query)
 ```
 
 - `feature_xmltype`: draft published as certified, then `certify` fired, so the instance sits in `certified` with the obituary freeze in force.
+- `feature_vector-datatype`: draft published as certified, then `certify` fired (2026-09-29).
 - `feature_exp-utility` (desupported in 26ai, one of the 28 front-page notices): obituary moved back to draft, instance started, fact check PASS (mentions 11.2 and 26ai, both in its data), waiting for a human in `fact-checked`.
 - The instance's `certified` stage is not terminal on purpose, so `retract` stays available and the guard stays live.
 
