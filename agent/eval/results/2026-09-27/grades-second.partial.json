@@ -574,5 +574,69 @@
       "grounded": 0,
       "refusal": null
     }
+  },
+  {
+    "id": "q10",
+    "type": "version-scope",
+    "cond": "bm25",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Accurately covers SSMA BOOLEAN to bit mapping scoped to 23ai.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q10",
+    "type": "version-scope",
+    "cond": "groq",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Correctly details SSMA BOOLEAN to bit mapping and 23ai scope.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q10",
+    "type": "version-scope",
+    "cond": "groq+kb",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Addresses SSMA BOOLEAN mapping to bit and 23ai scoping requirements.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q10",
+    "type": "version-scope",
+    "cond": "none",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 0,
+    "refusal": null,
+    "note": "Reaches verdict but includes ungrounded hallucinated details written from memory.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 0,
+      "refusal": null
+    }
   }
 ]
