@@ -5,6 +5,7 @@ import {getObituary} from '@/sanity/queries'
 import {Fid, Pub, Sev, fidelityEpitaph} from '@/components/Badge'
 import {Prose} from '@/components/Prose'
 import {SourceList} from '@/components/SourceList'
+import {noticeLine} from '@/lib/notice'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,8 +14,12 @@ type Props = {params: Promise<{slug: string}>}
 export async function generateMetadata({params}: Props): Promise<Metadata> {
   const {slug} = await params
   const f = await getObituary(slug)
-  return {title: f ? `${f.name} — Legacy Obituaries` : 'Notice not found'}
+  if (!f) return {title: 'Notice not found'}
+  const title = `${f.name} — Legacy Obituaries`
+  const description = noticeLine(f)
+  return {title, description, openGraph: {title, description, type: 'article'}, twitter: {card: 'summary_large_image', title, description}}
 }
+
 
 export default async function Obituary({params}: Props) {
   const {slug} = await params
