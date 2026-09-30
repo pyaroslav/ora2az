@@ -75,7 +75,7 @@ node scripts/fact-check.mjs production.wf-instance.2e9f8b706af0
 
 The rule is that every Oracle release and every ORA-nnnnn code in the obituary must appear in the feature's own data. Releases are names like 12.2, 19c or 26ai. The feature's own data is its name, release fields, summary and in-Oracle replacement. It also includes its mappings' rationale and steps, the caveats on those mappings, and the disputes involving them. The script reads with GROQ and fires the action through `sanity-workflows fire-action`, so the action is attributed to the logged-in user. It reads drafts, so it needs `SANITY_WRITE_TOKEN` or `SANITY_READ_TOKEN` from the environment or `~/.config/ora2az/env`.
 
-The same rule was run in dry mode against the 47 published certified obituaries, and all 47 passed.
+The same rule was run in dry mode against the 47 obituaries certified at the time, and all 47 passed.
 
 ## Certify
 
@@ -118,7 +118,7 @@ The docs also describe a richer route: `@sanity/workflow-sdk` with `useWorkflowS
 - **Early access.** This is on 0.x packages, and a minor version can break the API. The packages are pinned to exactly 0.35.0. Stored instances are pinned to definition v1, so redeploying creates v2 and leaves these instances on v1.
 - **Nothing is enforced against a direct writer.** The docs say every engine check is advisory, and the Content Lake does not enforce guard documents yet. The freeze is honored by the engine and by the Studio Workflows plugin, which this project does not install. The App SDK desk does not read guards, so it can still change a frozen obituary. The real hard boundary is dataset access control.
 - **The gate is not a lock on publishing.** Nothing stops someone publishing an obituary that never passed the fact check. The workflow records whether it did.
-- **The workflow is not wired to all 47 certified obituaries.** They were certified before it existed and have no instances.
+- **The workflow is not wired to the 46 obituaries certified before it existed.** They were certified before it existed and have no instances.
 - **Nothing runs in the background.** The engine is a library. The fact check runs when someone runs the script. No Sanity Function drains effects or ticks instances, and this definition declares no effects or clock conditions, so none is needed.
 - **The fact check is narrow.** It checks release names and ORA- codes only, not other claims. It does not recognise forms like "12cR2" or "Release 2".
 - **Workflow state lives in the content dataset.** Its ids contain a dot, so public, unauthenticated queries do not return them. A public count of `sanity.workflow*` documents returns 0.
