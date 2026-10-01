@@ -638,5 +638,133 @@
       "grounded": 0,
       "refusal": null
     }
+  },
+  {
+    "id": "q11",
+    "type": "fact",
+    "cond": "none",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Correct verdict, distinguishes SQL DB from MI, mentions Elastic Query workaround.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 0,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q11",
+    "type": "fact",
+    "cond": "groq+kb",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Accurately answers lack of support, elastic query workaround, and MI contrast.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q11",
+    "type": "fact",
+    "cond": "groq",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Clearly distinguishes DB from MI, identifies elastic query as partial workaround.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q11",
+    "type": "fact",
+    "cond": "bm25",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Accurate comparison, highlights Elastic Query limitations and contrasts with MI.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q12",
+    "type": "fact",
+    "cond": "groq",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Fully matches expected verdict regarding 26ai desupport, expdp, and imp handling.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q12",
+    "type": "fact",
+    "cond": "none",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Accurately identifies Data Pump replacement, script rewrite needs, and imp usage.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 0,
+      "grounded": 0,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q12",
+    "type": "fact",
+    "cond": "bm25",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Covers 26ai desupport, expdp replacement, rewriting scripts, and imp staging.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q12",
+    "type": "fact",
+    "cond": "groq+kb",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Correctly states 26ai desupport, expdp replacement, script rewrites, and imp.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
   }
 ]
