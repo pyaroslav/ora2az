@@ -766,5 +766,133 @@
       "grounded": 1,
       "refusal": null
     }
+  },
+  {
+    "id": "q13",
+    "type": "dispute",
+    "cond": "groq+kb",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Correct verdict and explanation; claims no dispute record existed.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q13",
+    "type": "dispute",
+    "cond": "bm25",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Presents both the community claim, Oracle status, and resolution accurately.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q13",
+    "type": "dispute",
+    "cond": "none",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Correctly addresses community misconceptions and underlying scheduler conversion.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 0,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q13",
+    "type": "dispute",
+    "cond": "groq",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Exemplary dispute resolution presenting both claims and their reconciliation.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q14",
+    "type": "fact",
+    "cond": "groq+kb",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Addresses BYTE/CHAR semantics, SSMA default mapping, and UTF-8/nvarchar options.",
+    "citations": 1,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q14",
+    "type": "fact",
+    "cond": "groq",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Accurately covers SSMA default mapping, byte vs char semantics, and collation.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q14",
+    "type": "fact",
+    "cond": "none",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Thoroughly covers length semantics, SSMA default mapping trap, and UTF-8/nvarchar.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 0,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q14",
+    "type": "fact",
+    "cond": "bm25",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Clearly details BYTE/CHAR semantics, SSMA defaults, and UTF-8/nvarchar strategies.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
   }
 ]
