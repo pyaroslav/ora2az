@@ -894,5 +894,69 @@
       "grounded": 1,
       "refusal": null
     }
+  },
+  {
+    "id": "q15",
+    "type": "howto",
+    "cond": "bm25",
+    "grader": "gemini-3.8-flash",
+    "verdict": 0,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Misses Service Broker on SQL MI and PostgreSQL queue alternatives.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 0,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q15",
+    "type": "howto",
+    "cond": "groq+kb",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Completely covers Service Bus, SQL MI Service Broker, and queue table patterns.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q15",
+    "type": "howto",
+    "cond": "none",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Accurately covers Service Bus, outbox pattern, and SQL MI Service Broker.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 0,
+      "grounded": 0,
+      "refusal": null
+    }
+  },
+  {
+    "id": "q15",
+    "type": "howto",
+    "cond": "groq",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": null,
+    "note": "Thoroughly matches expected pattern, SQL MI Service Broker, and outbox guidance.",
+    "citations": 0,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": null
+    }
   }
 ]

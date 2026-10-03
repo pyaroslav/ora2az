@@ -67,13 +67,13 @@ On q19 the Knowledge Base agent read the three relevant entries in one `knowledg
 
 ## Second grader (another vendor), partial
 
-`eval/grade_second.mjs` regrades the frozen answers with `gemini-3.8-flash` (Google free tier), using the same shuffle seed, labels and rubric; citations reuse the deterministic check. Google's free tier allows 20 requests per model per day and returned HTTP 503 (overloaded) on most attempts between 2026-09-28 and 2026-10-03, so the run stopped at q01–q14 (56 answers) at the challenge deadline; it resumes from `results/2026-09-27/grades-second.partial.json`.
+`eval/grade_second.mjs` regrades the frozen answers with `gemini-3.8-flash` (Google free tier), using the same shuffle seed, labels and rubric; citations reuse the deterministic check. Google's free tier allows 20 requests per model per day and returned HTTP 503 (overloaded) on most attempts between 2026-09-28 and 2026-10-03, so the run stopped at q01–q15 (60 answers) at the challenge deadline; it resumes from `results/2026-09-27/grades-second.partial.json`.
 
 | Condition | Verdicts agreed | Grounding agreed | Second grader: verdict correct |
 |---|---|---|---|
-| Model alone | 11/14 | 3/14 | 12/14 |
-| Keyword search | 14/14 | 12/14 | 12/14 |
-| GROQ | 14/14 | 14/14 | 13/14 |
-| GROQ + KB | 14/14 | 14/14 | 13/14 |
+| Model alone | 11/15 | 3/15 | 13/15 |
+| Keyword search | 15/15 | 13/15 | 12/15 |
+| GROQ | 15/15 | 15/15 | 14/15 |
+| GROQ + KB | 15/15 | 15/15 | 14/15 |
 
-Overall 53/56 verdicts agreed. Every disagreement is on a baseline answer; most are the second grader marking a correct answer from memory as "grounded", which the rubric does not allow without retrieved evidence.
+Overall 56/60 verdicts agreed. Every disagreement is on a baseline answer; most are the second grader marking a correct answer from memory as "grounded", which the rubric does not allow without retrieved evidence.
