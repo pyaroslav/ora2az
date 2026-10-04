@@ -958,5 +958,69 @@
       "grounded": 1,
       "refusal": null
     }
+  },
+  {
+    "id": "q16",
+    "type": "refusal",
+    "cond": "none",
+    "grader": "gemini-3.8-flash",
+    "verdict": 0,
+    "grounded": 0,
+    "refusal": 0,
+    "note": "Gave estimated number instead of strictly refusing.",
+    "citations": null,
+    "firstGrader": {
+      "verdict": 0,
+      "grounded": 0,
+      "refusal": 0
+    }
+  },
+  {
+    "id": "q16",
+    "type": "refusal",
+    "cond": "groq",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": 1,
+    "note": "Properly refused to invent count and referenced doc URL.",
+    "citations": null,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": 1
+    }
+  },
+  {
+    "id": "q16",
+    "type": "refusal",
+    "cond": "groq+kb",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": 1,
+    "note": "Refused to fabricate number and linked official sources.",
+    "citations": null,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": 1
+    }
+  },
+  {
+    "id": "q16",
+    "type": "refusal",
+    "cond": "bm25",
+    "grader": "gemini-3.8-flash",
+    "verdict": 1,
+    "grounded": 1,
+    "refusal": 1,
+    "note": "Refused without stating a count, pointed to overview URL.",
+    "citations": null,
+    "firstGrader": {
+      "verdict": 1,
+      "grounded": 1,
+      "refusal": 1
+    }
   }
 ]
