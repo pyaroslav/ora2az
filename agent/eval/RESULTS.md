@@ -65,15 +65,15 @@ Everything below ran after the frozen table above and does not change it. Same r
 
 On q19 the Knowledge Base agent read the three relevant entries in one `knowledge_base_read` call and cited every required publisher; the GROQ-only agent reached the same verdict by walking `pattern` documents through eight calls and missed the Oracle citation. Two questions are a signal, not a result: the `pattern` documents are also in the dataset, so GROQ can reach the same prose, just less directly.
 
-## Second grader (another vendor), partial
+## Second grader (another vendor)
 
-`eval/grade_second.mjs` regrades the frozen answers with `gemini-3.8-flash` (Google free tier), using the same shuffle seed, labels and rubric; citations reuse the deterministic check. Google's free tier allows 20 requests per model per day and returned HTTP 503 (overloaded) on most attempts between 2026-09-28 and 2026-10-04, so the run stopped at q01–q16 (64 answers) at the challenge deadline; it resumes from `results/2026-09-27/grades-second.partial.json`.
+`eval/grade_second.mjs` regrades the frozen answers with `gemini-3.8-flash` (Google free tier), using the same shuffle seed, labels and rubric; citations reuse the deterministic check. Google's free tier allows 20 requests per model per day and returned HTTP 503 (overloaded) on most attempts between 2026-09-28 and 2026-10-04, so the run resumed from `results/2026-09-27/grades-second.partial.json` after each failure and completed all 18 questions (72 answers) on 2026-10-04. Full output: `results/2026-09-27/grades-second.json` and `summary-second.md`.
 
 | Condition | Verdicts agreed | Grounding agreed | Second grader: verdict correct |
 |---|---|---|---|
-| Model alone | 12/16 | 4/16 | 13/16 |
-| Keyword search | 16/16 | 14/16 | 13/16 |
-| GROQ | 16/16 | 16/16 | 15/16 |
-| GROQ + KB | 16/16 | 16/16 | 15/16 |
+| Model alone | 14/18 | 5/18 | 14/18 |
+| Keyword search | 18/18 | 16/18 | 14/18 |
+| GROQ | 18/18 | 18/18 | 17/18 |
+| GROQ + KB | 18/18 | 18/18 | 17/18 |
 
-Overall 60/64 verdicts agreed. Every disagreement is on a baseline answer; most are the second grader marking a correct answer from memory as "grounded", which the rubric does not allow without retrieved evidence.
+Overall 68/72 verdicts agreed. Every disagreement is on a baseline answer; most are the second grader marking a correct answer from memory as "grounded", which the rubric does not allow without retrieved evidence.
